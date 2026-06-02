@@ -1,6 +1,7 @@
 import os
 import pytest
 import pytest_asyncio
+from dotenv import load_dotenv
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -10,6 +11,7 @@ import app.models  # noqa: F401 — registers all models in Base.metadata for cr
 # NOTE: C-03 infrastructure discovery: models MUST be imported before create_all runs.
 # The conftest must import app.models at module level, not inside test functions.
 
+load_dotenv()  # carga backend/.env antes de leer TEST_DATABASE_URL
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
