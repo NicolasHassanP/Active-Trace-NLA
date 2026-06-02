@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "kb-creator": {
+      "source": "JuanCruzRobledo/kb-creator",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "d7bb1e866abf4f40544943e522baedf9a12664066d9699b3262e6b77df5d6057"
+    }
+  }
+}

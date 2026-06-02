@@ -1,0 +1,14 @@
+{
+  "name": "build-pdf",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Genera el PDF consolidado (KB + PRD) de activia-trace",
+  "scripts": {
+    "html": "node build.js",
+    "pdf": "node build.js && node pdf.js",
+    "clean": "rimraf activia-trace-doc.html ../activia-trace-documentacion.pdf"
+  },
+  "dependencies": {
+    "marked": "^13.0.3"
+  }
+}

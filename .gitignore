@@ -1,0 +1,13 @@
+# Build output intermedio (regenerable con `npm run pdf` desde .build/)
+.build/node_modules/
+.build/activia-trace-doc.html
+.build/package-lock.json
+
+# PDF generado (es regenerable; descomentar si NO querés versionarlo)
+# activia-trace-documentacion.pdf
+
+# OS / IDE
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/

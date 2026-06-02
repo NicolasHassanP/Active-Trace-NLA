@@ -1,0 +1,128 @@
+{
+  "version": 2,
+  "step": "done",
+  "owner": "jr-orchestrator",
+  "kb": {
+    "created_by": "kb-creator",
+    "source": "ingest",
+    "note": "KB preexistente y completa. kb-creator NO re-ejecutado (idempotencia de flujo).",
+    "discovery": {
+      "system_type": "web-platform-saas",
+      "domain": "gestion-academica-y-trazabilidad-sobre-LMS-Moodle",
+      "scale": "multi-tenant",
+      "stack": [
+        "Python 3.13",
+        "FastAPI",
+        "SQLAlchemy 2.0 async",
+        "Alembic",
+        "PostgreSQL",
+        "Pydantic v2",
+        "JWT",
+        "Argon2id",
+        "React 18",
+        "TypeScript",
+        "Vite",
+        "TanStack Query",
+        "React Hook Form + Zod",
+        "Tailwind CSS",
+        "Axios",
+        "Docker",
+        "Easypanel"
+      ],
+      "needs_infra": true,
+      "problem": "Capa de orquestacion academica multi-tenant sobre Moodle: consolidacion de calificaciones, deteccion de atrasos, comunicacion saliente, gestion de equipos docentes, liquidaciones de honorarios y auditoria completa."
+    },
+    "files": [
+      "knowledge-base/01_vision_y_objetivos.md",
+      "knowledge-base/02_descripcion_general.md",
+      "knowledge-base/03_actores_y_roles.md",
+      "knowledge-base/04_modelo_de_datos.md",
+      "knowledge-base/05_reglas_de_negocio.md",
+      "knowledge-base/06_funcionalidades.md",
+      "knowledge-base/07_flujos_principales.md",
+      "knowledge-base/08_arquitectura_propuesta.md",
+      "knowledge-base/09_decisiones_y_supuestos.md",
+      "knowledge-base/10_preguntas_abiertas.md",
+      "knowledge-base/11_historias_de_usuario.md",
+      "docs/PRD.md",
+      "docs/ARQUITECTURA.md"
+    ]
+  },
+  "roadmap": {
+    "created_by": "roadmap-generator",
+    "source": "CHANGES.md",
+    "changes": [
+      "C-01",
+      "C-02",
+      "C-03",
+      "C-04",
+      "C-05",
+      "C-06",
+      "C-07",
+      "C-08",
+      "C-09",
+      "C-10",
+      "C-11",
+      "C-12",
+      "C-13",
+      "C-14",
+      "C-15",
+      "C-16",
+      "C-17",
+      "C-18",
+      "C-19",
+      "C-20",
+      "C-21",
+      "C-22",
+      "C-23",
+      "C-24"
+    ]
+  },
+  "skills": {
+    "created_by": "find-skill",
+    "recommended": [
+      "vercel-labs/agent-skills@vercel-react-best-practices"
+    ],
+    "installed": [
+      "fastapi-templates",
+      "postgresql-table-design",
+      "postgresql-optimization",
+      "python-testing-patterns",
+      "test-driven-development",
+      "api-security-best-practices",
+      "multi-stage-dockerfile",
+      "typescript-advanced-types",
+      "tailwind-design-system",
+      "playwright-best-practices",
+      "code-review-excellence",
+      "systematic-debugging"
+    ],
+    "note": "Stack cubierto ~100% por skills preinstaladas. Unico gap: React (vercel-react-best-practices) - usuario decidio NO instalar; queda como recomendacion pendiente."
+  },
+  "agents": {
+    "created_by": "agent-instruction",
+    "files": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "reglas_applied": [
+      "no-build-automatico",
+      "no-commit-sin-pedido",
+      "conventional-commits-sin-co-authored-by",
+      "tests-sin-mocks-de-db",
+      "pydantic-extra-forbid",
+      "snake-case-python",
+      "pascalcase-react",
+      "identidad-desde-sesion",
+      "multi-tenancy-row-level",
+      "rbac-fino-fail-closed",
+      "clean-architecture-routers-services-repositories",
+      "pii-secretos-aes256-argon2id",
+      "soft-delete-siempre",
+      "identidad-uuid-legajo-atributo",
+      "limites-loc-500-backend-200-react",
+      "cobertura-80-90-strict-tdd",
+      "agent-governance-por-dominio"
+    ]
+  }
+}
