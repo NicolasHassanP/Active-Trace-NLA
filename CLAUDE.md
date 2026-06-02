@@ -154,3 +154,17 @@ Antes de cualquier acción no trivial: identificá el nivel de governance del do
 ```
 
 Aplicá TODAS las reglas duras en cada paso. Ante conflicto entre la KB y este archivo, las reglas duras prevalecen.
+
+---
+
+## Engram Memory Protocol (Automático)
+
+La memoria de Engram se sincroniza **automáticamente**:
+
+1. **Al inicio de cada conversación**: se recupera el contexto de sesiones previas (`mem_context`) automáticamente. Todas las decisiones, bugs, patrones y hallazgos de sesiones anteriores se cargan.
+2. **Después de cada fase (propose/apply/archive)**: se guarda un resumen de sesión (`mem_session_summary`) automáticamente. Esto persiste en memoria qué se hizo, por qué, qué se aprendió.
+3. **Antes de implementar cambios críticos**: se busca en memoria (`mem_search`) para verificar si algo similar ya se hizo.
+
+**Esto significa**: todos tus compañeros pueden trabajar efectivamente porque la memoria compartida persiste entre sesiones. No necesitas contarle a Claude qué se hizo antes — la memoria ya lo sabe.
+
+**Para tus compañeros**: los cambios de memoria se guardan automáticamente en Engram. No hay que hacer nada extra — simplemente usa Claude Code normalmente y la memoria se acumula.

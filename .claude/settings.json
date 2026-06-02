@@ -1,0 +1,6 @@
+{
+  "autoMemoryEnabled": true,
+  "autoMemoryDirectory": "~/.claude/projects/active-trace-nla/memory/",
+  "autoDreamEnabled": true,
+  "notes": "Engram memory is automatically synchronized: mem_context at session start, mem_session_summary after each OPSX phase (propose/apply/archive). All architectural decisions, discoveries, and learnings are persisted across sessions and team members."
+}
