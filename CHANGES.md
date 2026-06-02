@@ -128,7 +128,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
 ## FASE 0 — Cimiento e Infraestructura
 
 ### [C-01] `foundation-setup`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado
 - **Scope**:
   - Estructura de directorios Clean Architecture: `routers/`, `services/`, `repositories/`, `models/`, `schemas/`, `core/`, `integrations/`, `workers/`. Límite ≤500 LOC/archivo.
   - Esqueleto FastAPI con `app/main.py`, health-check `GET /health`, configuración Pydantic v2 Settings desde `.env`.
@@ -150,7 +150,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
 > Cadena estrictamente secuencial. Es el corazón multi-tenant del sistema: nada se construye sin esto.
 
 ### [C-02] `core-models-y-tenancy`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado
 - **Scope**:
   - Modelo `Tenant` raíz. Mixin base con `id` (UUID), `tenant_id`, `created_at`, `updated_at`, `deleted_at` (soft delete).
   - **Repository genérico** con scope de tenant SIEMPRE activo: todo query filtra por `tenant_id` por defecto (ADR-002 row-level). Un query sin scope debe fallar en review.
@@ -166,7 +166,9 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `docs/ARQUITECTURA.md` §6, §8 (tenant isolation, AES-256, ADR-002)
 
 ### [C-03] `auth-jwt-2fa`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado
+- **Nota para C-04**: `get_current_user` resuelto y estable — `require_permission("modulo:accion")` debe montarse como dependency sobre él. Los `roles` llegan en el JWT; C-04 resuelve permisos efectivos server-side contra la tabla `RolPermiso`.
+- **Nota para C-07**: `AuthIdentity` es la credencial mínima de auth. `Usuario` (C-07) es la entidad completa con PII cifrada. La reconciliación es via `auth_identity_id` FK en `Usuario`; hasta entonces `auth_identities` es la única tabla de identidad.
 - **Scope**:
   - `POST /api/auth/login` — email + password (Argon2id), JWT access 15min + refresh token con **rotación** (refresh usado se invalida). Claims mínimos: `user_id`, `tenant_id`, `roles`, `exp`.
   - `POST /api/auth/refresh` — rota refresh, emite nuevo par. `POST /api/auth/logout` — revoca sesión.

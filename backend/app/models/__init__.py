@@ -7,3 +7,8 @@ from app.models.mixins import (  # noqa: F401
     UUIDMixin,
 )
 from app.models.tenant import Tenant, TenantEstado  # noqa: F401
+from app.models.auth import (  # noqa: F401
+    AuthIdentity,
+    RefreshSession,
+    PasswordRecoveryToken,
+)

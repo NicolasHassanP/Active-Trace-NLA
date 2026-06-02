@@ -2,11 +2,10 @@
 AES-256 (AESGCM) encryption helpers and EncryptedString TypeDecorator.
 
 C-02: PII encryption in reposo. NEVER text plano en logs.
-JWT / Argon2id functions are reserved for C-03.
 """
 import base64
 import os
-from typing import Any, Optional
+from typing import Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from sqlalchemy import String
@@ -23,7 +22,6 @@ def _get_key() -> bytes:
     from app.core.config import Settings  # avoid circular import at module level
 
     settings = Settings()
-    # ENCRYPTION_KEY is validated to be exactly 32 chars by the Settings validator.
     return settings.ENCRYPTION_KEY.encode("utf-8")
 
 
@@ -58,7 +56,6 @@ def decrypt(token: str) -> str:
     """
     key = _get_key()
     aesgcm = AESGCM(key)
-    # Re-add base64 padding stripped during encoding
     padded = token + "=="
     combined = base64.urlsafe_b64decode(padded)
     nonce = combined[:_NONCE_SIZE]

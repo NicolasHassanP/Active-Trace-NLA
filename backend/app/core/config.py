@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ENCRYPTION_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 14
+    MFA_TOKEN_EXPIRE_MINUTES: int = 5
+    RECOVERY_TOKEN_EXPIRE_MINUTES: int = 30
+    LOGIN_RATE_LIMIT: str = "5/60seconds"
 
     @field_validator("SECRET_KEY")
     @classmethod
