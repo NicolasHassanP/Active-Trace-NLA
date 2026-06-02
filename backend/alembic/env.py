@@ -14,6 +14,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 from app.core.database import Base  # noqa: E402
+import app.models  # noqa: F401, E402 — registers all C-02 models in Base.metadata
 
 target_metadata = Base.metadata
 

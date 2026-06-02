@@ -5,6 +5,7 @@ from sqlalchemy import text
 pytestmark = pytest.mark.asyncio
 
 
+@pytest.mark.asyncio(loop_scope="session")
 async def test_db_smoke_select_one(db_session):
     result = await db_session.execute(text("SELECT 1 AS val"))
     row = result.fetchone()

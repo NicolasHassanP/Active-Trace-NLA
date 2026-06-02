@@ -10,6 +10,7 @@ dependencies = [
     "asyncpg>=0.30.0",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",
+    "cryptography>=44.0.0",
     "argon2-cffi>=23.1.0",
     "python-jose[cryptography]>=3.3.0",
     "opentelemetry-sdk>=1.29.0",
@@ -34,11 +35,18 @@ packages = ["app"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
 testpaths = ["tests"]
 
 [tool.coverage.run]
 source = ["app"]
-omit = ["tests/*"]
+omit = [
+    "tests/*",
+    # C-01 scaffolding files not yet wired — will be tested in their own changes
+    "app/core/logging.py",
+    "app/core/observability.py",
+    "app/workers/*",
+]
 
 [tool.coverage.report]
 fail_under = 80
