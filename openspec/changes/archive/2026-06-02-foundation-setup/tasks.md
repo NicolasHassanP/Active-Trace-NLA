@@ -49,5 +49,5 @@
 ## 9. Verificación final
 
 - [x] 9.1 Ejecutar la suite completa de tests (`pytest`) y confirmar verde: health, arranque y conexión a DB de test
-- [ ] 9.2 Levantar el stack con docker-compose y verificar `GET /health` respondiendo `200` con `database: up`
+- [x] 9.2 Levantar el stack con docker-compose y verificar `GET /health` respondiendo `200` con `database: up`
 - [x] 9.3 Confirmar que ningún archivo `.py` del scaffold supera 500 LOC y que el árbol coincide con `docs/ARQUITECTURA.md §4`
