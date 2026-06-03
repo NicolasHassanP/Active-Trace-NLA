@@ -221,19 +221,24 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
 ## FASE 2 — Entidades Raíz del Dominio Académico
 
 ### [C-06] `estructura-academica`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` ✅ Implementado (2026-06-03)
 - **Scope**:
   - Modelos: `Carrera`, `Cohorte`, `Materia` (catálogo único por tenant — ADR-006).
-  - ABM `/api/admin/carreras`, `/api/admin/cohortes`, `/api/admin/materias` con guard `estructura:gestionar` (ADMIN).
-  - Reglas: unicidad `(tenant_id, codigo)` en Carrera/Materia; `(tenant_id, carrera_id, nombre)` en Cohorte; carrera inactiva no admite cohortes abiertas.
-  - `Migración 004: carrera, cohorte, materia`.
-  - Tests: CRUD, unicidad por tenant, aislamiento multi-tenant, estado activa/inactiva.
+  - ABM `/api/v1/admin/carreras`, `/api/v1/admin/cohortes`, `/api/v1/admin/materias` con guard `estructura:gestionar` (ADMIN).
+  - Reglas: unicidad `(tenant_id, codigo)` en Carrera/Materia; `(tenant_id, carrera_id, nombre)` en Cohorte; carrera inactiva no admite cohortes abiertas (409 bidireccional).
+  - `Migración 005: carrera, cohorte, materia, estado_estructura enum, seed estructura:gestionar`.
+  - Tests: 58 tests Strict TDD — CRUD, unicidad por tenant, aislamiento multi-tenant, estado activa/inactiva, bloqueo de desactivación con cohortes abiertas.
 - **Dependencias**: `C-04`
 - **Governance**: MEDIO
 - **Leer antes**:
   - `knowledge-base/04_modelo_de_datos.md` §E1 Carrera, §E2 Cohorte, §E3 Materia
   - `knowledge-base/06_funcionalidades.md` Épica 5 (F5.1, F5.2)
   - `docs/ARQUITECTURA.md` §10 (ADR-006 Materia + Dictado)
+- **Notas**:
+  - OQ-1: Dictado excluido de scope (deferred a C-07+)
+  - OQ-2: Desactivación de carrera con cohortes abiertas bloqueada (409 Conflict)
+  - OQ-3: Cohorte.anio y vig_desde NOT NULL (HU-22 aplicado)
+  - OQ-4: ADMIN-only en C-06; COORDINADOR read deferred
 
 ---
 
