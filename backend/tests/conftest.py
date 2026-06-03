@@ -89,6 +89,25 @@ async def _ensure_schema(engine) -> None:
             await conn.execute(
                 text("CREATE TYPE estado_estructura AS ENUM ('activa', 'inactiva')")
             )
+        # C-07: rol_asignacion enum required by Asignacion model (create_type=False)
+        result6 = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'rol_asignacion'")
+        )
+        if result6.scalar() is None:
+            await conn.execute(
+                text(
+                    "CREATE TYPE rol_asignacion AS ENUM "
+                    "('PROFESOR', 'TUTOR', 'COORDINADOR', 'NEXO', 'ADMIN', 'FINANZAS')"
+                )
+            )
+        # C-07: usuario_estado enum required by Usuario model (create_type=False)
+        result7 = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'usuario_estado'")
+        )
+        if result7.scalar() is None:
+            await conn.execute(
+                text("CREATE TYPE usuario_estado AS ENUM ('activo', 'inactivo')")
+            )
         await conn.run_sync(Base.metadata.create_all, checkfirst=True)
 
 
@@ -112,6 +131,8 @@ async def create_tables(test_engine):
         await conn.execute(text("DROP TYPE IF EXISTS audit_action CASCADE"))
         await conn.execute(text("DROP TYPE IF EXISTS audit_resultado CASCADE"))
         await conn.execute(text("DROP TYPE IF EXISTS estado_estructura CASCADE"))
+        await conn.execute(text("DROP TYPE IF EXISTS rol_asignacion CASCADE"))
+        await conn.execute(text("DROP TYPE IF EXISTS usuario_estado CASCADE"))
 
 
 @pytest_asyncio.fixture(scope="session")

@@ -20,3 +20,10 @@ from app.models.estructura import (  # noqa: F401
     Cohorte,
     Materia,
 )
+from app.models.usuario import (  # noqa: F401
+    RolAsignacion,
+    UsuarioEstado,
+    Usuario,
+    Asignacion,
+)
+from app.models.vigencia import EstadoVigencia, estado_vigencia  # noqa: F401
