@@ -143,6 +143,30 @@ El módulo de encuentros tiene una vista con permisos ampliados respecto a la vi
 
 ---
 
+### PA-26 — ERD de `04_modelo_de_datos.md` contradice ADR-006 (Materia → Dictado)
+
+Detectado durante el propose de C-06 (`estructura-academica`).
+
+El diagrama ERD de `04_modelo_de_datos.md` conecta `Materia` directamente a `Calificacion`, `Asignacion`, etc. Sin embargo, ADR-006 (`docs/ARQUITECTURA.md §10`) establece que toda la actividad (calificaciones, equipos docentes, encuentros, coloquios) cuelga del `Dictado`, **no de `Materia`**. El ERD quedó desactualizado antes del cierre de ADR-006.
+
+**Impacto**: el agente que introduzca la entidad `Dictado` (C-07 o posterior) podría modelar mal las relaciones si toma el ERD como fuente de verdad. El ERD debe actualizarse cuando se implemente `Dictado`.
+
+**Acción requerida**: corregir el ERD de `04_modelo_de_datos.md` al introducir `Dictado`. No bloquea C-06 ni C-07.
+
+---
+
+### PA-27 — HU-21 contradice la matriz RBAC para COORDINADOR en gestión de carreras
+
+Detectado durante el propose de C-06 (`estructura-academica`).
+
+`knowledge-base/11_historias_de_usuario.md` (HU-21) lista a **COORDINADOR** como actor para crear, editar y desactivar carreras. La matriz RBAC canónica (`knowledge-base/03_actores_y_roles.md §3.3`) asigna "Gestionar estructura académica" exclusivamente a **ADMIN** (COORDINADOR = —). Las dos fuentes se contradicen.
+
+**Decisión tomada en C-06**: se siguió la matriz RBAC como fuente canónica (`estructura:gestionar` solo para ADMIN). La HU-21 está desactualizada.
+
+**Acción requerida**: corregir HU-21 para alinearla con la matriz RBAC. No bloquea ningún change activo — COORDINADOR puede gestionar estructura en una decisión futura, pero por ahora la fuente canónica es la matriz.
+
+---
+
 ### PA-13 — ¿Qué es el contexto de agrupación de tareas?
 
 El módulo de tareas permite filtrar por un contexto de agrupación cuya semántica no está definida.
