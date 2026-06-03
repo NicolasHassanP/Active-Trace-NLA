@@ -14,3 +14,9 @@ from app.models.auth import (  # noqa: F401
 )
 from app.models.rbac import Rol, Permiso, RolPermiso, PermisoScope  # noqa: F401
 from app.models.audit import AuditEvent, AuditAction, AuditResultado  # noqa: F401
+from app.models.estructura import (  # noqa: F401
+    EstadoEstructura,
+    Carrera,
+    Cohorte,
+    Materia,
+)

@@ -81,6 +81,14 @@ async def _ensure_schema(engine) -> None:
             await conn.execute(
                 text("CREATE TYPE audit_resultado AS ENUM ('ok', 'fail', 'partial')")
             )
+        # C-06: estado_estructura enum required by Carrera/Cohorte/Materia models (create_type=False)
+        result5 = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'estado_estructura'")
+        )
+        if result5.scalar() is None:
+            await conn.execute(
+                text("CREATE TYPE estado_estructura AS ENUM ('activa', 'inactiva')")
+            )
         await conn.run_sync(Base.metadata.create_all, checkfirst=True)
 
 
@@ -103,6 +111,7 @@ async def create_tables(test_engine):
         await conn.execute(text("DROP TYPE IF EXISTS permiso_scope CASCADE"))
         await conn.execute(text("DROP TYPE IF EXISTS audit_action CASCADE"))
         await conn.execute(text("DROP TYPE IF EXISTS audit_resultado CASCADE"))
+        await conn.execute(text("DROP TYPE IF EXISTS estado_estructura CASCADE"))
 
 
 @pytest_asyncio.fixture(scope="session")
