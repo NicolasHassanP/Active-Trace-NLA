@@ -186,7 +186,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `docs/ARQUITECTURA.md` §5.1 (ADR-001 auth propio)
 
 ### [C-04] `rbac-permisos-finos`
-- **Estado**: `[x]` implementado (2026-06-03)
+- **Estado**: `[x]` archivado (2026-06-03)
 - **Nota**: La migración es `003_create_rbac_tables` (no `002` como se indicó originalmente — `002` ya estaba ocupada por C-03). Ver design.md D1.
 - **Scope**:
   - Catálogo administrable: tablas `Rol`, `Permiso` (`modulo:accion`), matriz `RolPermiso` (datos, NO hardcode).
@@ -202,7 +202,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/08_arquitectura_propuesta.md` §3.2 (RBAC permisos finos)
 
 ### [C-05] `audit-log`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado
 - **Scope**:
   - Modelo `AuditLog` (E-AUD) **append-only**: sin update ni delete a nivel app y DB. Campos: actor, impersonado, materia, accion, detalle JSON, filas_afectadas, ip, user_agent, fecha_hora.
   - Helper/decorator de auditoría para registrar acciones significativas con código estandarizado (`CALIFICACIONES_IMPORTAR`, `PADRON_CARGAR`, etc.).
