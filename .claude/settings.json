@@ -2,5 +2,20 @@
   "autoMemoryEnabled": true,
   "autoMemoryDirectory": "~/.claude/projects/active-trace-nla/memory/",
   "autoDreamEnabled": true,
-  "notes": "Engram memory is automatically synchronized: mem_context at session start, mem_session_summary after each OPSX phase (propose/apply/archive). All architectural decisions, discoveries, and learnings are persisted across sessions and team members."
+  "notes": "Engram memory is automatically synchronized: mem_context at session start, mem_session_summary after each OPSX phase (propose/apply/archive). All architectural decisions, discoveries, and learnings are persisted across sessions and team members.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "engram sync --import",
+            "shell": "powershell",
+            "timeout": 30,
+            "statusMessage": "Importing team memories from git..."
+          }
+        ]
+      }
+    ]
+  }
 }
