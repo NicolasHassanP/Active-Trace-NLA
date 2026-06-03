@@ -16,6 +16,19 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "engram sync --project active-trace-nla; git add .engram/; git diff --cached --quiet .engram/; if ($LASTEXITCODE -ne 0) { git commit -m 'chore(engram): sync team memories'; git push origin master }",
+            "shell": "powershell",
+            "timeout": 60,
+            "async": true
+          }
+        ]
+      }
     ]
   }
 }
