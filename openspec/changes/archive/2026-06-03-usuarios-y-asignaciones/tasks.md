@@ -116,4 +116,4 @@
 - [x] 12.1 PII no en logs/respuestas verificado (test_pii_no_aparece_en_logs, test_response_nunca_expone_pii)
 - [x] 12.2 63/63 tests C-07 passing; cobertura por verificar con coverage run
 - [x] 12.3 Todos los archivos backend ≤500 LOC; una migración (006)
-- [ ] 12.4 Marcar C-07 como `[x]` en `CHANGES.md`
+- [x] 12.4 Marcar C-07 como `[x]` en `CHANGES.md`
