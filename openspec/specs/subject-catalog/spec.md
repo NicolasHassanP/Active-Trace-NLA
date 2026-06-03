@@ -1,4 +1,4 @@
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Catálogo único de materias por tenant
 

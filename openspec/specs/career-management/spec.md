@@ -1,4 +1,4 @@
-## ADDED Requirements
+## Requirements
 
 ### Requirement: ABM de carreras tenant-scoped
 
