@@ -162,18 +162,7 @@ active-trace/
 
 ## Estado del roadmap
 
-| Change | Descripción | Estado |
-|--------|-------------|--------|
-| C-01 | foundation-setup | ✅ archivado |
-| C-02 | core-models-y-tenancy | ✅ archivado |
-| C-03 | auth-jwt-2fa | ✅ archivado |
-| C-04 | rbac-permisos-finos | ✅ archivado |
-| C-05 | audit-log | ✅ archivado |
-| C-06 | estructura-academica | pendiente |
-| C-21 | frontend-shell-y-auth | pendiente |
-| ... | ... | ... |
-
-Ver [CHANGES.md](CHANGES.md) para el plan completo (24 changes, 6 fases).
+Ver [CHANGES.md](CHANGES.md) — es la fuente de verdad del plan de implementación (24 changes, 6 fases, estado actualizado en cada archive).
 
 ---
 
