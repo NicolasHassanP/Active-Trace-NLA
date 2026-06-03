@@ -186,13 +186,14 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `docs/ARQUITECTURA.md` §5.1 (ADR-001 auth propio)
 
 ### [C-04] `rbac-permisos-finos`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` implementado (2026-06-03)
+- **Nota**: La migración es `003_create_rbac_tables` (no `002` como se indicó originalmente — `002` ya estaba ocupada por C-03). Ver design.md D1.
 - **Scope**:
   - Catálogo administrable: tablas `Rol`, `Permiso` (`modulo:accion`), matriz `RolPermiso` (datos, NO hardcode).
   - Roles del dominio seed: ALUMNO, TUTOR, PROFESOR, COORDINADOR, NEXO, ADMIN, FINANZAS.
   - Resolución de permisos efectivos server-side por request (unión de roles, acotada por tenant y vigencia de asignación).
   - Dependency/guard `require_permission("modulo:accion")` que declara el permiso por endpoint; sin él → 403.
-  - `Migración 002: rol, permiso, rol_permiso` + seed de la matriz base de `03_actores_y_roles.md` §3.3.
+  - `Migración 003: rol, permiso, rol_permiso` + seed de la matriz base de `03_actores_y_roles.md` §3.3.
   - Tests: usuario sin permiso → 403, unión de roles, permiso `(propio)` vs global, catálogo administrable.
 - **Dependencias**: `C-03`
 - **Governance**: CRITICO

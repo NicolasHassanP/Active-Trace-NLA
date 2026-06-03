@@ -92,8 +92,49 @@ async def get_current_user(request: Request) -> CurrentUser:
 
 
 # ---------------------------------------------------------------------------
-# C-04 placeholder: require_permission
+# C-04: require_permission — guard factory
 # ---------------------------------------------------------------------------
 
-# RESERVADO → C-04: dependency que verifica que el usuario tiene un permiso modulo:accion
-# async def require_permission(...): ...
+def require_permission(codigo: str):
+    """
+    FastAPI dependency factory: guard that verifies the authenticated user
+    holds the specified permission.
+
+    Usage::
+
+        @router.get("/endpoint")
+        async def endpoint(
+            grant: PermissionGrant = Depends(require_permission("modulo:accion"))
+        ):
+            ...
+
+    Design (design.md D5):
+        - Depends on get_current_user (identity from JWT — never from request params).
+        - Constructs RbacRepository and AuthorizationService per request.
+        - Resolves the effective permission set for the current user.
+        - Fail-closed: if the requested permission is not in the effective set → 403.
+        - Returns PermissionGrant (codigo, scope) so the endpoint can apply
+          row-level filtering when scope == 'propio'.
+    """
+    from fastapi import Depends, HTTPException, status
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from app.repositories.rbac_repository import RbacRepository
+    from app.services.authorization_service import AuthorizationService, PermissionGrant
+
+    async def _guard(
+        current_user: CurrentUser = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> PermissionGrant:
+        repo = RbacRepository(session=db, tenant_id=current_user.tenant_id)
+        svc = AuthorizationService(repository=repo)
+        grants = await svc.resolve_effective_permissions(current_user)
+
+        matching = [g for g in grants if g.codigo == codigo]
+        if not matching:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission '{codigo}' required",
+            )
+        return matching[0]
+
+    return _guard

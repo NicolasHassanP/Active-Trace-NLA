@@ -39,7 +39,7 @@ async def test_engine():
 
 async def _ensure_schema(engine) -> None:
     """
-    Idempotent schema setup: create the tenant_estado enum if missing,
+    Idempotent schema setup: create required enums if missing,
     then run create_all with checkfirst=True so it is safe to call multiple
     times even after migration tests have dropped/recreated tables.
     """
@@ -52,6 +52,14 @@ async def _ensure_schema(engine) -> None:
         if result.scalar() is None:
             await conn.execute(
                 text("CREATE TYPE tenant_estado AS ENUM ('activo', 'inactivo')")
+            )
+        # C-04: permiso_scope enum required by rbac models (create_type=False)
+        result2 = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'permiso_scope'")
+        )
+        if result2.scalar() is None:
+            await conn.execute(
+                text("CREATE TYPE permiso_scope AS ENUM ('global', 'propio')")
             )
         await conn.run_sync(Base.metadata.create_all, checkfirst=True)
 
@@ -70,6 +78,7 @@ async def create_tables(test_engine):
         await conn.run_sync(Base.metadata.drop_all)
         from sqlalchemy import text
         await conn.execute(text("DROP TYPE IF EXISTS tenant_estado CASCADE"))
+        await conn.execute(text("DROP TYPE IF EXISTS permiso_scope CASCADE"))
 
 
 @pytest_asyncio.fixture(scope="session")

@@ -12,3 +12,4 @@ from app.models.auth import (  # noqa: F401
     RefreshSession,
     PasswordRecoveryToken,
 )
+from app.models.rbac import Rol, Permiso, RolPermiso, PermisoScope  # noqa: F401

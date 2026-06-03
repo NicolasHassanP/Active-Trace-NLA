@@ -52,36 +52,39 @@ async def migration_engine():
     await engine.dispose()
 
 
+async def _drop_all_managed_tables(conn) -> None:
+    """Drop all tables managed by migrations (in dependency order) and their enums."""
+    # C-04 RBAC (003)
+    await conn.execute(text("DROP TABLE IF EXISTS rol_permiso CASCADE"))
+    await conn.execute(text("DROP TABLE IF EXISTS permiso CASCADE"))
+    await conn.execute(text("DROP TABLE IF EXISTS rol CASCADE"))
+    await conn.execute(text("DROP TYPE IF EXISTS permiso_scope CASCADE"))
+    # C-03 auth (002)
+    await conn.execute(text("DROP TABLE IF EXISTS password_recovery_tokens CASCADE"))
+    await conn.execute(text("DROP TABLE IF EXISTS refresh_sessions CASCADE"))
+    await conn.execute(text("DROP TABLE IF EXISTS auth_identities CASCADE"))
+    # C-01/C-02 base (001)
+    await conn.execute(text("DROP TABLE IF EXISTS tenants CASCADE"))
+    await conn.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
+    await conn.execute(text("DROP TYPE IF EXISTS tenant_estado CASCADE"))
+
+
 @pytest.fixture
 async def clean_db(migration_engine):
     """
-    Drop all auth/tenant tables and types before each migration test.
+    Drop all managed tables and types before each migration test.
 
     Teardown runs `alembic upgrade head` to restore the schema to the state
     that the session-scoped `create_tables` fixture in conftest.py expects.
     This prevents the migration tests from leaving the DB in a state that
     breaks the shared session-scoped db_session fixture used by other tests.
     """
-    # Drop existing state
     async with migration_engine.begin() as conn:
-        await conn.execute(text("DROP TABLE IF EXISTS password_recovery_tokens CASCADE"))
-        await conn.execute(text("DROP TABLE IF EXISTS refresh_sessions CASCADE"))
-        await conn.execute(text("DROP TABLE IF EXISTS auth_identities CASCADE"))
-        await conn.execute(text("DROP TABLE IF EXISTS tenants CASCADE"))
-        await conn.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
-        await conn.execute(text("DROP TYPE IF EXISTS tenant_estado CASCADE"))
+        await _drop_all_managed_tables(conn)
     yield migration_engine
-    # Teardown: restore schema to `head` so subsequent tests that use the
-    # shared session-scoped fixtures (db_session, create_tables) still work.
-    # Drop first to ensure clean state, then upgrade.
+    # Teardown: restore full schema so other tests can use the shared db_session.
     async with migration_engine.begin() as conn:
-        await conn.execute(text("DROP TABLE IF EXISTS password_recovery_tokens CASCADE"))
-        await conn.execute(text("DROP TABLE IF EXISTS refresh_sessions CASCADE"))
-        await conn.execute(text("DROP TABLE IF EXISTS auth_identities CASCADE"))
-        await conn.execute(text("DROP TABLE IF EXISTS tenants CASCADE"))
-        await conn.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
-        await conn.execute(text("DROP TYPE IF EXISTS tenant_estado CASCADE"))
-    # Re-apply all migrations so the schema matches what create_tables expects.
+        await _drop_all_managed_tables(conn)
     _run_alembic("upgrade", "head")
 
 
@@ -138,8 +141,9 @@ async def test_migration_002_downgrade_removes_auth_tables(clean_db):
     # First upgrade
     _run_alembic("upgrade", "head")
 
-    # Then downgrade one step (removes 002)
-    result = _run_alembic("downgrade", "-1")
+    # Downgrade to revision 001 explicitly (removes 003+002, keeping 001).
+    # Using "-1" would only remove 003 now that it is the head.
+    result = _run_alembic("downgrade", "001")
     assert result.returncode == 0, f"alembic downgrade failed:\n{result.stdout}\n{result.stderr}"
 
     engine = clean_db
