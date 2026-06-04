@@ -27,3 +27,7 @@ from app.models.usuario import (  # noqa: F401
     Asignacion,
 )
 from app.models.vigencia import EstadoVigencia, estado_vigencia  # noqa: F401
+from app.models.padron import (  # noqa: F401
+    VersionPadron,
+    EntradaPadron,
+)

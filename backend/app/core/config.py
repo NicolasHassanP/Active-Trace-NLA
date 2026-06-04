@@ -31,3 +31,17 @@ class Settings(BaseSettings):
         if len(v) != 32:
             raise ValueError("ENCRYPTION_KEY must be exactly 32 characters")
         return v
+
+    # ---- C-09: Moodle WS integration ----------------------------------------
+    # MOODLE_BASE_URL: URL base de la instancia Moodle (ej. https://moodle.example.com)
+    # Si no está configurado, el sync Moodle queda deshabilitado sin afectar la importación manual.
+    MOODLE_BASE_URL: str | None = None
+
+    # MOODLE_TOKEN: Token de acceso al WS de Moodle (NUNCA aparece en logs ni respuestas).
+    MOODLE_TOKEN: str | None = None
+
+    # MOODLE_SYNC_HOUR: Hora UTC en que corre la sincronización nocturna automática (0-23).
+    MOODLE_SYNC_HOUR: int = 3
+
+    # PADRON_MAX_ROWS: Límite de filas por archivo de padrón importado.
+    PADRON_MAX_ROWS: int = 5000

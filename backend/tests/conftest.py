@@ -108,6 +108,20 @@ async def _ensure_schema(engine) -> None:
             await conn.execute(
                 text("CREATE TYPE usuario_estado AS ENUM ('activo', 'inactivo')")
             )
+        # C-09: PADRON_CARGAR added to audit_action enum in migration 007.
+        # We check if the value exists first to avoid locking issues with ALTER TYPE.
+        result_padron_action = await conn.execute(
+            text(
+                "SELECT 1 FROM pg_enum e "
+                "JOIN pg_type t ON e.enumtypid = t.oid "
+                "WHERE t.typname = 'audit_action' AND e.enumlabel = 'PADRON_CARGAR'"
+            )
+        )
+        if result_padron_action.scalar() is None:
+            # Only ALTER if value doesn't exist yet (avoids locking)
+            await conn.execute(
+                text("ALTER TYPE audit_action ADD VALUE 'PADRON_CARGAR'")
+            )
         await conn.run_sync(Base.metadata.create_all, checkfirst=True)
 
 
@@ -125,6 +139,8 @@ async def create_tables(test_engine):
         from sqlalchemy import text
         # Drop dynamic test tables not tracked in Base.metadata (e.g. C-02 TenantScopedRepository tests).
         await conn.execute(text("DROP TABLE IF EXISTS test_biz_entity_v2 CASCADE"))
+        # C-09: version_padron and entrada_padron are now in Base.metadata (registered in models/__init__.py)
+        # and will be dropped by drop_all in the correct FK order. No explicit drop needed here.
         await conn.run_sync(Base.metadata.drop_all)
         await conn.execute(text("DROP TYPE IF EXISTS tenant_estado CASCADE"))
         await conn.execute(text("DROP TYPE IF EXISTS permiso_scope CASCADE"))

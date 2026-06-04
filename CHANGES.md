@@ -298,7 +298,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/04_modelo_de_datos.md` §E5 Asignación
 
 ### [C-09] `padron-ingesta-moodle`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**:
   - Modelos `VersionPadron` + `EntradaPadron` (versionado: una versión activa por materia×cohorte; activar nueva desactiva la anterior).
   - Import de padrón: archivo `.xlsx`/`.csv` (fallback manual) con vista previa (F1.3, F1.4).

@@ -11,6 +11,8 @@ def create_app() -> FastAPI:
 
         configure_logging()
 
+        _nightly_task = None
+
         if not hasattr(application.state, "session_factory"):
             from app.core.config import Settings
             from app.core.database import build_engine, build_session_factory
@@ -19,7 +21,20 @@ def create_app() -> FastAPI:
             engine = build_engine(settings.DATABASE_URL)
             application.state.session_factory = build_session_factory(engine)
             configure_telemetry(application)
+
+            # C-09: start nightly Moodle sync task if configured (D7)
+            if settings.MOODLE_BASE_URL:
+                from app.integrations.moodle_sync_task import start_nightly_sync_task
+                _nightly_task = start_nightly_sync_task(
+                    settings=settings,
+                    session_factory=application.state.session_factory,
+                )
+
             yield
+
+            if _nightly_task is not None:
+                _nightly_task.cancel()
+
             await engine.dispose()
         else:
             configure_telemetry(application)
@@ -37,6 +52,7 @@ def create_app() -> FastAPI:
     from app.api.v1.routers.admin_estructura import router as estructura_router
     from app.api.v1.routers.admin_usuarios import router as usuarios_router
     from app.api.v1.routers.asignaciones import router as asignaciones_router
+    from app.api.v1.routers.padron import router as padron_router
 
     application.include_router(health_router)
     application.include_router(auth_router, prefix="/api/v1")
@@ -44,6 +60,7 @@ def create_app() -> FastAPI:
     application.include_router(estructura_router, prefix="/api/v1")
     application.include_router(usuarios_router, prefix="/api/v1")
     application.include_router(asignaciones_router, prefix="/api/v1")
+    application.include_router(padron_router, prefix="/api/v1")
 
     return application
 
