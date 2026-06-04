@@ -58,3 +58,9 @@ from app.models.evaluacion import (  # noqa: F401
     ReservaEvaluacion,
     ResultadoEvaluacion,
 )
+from app.models.aviso import (  # noqa: F401
+    AvisoAlcance,
+    AvisoSeveridad,
+    Aviso,
+    AcknowledgmentAviso,
+)
