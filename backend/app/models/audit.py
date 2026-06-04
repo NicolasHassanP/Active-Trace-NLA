@@ -57,6 +57,7 @@ class AuditAction(str, enum.Enum):
     EQUIPOS_CLONAR = "EQUIPOS_CLONAR"
     EQUIPOS_VIGENCIA_GENERAL = "EQUIPOS_VIGENCIA_GENERAL"
     ENCUENTRO_GESTIONAR = "ENCUENTRO_GESTIONAR"
+    COLOQUIO_GESTIONAR = "COLOQUIO_GESTIONAR"
 
 
 # ---------------------------------------------------------------------------

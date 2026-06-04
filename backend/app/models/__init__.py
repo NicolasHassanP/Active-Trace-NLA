@@ -49,3 +49,12 @@ from app.models.encuentro import (  # noqa: F401
     InstanciaEncuentro,
     Guardia,
 )
+from app.models.evaluacion import (  # noqa: F401
+    EvaluacionTipo,
+    ReservaEstado,
+    Evaluacion,
+    TurnoEvaluacion,
+    CandidatoEvaluacion,
+    ReservaEvaluacion,
+    ResultadoEvaluacion,
+)

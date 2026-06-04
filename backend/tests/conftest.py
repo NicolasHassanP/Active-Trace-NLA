@@ -230,6 +230,37 @@ async def _ensure_schema(engine) -> None:
                     "('Pendiente', 'Realizada', 'Cancelada')"
                 )
             )
+        # C-14: COLOQUIO_GESTIONAR added to audit_action enum in migration 012.
+        result_col_action = await conn.execute(
+            text(
+                "SELECT 1 FROM pg_enum e "
+                "JOIN pg_type t ON e.enumtypid = t.oid "
+                "WHERE t.typname = 'audit_action' AND e.enumlabel = 'COLOQUIO_GESTIONAR'"
+            )
+        )
+        if result_col_action.scalar() is None:
+            await conn.execute(
+                text("ALTER TYPE audit_action ADD VALUE 'COLOQUIO_GESTIONAR'")
+            )
+        # C-14: evaluacion_tipo enum required by Evaluacion model (create_type=False)
+        result_eval_tipo = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'evaluacion_tipo'")
+        )
+        if result_eval_tipo.scalar() is None:
+            await conn.execute(
+                text(
+                    "CREATE TYPE evaluacion_tipo AS ENUM "
+                    "('Parcial', 'TP', 'Coloquio', 'Recuperatorio')"
+                )
+            )
+        # C-14: reserva_estado enum required by ReservaEvaluacion model (create_type=False)
+        result_reserva_estado = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'reserva_estado'")
+        )
+        if result_reserva_estado.scalar() is None:
+            await conn.execute(
+                text("CREATE TYPE reserva_estado AS ENUM ('Activa', 'Cancelada')")
+            )
         await conn.run_sync(Base.metadata.create_all, checkfirst=True)
         # C-12: tenant_config UNIQUE (tenant_id, clave) — add if not present
         result_tc_uq = await conn.execute(
@@ -244,6 +275,22 @@ async def _ensure_schema(engine) -> None:
                     "ALTER TABLE tenant_config "
                     "ADD CONSTRAINT uq_tenant_config_tenant_clave_full "
                     "UNIQUE (tenant_id, clave)"
+                )
+            )
+        # C-14: partial unique index on reserva_evaluacion (one active reservation per convocatoria)
+        result_reserva_idx = await conn.execute(
+            text(
+                "SELECT 1 FROM pg_indexes "
+                "WHERE tablename = 'reserva_evaluacion' "
+                "AND indexname = 'uq_reserva_activa_por_convocatoria'"
+            )
+        )
+        if result_reserva_idx.scalar() is None:
+            await conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX uq_reserva_activa_por_convocatoria "
+                    "ON reserva_evaluacion (tenant_id, evaluacion_id, alumno_id) "
+                    "WHERE estado = 'Activa' AND deleted_at IS NULL"
                 )
             )
 
@@ -280,6 +327,9 @@ async def create_tables(test_engine):
         await conn.execute(text("DROP TYPE IF EXISTS dia_semana CASCADE"))
         await conn.execute(text("DROP TYPE IF EXISTS instancia_encuentro_estado CASCADE"))
         await conn.execute(text("DROP TYPE IF EXISTS guardia_estado CASCADE"))
+        # C-14: evaluacion/coloquios enums
+        await conn.execute(text("DROP TYPE IF EXISTS evaluacion_tipo CASCADE"))
+        await conn.execute(text("DROP TYPE IF EXISTS reserva_estado CASCADE"))
 
 
 @pytest_asyncio.fixture(scope="session")
