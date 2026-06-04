@@ -150,7 +150,9 @@ Antes de cualquier acción no trivial: identificá el nivel de governance del do
 3. Verificar el nivel de governance del dominio                    → CRÍTICO = propuesta primero
 4. /opsx:propose C-NN-nombre                                        → proposal + design + specs + tasks
 5. Implementar las tasks (cargando skills, Strict TDD)             → respetando las reglas duras
-6. /opsx:archive C-NN-nombre + marcar [x] en CHANGES.md            → cerrar el change
+6. /opsx:archive C-NN-nombre                                        → cerrar el change
+   a. Actualizar Estado en CHANGES.md: `[x]` archivado (YYYY-MM-DD)
+   b. Llamar mem_session_summary (Engram sync) — OBLIGATORIO
 ```
 
 Aplicá TODAS las reglas duras en cada paso. Ante conflicto entre la KB y este archivo, las reglas duras prevalecen.
@@ -165,6 +167,10 @@ La memoria de Engram se sincroniza **automáticamente**:
 2. **Después de cada fase (propose/apply/archive)**: se guarda un resumen de sesión (`mem_session_summary`) automáticamente. Esto persiste en memoria qué se hizo, por qué, qué se aprendió.
 3. **Antes de implementar cambios críticos**: se busca en memoria (`mem_search`) para verificar si algo similar ya se hizo.
 
+**Regla obligatoria de cierre de archive**: al ejecutar `/opsx:archive`, el agente DEBE:
+1. Actualizar `Estado` del change en `CHANGES.md` a `[x]` archivado (YYYY-MM-DD)` con la fecha real del día.
+2. Llamar `mem_session_summary` con un resumen de lo hecho (Goal / Discoveries / Accomplished / Files / Next Steps). Esta llamada es **no negociable** — sin ella la memoria del equipo queda ciega para la próxima sesión.
+
 **Esto significa**: todos tus compañeros pueden trabajar efectivamente porque la memoria compartida persiste entre sesiones. No necesitas contarle a Claude qué se hizo antes — la memoria ya lo sabe.
 
-**Para tus compañeros**: los cambios de memoria se guardan automáticamente en Engram. No hay que hacer nada extra — simplemente usa Claude Code normalmente y la memoria se acumula.
+**Para tus compañeros**: la memoria se sincroniza en cada archive. Si tu agente no llamó `mem_session_summary` al cerrar, el trabajo de esa sesión está perdido para el resto del equipo.
