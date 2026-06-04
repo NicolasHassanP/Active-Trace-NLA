@@ -167,10 +167,15 @@ La memoria de Engram se sincroniza **automáticamente**:
 2. **Después de cada fase (propose/apply/archive)**: se guarda un resumen de sesión (`mem_session_summary`) automáticamente. Esto persiste en memoria qué se hizo, por qué, qué se aprendió.
 3. **Antes de implementar cambios críticos**: se busca en memoria (`mem_search`) para verificar si algo similar ya se hizo.
 
-**Regla obligatoria de cierre de archive**: al ejecutar `/opsx:archive`, el agente DEBE:
+**Regla obligatoria de cierre de archive**: al ejecutar `/opsx:archive`, el agente DEBE hacer estos pasos EN ORDEN:
 1. Actualizar `Estado` del change en `CHANGES.md` a `[x]` archivado (YYYY-MM-DD)` con la fecha real del día.
 2. Llamar `mem_session_summary` con un resumen de lo hecho (Goal / Discoveries / Accomplished / Files / Next Steps). Esta llamada es **no negociable** — sin ella la memoria del equipo queda ciega para la próxima sesión.
+3. Ejecutar `engram sync` en el directorio raíz del repo para exportar las nuevas memorias a `.engram/chunks/`.
+4. Hacer `git add .engram/` y commitear junto con el commit de archive en un solo commit (NO un commit separado). El mensaje del commit de archive ya incluye el sync — no crear commit extra `chore(engram): sync`.
+
+**Regla al recibir cambios del equipo** (`git pull`):
+- Después de cualquier `git pull`, ejecutar `engram sync --import` para importar las memorias nuevas del equipo a la DB local.
 
 **Esto significa**: todos tus compañeros pueden trabajar efectivamente porque la memoria compartida persiste entre sesiones. No necesitas contarle a Claude qué se hizo antes — la memoria ya lo sabe.
 
-**Para tus compañeros**: la memoria se sincroniza en cada archive. Si tu agente no llamó `mem_session_summary` al cerrar, el trabajo de esa sesión está perdido para el resto del equipo.
+**Para tus compañeros**: cada archive commitea el sync de engram junto con los artefactos. Si hacés `git pull` y después `engram sync --import`, tenés el contexto completo del equipo.
