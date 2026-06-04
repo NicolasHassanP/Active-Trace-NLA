@@ -185,6 +185,51 @@ async def _ensure_schema(engine) -> None:
                 await conn.execute(
                     text(f"ALTER TYPE audit_action ADD VALUE '{equipo_action}'")
                 )
+        # C-13: ENCUENTRO_GESTIONAR added to audit_action enum in migration 011.
+        result_enc_action = await conn.execute(
+            text(
+                "SELECT 1 FROM pg_enum e "
+                "JOIN pg_type t ON e.enumtypid = t.oid "
+                "WHERE t.typname = 'audit_action' AND e.enumlabel = 'ENCUENTRO_GESTIONAR'"
+            )
+        )
+        if result_enc_action.scalar() is None:
+            await conn.execute(
+                text("ALTER TYPE audit_action ADD VALUE 'ENCUENTRO_GESTIONAR'")
+            )
+        # C-13: dia_semana enum required by SlotEncuentro and Guardia (create_type=False)
+        result_dia = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'dia_semana'")
+        )
+        if result_dia.scalar() is None:
+            await conn.execute(
+                text(
+                    "CREATE TYPE dia_semana AS ENUM "
+                    "('Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo')"
+                )
+            )
+        # C-13: instancia_encuentro_estado enum
+        result_inst_est = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'instancia_encuentro_estado'")
+        )
+        if result_inst_est.scalar() is None:
+            await conn.execute(
+                text(
+                    "CREATE TYPE instancia_encuentro_estado AS ENUM "
+                    "('Programado', 'Realizado', 'Cancelado')"
+                )
+            )
+        # C-13: guardia_estado enum
+        result_grd_est = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'guardia_estado'")
+        )
+        if result_grd_est.scalar() is None:
+            await conn.execute(
+                text(
+                    "CREATE TYPE guardia_estado AS ENUM "
+                    "('Pendiente', 'Realizada', 'Cancelada')"
+                )
+            )
         await conn.run_sync(Base.metadata.create_all, checkfirst=True)
         # C-12: tenant_config UNIQUE (tenant_id, clave) — add if not present
         result_tc_uq = await conn.execute(
@@ -231,6 +276,10 @@ async def create_tables(test_engine):
         await conn.execute(text("DROP TYPE IF EXISTS calificacion_origen CASCADE"))
         # C-12: comunicacion_estado enum
         await conn.execute(text("DROP TYPE IF EXISTS comunicacion_estado CASCADE"))
+        # C-13: encuentros/guardias enums
+        await conn.execute(text("DROP TYPE IF EXISTS dia_semana CASCADE"))
+        await conn.execute(text("DROP TYPE IF EXISTS instancia_encuentro_estado CASCADE"))
+        await conn.execute(text("DROP TYPE IF EXISTS guardia_estado CASCADE"))
 
 
 @pytest_asyncio.fixture(scope="session")

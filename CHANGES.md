@@ -362,7 +362,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/08_arquitectura_propuesta.md` §5.2 (worker de cola)
 
 ### [C-13] `encuentros-y-guardias`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado (2026-06-04)
 - **Scope**:
   - Modelos `SlotEncuentro`, `InstanciaEncuentro`, `Guardia`.
   - Crear encuentro recurrente (F6.1, RN-13): genera todas las instancias del slot. Encuentro único (F6.2). Editar instancia (F6.3: estado, meet_url, video_url, comentario).

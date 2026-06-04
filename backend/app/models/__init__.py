@@ -41,3 +41,11 @@ from app.models.comunicacion import (  # noqa: F401
     Comunicacion,
 )
 from app.models.tenant_config import TenantConfig  # noqa: F401
+from app.models.encuentro import (  # noqa: F401
+    DiaSemana,
+    InstanciaEncuentroEstado,
+    GuardiaEstado,
+    SlotEncuentro,
+    InstanciaEncuentro,
+    Guardia,
+)
