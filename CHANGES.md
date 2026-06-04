@@ -282,7 +282,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
 > Todos dependen de `C-07` (usuarios + asignaciones). Se pueden repartir entre los 3 agentes en paralelo.
 
 ### [C-08] `equipos-docentes`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado (2026-06-04)
 - **Scope**:
   - Vistas/endpoints sobre `Asignacion`: mis-equipos del docente (F4.2), gestión de asignaciones (F4.3).
   - Asignación masiva (F4.4): bloque docentes × materia × carrera × cohorte × rol con vigencia.
