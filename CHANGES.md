@@ -330,7 +330,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/07_flujos_principales.md` FL-02 (pasos 3–5)
 
 ### [C-11] `analisis-atrasados-reportes`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (2026-06-04)
 - **Scope**:
   - Cómputo de **alumnos atrasados** (actividades faltantes o nota < umbral, RN-06) (F2.2).
   - Ranking de actividades aprobadas (F2.3, RN-09); reportes rápidos por materia (F2.4); notas finales agrupadas (F2.5).
