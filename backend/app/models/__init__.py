@@ -36,3 +36,8 @@ from app.models.calificacion import (  # noqa: F401
     Calificacion,
     UmbralMateria,
 )
+from app.models.comunicacion import (  # noqa: F401
+    ComunicacionEstado,
+    Comunicacion,
+)
+from app.models.tenant_config import TenantConfig  # noqa: F401

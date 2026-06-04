@@ -345,7 +345,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/04_modelo_de_datos.md` §E7, §E8
 
 ### [C-12] `comunicaciones-cola-worker`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado (2026-06-04)
 - **Scope**:
   - Modelo `Comunicacion` (destinatario `[cifrado]`, lote_id, estado: Pendiente → Enviando → Enviado/Error/Cancelado, RN-15).
   - **Worker asíncrono** de despacho (`workers/`): consume cola, transiciona estados. Plantillas con variables de sustitución.

@@ -112,6 +112,14 @@
       "sessions": 0,
       "memories": 2,
       "prompts": 0
+    },
+    {
+      "id": "9bd4f81d",
+      "created_by": "Acel",
+      "created_at": "2026-06-04T12:42:27Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }

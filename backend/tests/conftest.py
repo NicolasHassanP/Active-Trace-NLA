@@ -144,7 +144,45 @@ async def _ensure_schema(engine) -> None:
                     "CREATE TYPE calificacion_origen AS ENUM ('Importado', 'Manual')"
                 )
             )
+        # C-12: comunicacion_estado enum required by Comunicacion model (create_type=False)
+        result_com_estado = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'comunicacion_estado'")
+        )
+        if result_com_estado.scalar() is None:
+            await conn.execute(
+                text(
+                    "CREATE TYPE comunicacion_estado AS ENUM "
+                    "('Pendiente', 'Enviando', 'Enviado', 'Error', 'Cancelado')"
+                )
+            )
+        # C-12: COMUNICACION_ENVIAR added to audit_action enum in migration 009.
+        result_com_enviar = await conn.execute(
+            text(
+                "SELECT 1 FROM pg_enum e "
+                "JOIN pg_type t ON e.enumtypid = t.oid "
+                "WHERE t.typname = 'audit_action' AND e.enumlabel = 'COMUNICACION_ENVIAR'"
+            )
+        )
+        if result_com_enviar.scalar() is None:
+            await conn.execute(
+                text("ALTER TYPE audit_action ADD VALUE 'COMUNICACION_ENVIAR'")
+            )
         await conn.run_sync(Base.metadata.create_all, checkfirst=True)
+        # C-12: tenant_config UNIQUE (tenant_id, clave) — add if not present
+        result_tc_uq = await conn.execute(
+            text(
+                "SELECT 1 FROM pg_constraint "
+                "WHERE conname = 'uq_tenant_config_tenant_clave_full'"
+            )
+        )
+        if result_tc_uq.scalar() is None:
+            await conn.execute(
+                text(
+                    "ALTER TABLE tenant_config "
+                    "ADD CONSTRAINT uq_tenant_config_tenant_clave_full "
+                    "UNIQUE (tenant_id, clave)"
+                )
+            )
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -173,6 +211,8 @@ async def create_tables(test_engine):
         await conn.execute(text("DROP TYPE IF EXISTS usuario_estado CASCADE"))
         # C-10: calificacion_origen enum
         await conn.execute(text("DROP TYPE IF EXISTS calificacion_origen CASCADE"))
+        # C-12: comunicacion_estado enum
+        await conn.execute(text("DROP TYPE IF EXISTS comunicacion_estado CASCADE"))
 
 
 @pytest_asyncio.fixture(scope="session")
