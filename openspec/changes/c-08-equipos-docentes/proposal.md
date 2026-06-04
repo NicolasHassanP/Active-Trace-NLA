@@ -41,9 +41,9 @@ No se introduce ninguna tabla nueva: todo opera sobre el modelo `Asignacion` exi
 
 ## Open Questions
 
-- **OQ-1 — ¿Se necesita una entidad `EquipoDocente` materializada o el equipo es una vista derivada de `Asignacion`?**
-  Propuesta de diseño: **el equipo es una proyección derivada** de las asignaciones que comparten `(materia_id, carrera_id, cohorte_id)`. No se crea tabla. Esto evita duplicar la fuente de verdad y mantiene una única migración. Si negocio exige metadatos a nivel equipo (nombre, notas, estado propio) habría que materializarlo y entonces sí habría migración. **Asunción tomada: equipo derivado, sin tabla nueva.** Confirmar antes de apply si se requiere lo contrario.
-- **OQ-2 — Multi-responsable (RN-11): ¿la asignación masiva acepta una lista de `responsable_id` por lote?**
-  El modelo actual tiene `responsable_id` único (self-FK) por `Asignacion`. HU-18 habla de "uno o varios responsables". Propuesta: en la masiva se acepta **un** `responsable_id` común aplicado a todas las asignaciones del lote (cubre el caso principal de FL-03). El soporte de múltiples responsables por asignación requeriría una tabla puente y queda **fuera de C-08**. Asunción: responsable único por lote.
-- **OQ-3 — Clonación e idempotencia**: si el equipo destino ya tiene asignaciones, ¿clonar duplica o hace upsert?
-  Propuesta: clonar **omite** las asignaciones que ya existirían (mismo usuario+rol+contexto vigente en destino) y reporta cuántas creó y cuántas omitió, evitando duplicados. Asunción: clonación no-destructiva con skip de duplicados.
+> Todas las OQs están CERRADAS — resueltas por el usuario antes del apply.
+
+- **OQ-1 — ¿Entidad `EquipoDocente` materializada o vista derivada?** → **RESUELTA: vista derivada (sin tabla nueva).** Negocio no requiere metadatos a nivel de equipo (notas, estados propios). Una única fuente de verdad en `Asignacion`, sin migración de schema de dominio.
+- **OQ-2 — Multi-responsable en la asignación masiva?** → **RESUELTA: responsable único por lote.** Multi-responsable por asignación requiere tabla puente; excede el scope de C-08.
+- **OQ-3 — Idempotencia de la clonación?** → **RESUELTA: clonación no-destructiva con skip de duplicados.** Re-clonar omite los ya existentes y reporta `(clonadas, omitidas)`. Estrategia idempotente y segura.
+- **OQ-4 — ¿A qué roles se asocia `equipos:ver` en el seed?** → **RESUELTA: roles de gestión (ADMIN, COORDINADOR, FINANZAS) para consulta general de equipos; roles docentes (PROFESOR, TUTOR, NEXO) para la vista "mis-equipos".** La asociación se aplica en la migración del catálogo RBAC.

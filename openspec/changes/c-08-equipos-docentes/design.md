@@ -93,9 +93,13 @@ Masiva, clonar y vigencia general emiten eventos `EQUIPOS_ASIGNACION_MASIVA`, `E
 4. **Despliegue**: el router `/api/v1/equipos` se monta en el agregador de routers de la API v1.
 5. **Rollback**: revertir la migración del catálogo (baja del permiso/acciones) y desmontar el router. Sin datos de dominio creados por el schema → rollback limpio. Las asignaciones creadas vía masiva/clonado son datos de negocio normales (soft-delete si hay que retirarlas).
 
-## Open Questions
+## Decisiones resueltas (ex Open Questions)
 
-- **OQ-1 (de proposal)**: ¿equipo derivado o tabla `EquipoDocente`? → **Decidido D1: derivado**. Confirmar con negocio antes de apply si requiere metadatos a nivel equipo.
-- **OQ-2 (de proposal)**: multi-responsable en la masiva → **Decidido D7: responsable único por lote**. Multi-responsable por asignación requiere tabla puente → otro change.
-- **OQ-3 (de proposal)**: idempotencia de clonación → **Decidido D6: no-destructiva, skip de duplicados**.
-- **OQ-4 (nueva)**: ¿el permiso `equipos:ver` debe asociarse automáticamente en el seed a los roles docentes, o lo asigna el ADMIN por tenant? Propuesta: asociarlo en el seed a los roles que ya tienen `equipos:asignar` y a los roles docentes para mis-equipos. Confirmar la política de seed con el dueño del catálogo RBAC.
+> Las 4 preguntas abiertas fueron **resueltas por el usuario** y están CERRADAS. El apply implementa estas decisiones directamente.
+
+| ID | Decisión | Racional |
+|----|----------|----------|
+| **OQ-1** — ¿Entidad materializada o derivada? | **RESUELTA: vista derivada, sin tabla nueva.** Negocio no requiere metadatos propios de equipo. Sin migración de schema de dominio. | Única fuente de verdad en `Asignacion`; sin riesgo de desincronización. Ver D1. |
+| **OQ-2** — Multi-responsable en la masiva | **RESUELTA: responsable único por lote.** Multi-responsable por asignación requiere tabla puente → fuera de C-08. | El modelo `Asignacion.responsable_id` es self-FK único. Ver D7. |
+| **OQ-3** — Idempotencia de clonación | **RESUELTA: clonación no-destructiva con skip de duplicados.** Re-clonar omite existentes y reporta `(clonadas, omitidas)`. | Evita duplicados si el coordinador ejecuta la operación más de una vez. Ver D6. |
+| **OQ-4** — Asociación de `equipos:ver` en el seed | **RESUELTA: roles de gestión (ADMIN, COORDINADOR, FINANZAS) para consulta general; roles docentes (PROFESOR, TUTOR, NEXO) para la vista "mis-equipos".** La asociación entra en la migración del catálogo RBAC. | Mínimo privilegio: docentes ven sus propios equipos; coordinadores ven cualquier equipo del tenant. |
