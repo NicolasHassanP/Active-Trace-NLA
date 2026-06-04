@@ -51,6 +51,7 @@ class AuditAction(str, enum.Enum):
     IMPERSONACION_FIN = "IMPERSONACION_FIN"
     AUDITORIA_CONSULTA = "AUDITORIA_CONSULTA"
     PADRON_CARGAR = "PADRON_CARGAR"
+    CALIFICACIONES_IMPORTAR = "CALIFICACIONES_IMPORTAR"
 
 
 # ---------------------------------------------------------------------------

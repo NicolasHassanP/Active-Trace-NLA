@@ -45,3 +45,16 @@ class Settings(BaseSettings):
 
     # PADRON_MAX_ROWS: Límite de filas por archivo de padrón importado.
     PADRON_MAX_ROWS: int = 5000
+
+    # ---- C-10: Umbral de aprobación ----------------------------------------
+    # UMBRAL_PCT_DEFECTO: Porcentaje mínimo aprobatorio para notas numéricas
+    # cuando el docente no ha configurado un umbral propio (RN-03, OQ-2).
+    UMBRAL_PCT_DEFECTO: int = 60
+
+    # VALORES_APROBATORIOS_DEFECTO: Valores textuales que cuentan como aprobado
+    # cuando no hay UmbralMateria configurado para la asignación (RN-02).
+    VALORES_APROBATORIOS_DEFECTO: list[str] = ["Satisfactorio", "Supera lo esperado"]
+
+    # NOTA_MAXIMA_DEFECTO: Nota máxima asumida para actividades numéricas si el
+    # archivo no incluye la nota máxima en el header (OQ-2).
+    NOTA_MAXIMA_DEFECTO: float = 10.0

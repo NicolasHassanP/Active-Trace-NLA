@@ -314,7 +314,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/08_arquitectura_propuesta.md` §5.1 (Moodle WS, fallback manual)
 
 ### [C-10] `calificaciones-y-umbral`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado (2026-06-04)
 - **Scope**:
   - Modelos `Calificacion` (numérica/textual, `aprobado` derivado, origen Importado/Manual) y `UmbralMateria` (umbral_pct por asignación, valores aprobatorios).
   - Importar calificaciones desde archivo del LMS (F1.1): detecta columnas de actividades numéricas (RN-01) y textuales (RN-02), vista previa, selección de actividades.

@@ -31,3 +31,8 @@ from app.models.padron import (  # noqa: F401
     VersionPadron,
     EntradaPadron,
 )
+from app.models.calificacion import (  # noqa: F401
+    CalificacionOrigen,
+    Calificacion,
+    UmbralMateria,
+)

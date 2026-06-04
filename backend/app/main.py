@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
     from app.api.v1.routers.admin_usuarios import router as usuarios_router
     from app.api.v1.routers.asignaciones import router as asignaciones_router
     from app.api.v1.routers.padron import router as padron_router
+    from app.api.v1.routers.calificaciones import router as calificaciones_router
 
     application.include_router(health_router)
     application.include_router(auth_router, prefix="/api/v1")
@@ -61,6 +62,7 @@ def create_app() -> FastAPI:
     application.include_router(usuarios_router, prefix="/api/v1")
     application.include_router(asignaciones_router, prefix="/api/v1")
     application.include_router(padron_router, prefix="/api/v1")
+    application.include_router(calificaciones_router, prefix="/api/v1")
 
     return application
 

@@ -122,6 +122,28 @@ async def _ensure_schema(engine) -> None:
             await conn.execute(
                 text("ALTER TYPE audit_action ADD VALUE 'PADRON_CARGAR'")
             )
+        # C-10: CALIFICACIONES_IMPORTAR added to audit_action enum in migration 008.
+        result_cal_action = await conn.execute(
+            text(
+                "SELECT 1 FROM pg_enum e "
+                "JOIN pg_type t ON e.enumtypid = t.oid "
+                "WHERE t.typname = 'audit_action' AND e.enumlabel = 'CALIFICACIONES_IMPORTAR'"
+            )
+        )
+        if result_cal_action.scalar() is None:
+            await conn.execute(
+                text("ALTER TYPE audit_action ADD VALUE 'CALIFICACIONES_IMPORTAR'")
+            )
+        # C-10: calificacion_origen enum required by Calificacion model (create_type=False)
+        result_cal_origen = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'calificacion_origen'")
+        )
+        if result_cal_origen.scalar() is None:
+            await conn.execute(
+                text(
+                    "CREATE TYPE calificacion_origen AS ENUM ('Importado', 'Manual')"
+                )
+            )
         await conn.run_sync(Base.metadata.create_all, checkfirst=True)
 
 
@@ -149,6 +171,8 @@ async def create_tables(test_engine):
         await conn.execute(text("DROP TYPE IF EXISTS estado_estructura CASCADE"))
         await conn.execute(text("DROP TYPE IF EXISTS rol_asignacion CASCADE"))
         await conn.execute(text("DROP TYPE IF EXISTS usuario_estado CASCADE"))
+        # C-10: calificacion_origen enum
+        await conn.execute(text("DROP TYPE IF EXISTS calificacion_origen CASCADE"))
 
 
 @pytest_asyncio.fixture(scope="session")
