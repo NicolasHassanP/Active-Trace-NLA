@@ -28,7 +28,7 @@ Governance: **MEDIO** (lógica de dominio, read-only). Implementar con checkpoin
 - NO crear tablas, columnas ni migraciones (C-11 es read-only).
 - NO seedear permisos nuevos: se reutilizan los de la migración 003.
 - NO implementar el frontend ni el envío de comunicaciones (C-12).
-- NO definir la fórmula contable exacta de "nota final" más allá de un agregado determinista de las actividades seleccionadas (queda como decisión D7 / pregunta abierta).
+- NO usar ponderación por carga horaria en la nota final: promedio simple confirmado (OQ-C11-1 cerrada).
 
 ## Decisions
 
@@ -72,7 +72,7 @@ F2.5 calcula la nota final como un promedio (o suma normalizada) de `nota_numeri
 - **[N+1 / performance en monitores]** → Las lecturas agregadas deben hacerse con queries agrupadas en el repositorio (GROUP BY por entrada_padron), no iterando por alumno con una query por cada uno. Mitigación: `analisis_repository` expone métodos que devuelven conteos pre-agregados; cargar padrón + calificaciones en lotes acotados por materia/versión.
 - **[Scope `propio` vs `global` mal resuelto]** → expondría datos de otros docentes. Mitigación: resolver el scope SIEMPRE desde el grant del JWT (C-04), con tests que verifican que PROFESOR sólo ve sus importaciones y COORDINADOR ve global; fail-closed ante ausencia de asignación.
 - **[Divergencia entre `aprobado` persistido y umbral actual]** → si un docente cambia el umbral después de importar, `aprobado` no se recalcula (es de C-10). Mitigación: documentar que el análisis refleja el estado al momento de importar; re-importar re-deriva (upsert C-10). No es un bug de C-11.
-- **[Fórmula de nota final ambigua]** → F2.5 no define ponderación en la KB. Mitigación: promedio simple determinista como default explícito (D7) y open question registrada.
+- **[Fórmula de nota final — resuelta]** → F2.5 usa promedio simple de `nota_numerica`. Confirmado por el dueño de producto (2026-06-04). Ponderación por carga horaria queda fuera de scope; si se requiere, se aborda en un change futuro.
 - **[Email/PII en monitores]** → los monitores muestran alumnos. Mitigación: exponer `entrada_padron_id` y los campos ya descifrados por el TypeDecorator del padrón (como en C-10), sin re-cifrar ni loguear PII; `__repr__` de modelos no expone PII.
 
 ## Migration Plan
@@ -83,6 +83,8 @@ F2.5 calcula la nota final como un promedio (o suma normalizada) de `nota_numeri
 
 ## Open Questions
 
-- **OQ-C11-1 (F2.5)**: ¿la nota final es promedio simple, suma, o ponderada por peso de actividad? Default asumido: promedio simple de `nota_numerica` de actividades seleccionadas. Confirmar con el dueño de producto antes de exponer la exportación formal de actas.
-- **OQ-C11-2 (F2.7/F2.9 filtros)**: el filtro "regional/comisión" depende de campos de `EntradaPadron` (`regional`, `comision`) — confirmar que están poblados en la ingesta actual del padrón (C-09). Si no, el filtro queda no-op hasta que el padrón los provea.
-- **OQ-C11-3 (rango de fechas F2.9)**: ¿el rango acota por `importado_at` de la calificación o por una fecha académica de la actividad? Default asumido: `importado_at`. Las fechas académicas (E15) son scope de C-06, no disponibles aquí.
+Todas cerradas (2026-06-04):
+
+- **OQ-C11-1 ✅ (F2.5 — nota final)**: Promedio simple de `nota_numerica` de actividades seleccionadas. Solución más directa y determinista para esta etapa. Ponderación por carga horaria fuera de scope; change futuro si se requiere.
+- **OQ-C11-2 ✅ (filtros regional/comisión)**: Implementar los filtros sobre los campos de `EntradaPadron` que C-09 dejó poblados. Si los campos están vacíos en la DB, el filtro opera sin efecto (no-op) pero la estructura de la query queda correcta para cuando el padrón los provea.
+- **OQ-C11-3 ✅ (rango de fechas F2.9)**: Usar `importado_at` de `Calificacion`. Es el timestamp transaccional más confiable disponible. Fechas académicas (E15, scope de C-06) quedan fuera de este change.
