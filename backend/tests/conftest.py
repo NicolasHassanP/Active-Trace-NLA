@@ -167,6 +167,24 @@ async def _ensure_schema(engine) -> None:
             await conn.execute(
                 text("ALTER TYPE audit_action ADD VALUE 'COMUNICACION_ENVIAR'")
             )
+        # C-08: EQUIPOS_* actions added to audit_action enum in migration 010.
+        for equipo_action in (
+            "EQUIPOS_ASIGNACION_MASIVA",
+            "EQUIPOS_CLONAR",
+            "EQUIPOS_VIGENCIA_GENERAL",
+        ):
+            result_eq = await conn.execute(
+                text(
+                    "SELECT 1 FROM pg_enum e "
+                    "JOIN pg_type t ON e.enumtypid = t.oid "
+                    "WHERE t.typname = 'audit_action' AND e.enumlabel = :label"
+                ),
+                {"label": equipo_action},
+            )
+            if result_eq.scalar() is None:
+                await conn.execute(
+                    text(f"ALTER TYPE audit_action ADD VALUE '{equipo_action}'")
+                )
         await conn.run_sync(Base.metadata.create_all, checkfirst=True)
         # C-12: tenant_config UNIQUE (tenant_id, clave) — add if not present
         result_tc_uq = await conn.execute(

@@ -56,6 +56,7 @@ def create_app() -> FastAPI:
     from app.api.v1.routers.calificaciones import router as calificaciones_router
     from app.api.v1.routers.analisis import router as analisis_router
     from app.api.v1.routers.comunicaciones import router as comunicaciones_router
+    from app.api.v1.routers.equipos import router as equipos_router
 
     application.include_router(health_router)
     application.include_router(auth_router, prefix="/api/v1")
@@ -67,6 +68,7 @@ def create_app() -> FastAPI:
     application.include_router(calificaciones_router, prefix="/api/v1")
     application.include_router(analisis_router, prefix="/api/v1")
     application.include_router(comunicaciones_router, prefix="/api/v1")
+    application.include_router(equipos_router, prefix="/api/v1")
 
     return application
 
