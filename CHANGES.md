@@ -514,6 +514,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
 - **Leer antes**:
   - `knowledge-base/06_funcionalidades.md` Épicas 4, 5, 6, 7, 8
   - `knowledge-base/07_flujos_principales.md` FL-03, FL-05, FL-06, FL-09
+- **⚠️ Follow-up backend de C-15 incluido en este change (OQ-1 resuelta)**: C-15 solo exponía el feed de avisos filtrado por audiencia (`GET /avisos`), sin forma de listar todos los avisos del tenant para el panel de gestión del COORDINADOR. Se agregó el endpoint **`GET /avisos/gestion`** (gateado por `avisos:publicar`, fail-closed, tenant row-level, excluye soft-deleted, devuelve `ack_count`). Cambio aditivo y read-only: sin migración Alembic y sin tocar contratos existentes. Tests: `backend/tests/test_avisos_gestion.py` (9 nuevos, 22 totales en avisos verdes). Delta spec: `specs/avisos-publicacion/` (MODIFIED). La OQ-3 (export del monitor) se resuelve client-side en el apply del frontend, sin tocar backend.
 
 ### [C-24] `frontend-finanzas-y-admin`
 - **Estado**: `[ ]` pendiente
