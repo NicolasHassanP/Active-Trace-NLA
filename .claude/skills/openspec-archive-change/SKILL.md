@@ -82,7 +82,19 @@ Archive a completed change in the experimental workflow.
    mv openspec/changes/<name> openspec/changes/archive/YYYY-MM-DD-<name>
    ```
 
-6. **Display summary**
+6. **Update CHANGES.md status**
+
+   Find the change entry in `CHANGES.md` (search by change name or C-NN code) and update its `Estado` line:
+
+   ```
+   - **Estado**: `[x]` archivado (YYYY-MM-DD)
+   ```
+
+   Use the actual archive date (same date used for the archive directory name).
+
+   **If the entry is not found**, warn the user — the change may not be listed in CHANGES.md or the name may differ.
+
+7. **Display summary**
 
    Show archive completion summary including:
    - Change name
