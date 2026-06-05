@@ -262,6 +262,19 @@ async def _ensure_schema(engine) -> None:
                 text("CREATE TYPE reserva_estado AS ENUM ('Activa', 'Cancelada')")
             )
         await conn.run_sync(Base.metadata.create_all, checkfirst=True)
+        # C-20: genero column on usuario (added by migration 016, after create_all so usuario exists)
+        await conn.execute(text(
+            "ALTER TABLE usuario ADD COLUMN IF NOT EXISTS genero VARCHAR(50)"
+        ))
+        # C-20: indexes not defined in SQLAlchemy models (defined in migration)
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_hilo_participantes_tenant_usuario "
+            "ON hilo_participantes (tenant_id, usuario_id)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_mensajes_tenant_hilo_at "
+            "ON mensajes (tenant_id, hilo_id, created_at)"
+        ))
         # C-12: tenant_config UNIQUE (tenant_id, clave) — add if not present
         result_tc_uq = await conn.execute(
             text(
@@ -351,6 +364,18 @@ async def _ensure_schema(engine) -> None:
                 await conn.execute(
                     text(f"ALTER TYPE audit_action ADD VALUE '{tarea_action}'")
                 )
+        # C-20: PERFIL_EDITAR added to audit_action enum in migration 016.
+        result_perfil_editar = await conn.execute(
+            text(
+                "SELECT 1 FROM pg_enum e "
+                "JOIN pg_type t ON e.enumtypid = t.oid "
+                "WHERE t.typname = 'audit_action' AND e.enumlabel = 'PERFIL_EDITAR'"
+            )
+        )
+        if result_perfil_editar.scalar() is None:
+            await conn.execute(
+                text("ALTER TYPE audit_action ADD VALUE 'PERFIL_EDITAR'")
+            )
         # C-17: programa/fecha_academica audit actions
         for acad_action in ("PROGRAMA_GESTIONAR", "FECHA_ACADEMICA_GESTIONAR"):
             result_acad = await conn.execute(
@@ -414,6 +439,10 @@ async def create_tables(test_engine):
         await conn.execute(text("DROP TABLE IF EXISTS test_biz_entity_v2 CASCADE"))
         # C-09: version_padron and entrada_padron are now in Base.metadata (registered in models/__init__.py)
         # and will be dropped by drop_all in the correct FK order. No explicit drop needed here.
+        # C-20: mensajería tables (FK order: participantes → mensajes → hilos)
+        await conn.execute(text("DROP TABLE IF EXISTS hilo_participantes CASCADE"))
+        await conn.execute(text("DROP TABLE IF EXISTS mensajes CASCADE"))
+        await conn.execute(text("DROP TABLE IF EXISTS hilos_mensaje CASCADE"))
         await conn.run_sync(Base.metadata.drop_all)
         await conn.execute(text("DROP TYPE IF EXISTS tenant_estado CASCADE"))
         await conn.execute(text("DROP TYPE IF EXISTS permiso_scope CASCADE"))

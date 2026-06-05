@@ -74,3 +74,8 @@ from app.models.academico import (  # noqa: F401
     ProgramaMateria,
     FechaAcademica,
 )
+from app.models.mensajeria import (  # noqa: F401
+    HiloMensaje,
+    Mensaje,
+    HiloParticipante,
+)
