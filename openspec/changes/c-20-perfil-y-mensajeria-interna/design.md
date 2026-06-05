@@ -44,10 +44,10 @@ Perfil = vista/escritura de autoservicio sobre `Usuario`. Se añade router `perf
 El propio usuario ve su `dni`/`cbu`/`cuil`/`alias_cbu` descifrados (es su dato). El `UsuarioRead` del ABM (C-07) ya enmascara esa PII para terceros; ese contrato no cambia.
 - **Por qué**: dos contratos distintos para dos autorizadores distintos. La regla "PII nunca en logs" sigue vigente en ambos.
 
-### D4 — Modelo de mensajería: hilo + mensajes + participantes (estado de leído por participante)
-Tres tablas: `hilos_mensaje` (id, tenant_id, asunto?, timestamps, deleted_at), `mensajes` (id, tenant_id, hilo_id, remitente_id, asunto, cuerpo, created_at, deleted_at), y `hilo_participantes` (hilo_id, usuario_id, tenant_id, last_read_at o flag de leído por mensaje). La participación se deriva de `hilo_participantes`, nunca de la petición.
-- **Por qué**: separar participación del mensaje permite multi-destinatario, conteo de no leídos por usuario y aislamiento robusto (un `JOIN` con participante = titular del JWT).
-- **Alternativa descartada**: un único campo `destinatario_id` en `mensajes` → no soporta múltiples participantes ni estado de leído por usuario de forma limpia.
+### D4 — Modelo de mensajería: hilo 1:1 + mensajes + participantes (estado de leído por participante)
+Tres tablas: `hilos_mensaje` (id, tenant_id, asunto?, timestamps, deleted_at), `mensajes` (id, tenant_id, hilo_id, remitente_id, asunto, cuerpo, created_at, deleted_at), y `hilo_participantes` (hilo_id, usuario_id, tenant_id, last_read_at). **En esta iteración los hilos son estrictamente 1:1**: exactamente 2 participantes por hilo, validado en el service al crear. La participación se deriva de `hilo_participantes`, nunca de la petición.
+- **Por qué**: OQ-3 cerrada → limitamos a 1:1 para esta iteración. El modelo soporta grupal en el futuro sin cambio de schema (solo quitar la validación de `max_participantes == 2`).
+- **Alternativa descartada**: un único campo `destinatario_id` en `mensajes` → no soporta la futura extensión a grupal ni estado de leído por usuario de forma limpia.
 
 ### D5 — Leído = `last_read_at` por participante
 Marcar leído al abrir el hilo (`GET /{hilo_id}`) actualiza `last_read_at` del participante; no-leídos = mensajes con `created_at > last_read_at`.
@@ -63,8 +63,10 @@ Remitente = `sub` del JWT; participación = consulta a `hilo_participantes`. Cua
 - **Por qué**: reglas duras #8/#9; 404 evita enumeración de hilos de otros.
 
 ### D8 — Permisos nuevos en el catálogo RBAC
-`perfil:editar` e `inbox:usar` se registran como permisos del catálogo (administrable como datos, no hardcodeados). Por defecto se otorgan a los roles que la KB habilita (todo usuario autenticado para perfil; TUTOR/PROFESOR/COORDINADOR/ADMIN para inbox, F3.4).
-- **Nota de seed**: la asignación rol↔permiso por defecto se documenta en tasks; el seed concreto se valida en apply.
+`perfil:editar` e `inbox:usar` se registran como permisos del catálogo (administrable como datos, no hardcodeados).
+- **`perfil:editar`** — otorgado a **todo usuario autenticado, incluido ALUMNO** (OQ-1 cerrada: autoservicio universal). El seed lo asigna a todos los roles del sistema.
+- **`inbox:usar`** — otorgado a TUTOR/PROFESOR/COORDINADOR/NEXO/ADMIN/FINANZAS (F3.4); ALUMNO excluido del inbox en esta iteración.
+- **Nota de seed**: la asignación rol↔permiso por defecto se implementa en tasks; el seed es idempotente.
 
 ## Risks / Trade-offs
 
@@ -77,13 +79,15 @@ Remitente = `sub` del JWT; participación = consulta a `hilo_participantes`. Cua
 
 ## Migration Plan
 
-1. Migración Alembic única que crea `hilos_mensaje`, `mensajes` y `hilo_participantes` con `tenant_id`, índices de aislamiento y `deleted_at`. No toca tablas existentes.
-2. Seed/idempotente de los permisos `perfil:editar` e `inbox:usar` en el catálogo RBAC y su asignación a los roles por defecto.
-3. Despliegue sin downtime: solo agrega tablas y endpoints nuevos; el perfil reusa `Usuario` sin alterar su schema.
-4. Rollback: revertir la migración (drop de las 3 tablas nuevas) y retirar los routers `perfil` e `inbox`; `Usuario` queda intacto.
+1. **Migración única C-20**: dos operaciones en una sola revisión Alembic:
+   a. `ALTER TABLE usuario ADD COLUMN genero VARCHAR(50)` (nullable, sin default — OQ-2 cerrada: columna no existía).
+   b. Crear `hilos_mensaje`, `mensajes` y `hilo_participantes` con `tenant_id`, índices de aislamiento y `deleted_at`.
+2. Seed idempotente de los permisos `perfil:editar` (todos los roles, incluyendo ALUMNO) e `inbox:usar` (TUTOR/PROFESOR/COORDINADOR/NEXO/ADMIN/FINANZAS) en el catálogo RBAC.
+3. Despliegue sin downtime: la columna `genero` es nullable (no rompe filas existentes); las tablas nuevas son aditivas.
+4. Rollback: revertir la migración (drop columna `genero` y las 3 tablas nuevas); `Usuario` vuelve a su estado C-07.
 
 ## Open Questions
 
-- **OQ-1**: ¿La asignación por defecto de `perfil:editar` es a TODO usuario autenticado (incluido ALUMNO) o solo a roles docentes/staff? La KB (F11.1) dice "cualquier usuario autenticado"; se asume eso salvo indicación contraria al hacer el seed.
-- **OQ-2**: ¿El campo `genero`/`sexo` ya existe en `Usuario` o debe agregarse? E4 no lo lista explícitamente; si falta, requiere una columna (y entonces una migración adicional sobre `usuarios`). A confirmar en apply contra el modelo real de C-07.
-- **OQ-3**: ¿Un hilo interno puede tener más de dos participantes (grupal) en esta iteración, o se limita a 1:1? El diseño lo soporta; el alcance inicial puede restringirse a 1:1 si se prefiere simplicidad.
+- **OQ-1** ✅ **CERRADA (2026-06-05)**: `perfil:editar` se otorga a TODO usuario autenticado, incluyendo ALUMNO. Seed cubre todos los roles del sistema.
+- **OQ-2** ✅ **CERRADA (2026-06-05)**: `genero` NO existe en `Usuario` (verificado contra el modelo real de C-07). Se agrega como `VARCHAR(50) nullable` en la migración única de este change (ver Migration Plan).
+- **OQ-3** ✅ **CERRADA (2026-06-05)**: Mensajería limitada a hilos **1:1** en esta iteración. El modelo soporta grupal en el futuro sin cambio de schema.

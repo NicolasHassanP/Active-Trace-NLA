@@ -5,13 +5,13 @@
 ## 1. Preparación y red de seguridad
 
 - [ ] 1.1 Correr la suite de `usuarios` (C-07) y del catálogo RBAC; capturar baseline "N tests passing" antes de tocar nada compartido
-- [ ] 1.2 Confirmar contra el modelo real de `Usuario` (C-07) si existe la columna `genero`/`sexo` y la lista exacta de campos PII (resuelve OQ-2); documentar el hallazgo
-- [ ] 1.3 Registrar los permisos `perfil:editar` e `inbox:usar` en el catálogo RBAC (administrable como datos) y su asignación a roles por defecto (perfil: todo usuario autenticado; inbox: TUTOR/PROFESOR/COORDINADOR/ADMIN) — resuelve OQ-1
+- [ ] 1.2 ~~Confirmar contra el modelo real de `Usuario` (C-07) si existe la columna `genero`/`sexo`~~  **OQ-2 CERRADA**: `genero` NO existe — la migración de este change la agrega como `VARCHAR(50) nullable` (ver tarea 6.3)
+- [ ] 1.3 Registrar los permisos `perfil:editar` e `inbox:usar` en el catálogo RBAC y su seed de roles: **`perfil:editar` → todos los roles (incluyendo ALUMNO)**; `inbox:usar` → TUTOR/PROFESOR/COORDINADOR/NEXO/ADMIN/FINANZAS — **OQ-1 CERRADA**
 
 ## 2. Schemas de perfil (Pydantic v2, extra='forbid')
 
 - [ ] 2.1 RED: test de `PerfilUpdate` que falle al incluir `cuil` (422) y al incluir campos no declarados (`tenant_id`, `estado`)
-- [ ] 2.2 GREEN: implementar `PerfilUpdate` con solo los campos editables (nombre, apellidos, dni, genero, banco, cbu, alias_cbu, regional, email, facturador, legajo_profesional), `extra='forbid'`, sin `cuil`
+- [ ] 2.2 GREEN: implementar `PerfilUpdate` con solo los campos editables (nombre, apellidos, dni, **genero** ← columna nueva de OQ-2, banco, cbu, alias_cbu, regional, email, facturador, legajo_profesional), `extra='forbid'`, sin `cuil`
 - [ ] 2.3 TRIANGULATE: casos de validación adicionales (campos opcionales/parciales en el PATCH; `cuerpo`/strings vacíos donde aplique) → al menos happy path + edge
 - [ ] 2.4 RED→GREEN: `PerfilRead` que incluya `cuil` solo-lectura y devuelva PII del dueño en claro; test de su forma
 - [ ] 2.5 REFACTOR: limpiar duplicación entre `PerfilRead`/`PerfilUpdate` y los schemas de `usuarios`; mantener <500 LOC por archivo
@@ -47,13 +47,13 @@
 
 - [ ] 6.1 RED: test de modelos `HiloMensaje`, `Mensaje`, `HiloParticipante` (campos, `tenant_id`, `deleted_at`, FKs, `remitente_id`)
 - [ ] 6.2 GREEN: implementar los modelos SQLAlchemy 2.0 async con `tenant_id` y soft delete
-- [ ] 6.3 GREEN: una migración Alembic que cree las 3 tablas con índices de aislamiento `(tenant_id, usuario_id)` en participantes y `(tenant_id, hilo_id, created_at)` en mensajes
+- [ ] 6.3 GREEN: migración Alembic única C-20: (a) `ALTER TABLE usuario ADD COLUMN genero VARCHAR(50)` nullable — OQ-2; (b) crear `hilos_mensaje`, `mensajes`, `hilo_participantes` con `tenant_id`, `deleted_at`, índices `(tenant_id, usuario_id)` en participantes y `(tenant_id, hilo_id, created_at)` en mensajes
 - [ ] 6.4 TRIANGULATE: test que verifique que la migración aplica y revierte (drop) sin tocar tablas existentes
 
 ## 7. Schemas de mensajería (Pydantic v2, extra='forbid')
 
 - [ ] 7.1 RED: tests de `MensajeCreate`/`HiloCreate`/`RespuestaCreate` que rechacen `cuerpo` vacío (422) y campos no declarados (`remitente_id`, `tenant_id`)
-- [ ] 7.2 GREEN: implementar los schemas con `asunto`/`cuerpo` requeridos, `extra='forbid'`, destinatarios en `HiloCreate`
+- [ ] 7.2 GREEN: implementar los schemas con `asunto`/`cuerpo` requeridos, `extra='forbid'`; `HiloCreate` acepta **exactamente 1 `destinatario_id`** (1:1 — OQ-3)
 - [ ] 7.3 RED→GREEN: schemas de lectura `InboxHiloRead` (con conteo de no leídos) y `MensajeRead`
 - [ ] 7.4 REFACTOR: deduplicar; mantener <500 LOC por archivo
 
@@ -78,9 +78,9 @@
 - [ ] 9.4 GREEN: implementar `abrir_hilo`
 - [ ] 9.5 RED: test `responder` que ignore `remitente_id` del body (anti-spoofing) y rechace a no participantes
 - [ ] 9.6 GREEN: implementar `responder` atribuyendo remitente desde el JWT
-- [ ] 9.7 RED: test `iniciar_hilo` que rechace destinatario de otro tenant y cree hilo + primer mensaje
-- [ ] 9.8 GREEN: implementar `iniciar_hilo`
-- [ ] 9.9 TRIANGULATE: múltiples mensajes en un hilo + conteo de no-leídos tras nueva respuesta + 1:1 vs grupal (según OQ-3)
+- [ ] 9.7 RED: test `iniciar_hilo` que rechace destinatario de otro tenant, rechace hilo duplicado 1:1 ya existente entre los mismos dos usuarios, y cree hilo + primer mensaje
+- [ ] 9.8 GREEN: implementar `iniciar_hilo` con validación de 1:1 (máx 2 participantes) — OQ-3
+- [ ] 9.9 TRIANGULATE: múltiples mensajes en un hilo + conteo de no-leídos tras nueva respuesta + intento de crear segundo hilo 1:1 entre los mismos usuarios
 - [ ] 9.10 REFACTOR: dividir el service si supera 500 LOC (listar / abrir / responder / iniciar)
 
 ## 10. Router de mensajería (/api/v1/inbox)
