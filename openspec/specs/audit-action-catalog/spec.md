@@ -1,8 +1,9 @@
-## ADDED Requirements
-
+## Purpose
+Define a closed, versioned catalog of audit action codes that identify each auditable system event, including actions from internal tasks module (tarea-internas).
+## Requirements
 ### Requirement: Catálogo cerrado de códigos de acción
 
-El sistema SHALL identificar cada acción auditable mediante un código del catálogo cerrado y versionado de la forma `MODULO_ACCION`. El sistema NO SHALL permitir registrar un evento de auditoría con un código de acción que no pertenezca al catálogo.
+El sistema SHALL identificar cada acción auditable mediante un código del catálogo cerrado y versionado de la forma `MODULO_ACCION`. El sistema NO SHALL permitir registrar un evento de auditoría con un código de acción que no pertenezca al catálogo. El catálogo SHALL incluir los códigos del módulo de tareas internas: `TAREA_ASIGNAR` (creación/asignación de una tarea a un docente), `TAREA_DELEGAR` (reasignación de una tarea a otro docente) y `TAREA_CAMBIAR_ESTADO` (transición de estado de una tarea). El alta de un comentario en el hilo de una tarea NO SHALL auditarse por sí sola (alto volumen; el propio hilo es el registro).
 
 #### Scenario: Código de acción válido
 
@@ -14,11 +15,8 @@ El sistema SHALL identificar cada acción auditable mediante un código del cat�
 - **WHEN** se intenta registrar un evento con un código de acción que no pertenece al catálogo
 - **THEN** el sistema rechaza la operación con un error de dominio y no persiste ningún evento
 
-### Requirement: Versionado del catálogo de acciones
+#### Scenario: Códigos de tareas internas pertenecen al catálogo
 
-El catálogo de códigos de acción SHALL ser una constante del sistema, idéntica para todos los tenants, versionada junto con el código que emite los eventos. El catálogo NO SHALL ser administrable por tenant en tiempo de ejecución.
+- **WHEN** se registra un evento con `TAREA_ASIGNAR`, `TAREA_DELEGAR` o `TAREA_CAMBIAR_ESTADO`
+- **THEN** el sistema acepta y persiste el evento por tratarse de códigos válidos del catálogo
 
-#### Scenario: El catálogo es uniforme entre tenants
-
-- **WHEN** dos tenants distintos registran la misma acción
-- **THEN** ambos usan el mismo conjunto de códigos válidos, sin divergencias por tenant

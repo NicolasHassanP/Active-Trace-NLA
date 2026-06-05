@@ -64,3 +64,8 @@ from app.models.aviso import (  # noqa: F401
     Aviso,
     AcknowledgmentAviso,
 )
+from app.models.tarea import (  # noqa: F401
+    TareaEstado,
+    Tarea,
+    ComentarioTarea,
+)

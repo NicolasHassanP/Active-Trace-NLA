@@ -274,22 +274,21 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Drop in reverse FK dependency order (rol_permiso before rol and permiso)
-    op.drop_index("ix_rol_permiso_deleted_at", table_name="rol_permiso")
-    op.drop_index("ix_rol_permiso_permiso_id", table_name="rol_permiso")
-    op.drop_index("ix_rol_permiso_rol_id",     table_name="rol_permiso")
-    op.drop_index("ix_rol_permiso_tenant_id",  table_name="rol_permiso")
-    op.drop_constraint("uq_rol_permiso", "rol_permiso", type_="unique")
-    op.drop_table("rol_permiso")
+    # Drop in reverse FK dependency order (idempotent — tables may be gone via CASCADE)
+    op.execute("DROP INDEX IF EXISTS ix_rol_permiso_deleted_at")
+    op.execute("DROP INDEX IF EXISTS ix_rol_permiso_permiso_id")
+    op.execute("DROP INDEX IF EXISTS ix_rol_permiso_rol_id")
+    op.execute("DROP INDEX IF EXISTS ix_rol_permiso_tenant_id")
+    op.execute("DROP TABLE IF EXISTS rol_permiso CASCADE")
 
-    op.drop_index("ix_permiso_deleted_at", table_name="permiso")
-    op.drop_index("ix_permiso_tenant_id",  table_name="permiso")
-    op.drop_constraint("uq_permiso_tenant_codigo", "permiso", type_="unique")
-    op.drop_table("permiso")
+    op.execute("DROP INDEX IF EXISTS ix_permiso_deleted_at")
+    op.execute("DROP INDEX IF EXISTS ix_permiso_tenant_id")
+    op.execute("DROP TABLE IF EXISTS permiso CASCADE")
 
-    op.drop_index("ix_rol_deleted_at", table_name="rol")
-    op.drop_index("ix_rol_tenant_id",  table_name="rol")
-    op.drop_constraint("uq_rol_tenant_nombre", "rol", type_="unique")
-    op.drop_table("rol")
+    op.execute("DROP INDEX IF EXISTS ix_rol_deleted_at")
+    op.execute("DROP INDEX IF EXISTS ix_rol_tenant_id")
+    op.execute("DROP TABLE IF EXISTS rol CASCADE")
+
+    op.execute("DROP TYPE IF EXISTS permiso_scope CASCADE")
 
     op.execute("DROP TYPE IF EXISTS permiso_scope CASCADE")

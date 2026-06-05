@@ -181,12 +181,22 @@ def upgrade() -> None:
 def downgrade() -> None:
     # Revert seed
     op.execute("""
-        DELETE FROM rol_permiso
+        DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'rol_permiso') THEN
+                DELETE FROM rol_permiso
         WHERE permiso_id IN (
             SELECT id FROM permiso WHERE codigo = 'encuentros:gestionar'
-        )
+        );
+            END IF;
+        END $$;
     """)
-    op.execute("DELETE FROM permiso WHERE codigo = 'encuentros:gestionar'")
+    op.execute("""
+        DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'permiso') THEN
+                DELETE FROM permiso WHERE codigo = 'encuentros:gestionar';
+            END IF;
+        END $$;
+    """)
 
     # Drop tables in FK order
     op.execute("DROP TABLE IF EXISTS instancia_encuentro CASCADE")

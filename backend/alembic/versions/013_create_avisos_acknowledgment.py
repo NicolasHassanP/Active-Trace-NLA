@@ -139,14 +139,24 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Revert RBAC seed
+    # Revert RBAC seed (defensive: tables may not exist if downgrading past base)
     op.execute("""
-        DELETE FROM rol_permiso
-        WHERE permiso_id IN (
-            SELECT id FROM permiso WHERE codigo = 'avisos:publicar'
-        )
+        DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'rol_permiso') THEN
+                DELETE FROM rol_permiso
+                WHERE permiso_id IN (
+                    SELECT id FROM permiso WHERE codigo = 'avisos:publicar'
+                );
+            END IF;
+        END $$;
     """)
-    op.execute("DELETE FROM permiso WHERE codigo = 'avisos:publicar'")
+    op.execute("""
+        DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'permiso') THEN
+                DELETE FROM permiso WHERE codigo = 'avisos:publicar';
+            END IF;
+        END $$;
+    """)
 
     # Drop partial unique index
     op.execute("DROP INDEX IF EXISTS uq_ack_aviso_usuario")

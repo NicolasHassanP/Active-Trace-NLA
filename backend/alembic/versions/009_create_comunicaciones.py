@@ -179,16 +179,23 @@ def upgrade() -> None:
 def downgrade() -> None:
     # --- Revertir seed de permisos/grants (D8) ---
     op.execute("""
-        DELETE FROM rol_permiso
-        WHERE permiso_id IN (
-            SELECT id FROM permiso
-            WHERE codigo IN ('comunicacion:enviar', 'comunicacion:aprobar')
-        )
+        DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'rol_permiso') THEN
+                DELETE FROM rol_permiso
+                WHERE permiso_id IN (
+                    SELECT id FROM permiso
+                    WHERE codigo IN ('comunicacion:enviar', 'comunicacion:aprobar')
+                );
+            END IF;
+        END $$;
     """)
-    op.execute(
-        "DELETE FROM permiso WHERE codigo IN "
-        "('comunicacion:enviar', 'comunicacion:aprobar')"
-    )
+    op.execute("""
+        DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'permiso') THEN
+                DELETE FROM permiso WHERE codigo IN ('comunicacion:enviar', 'comunicacion:aprobar');
+            END IF;
+        END $$;
+    """)
 
     # --- Drop partial indexes ---
     op.execute("DROP INDEX IF EXISTS ix_com_tenant_estado")

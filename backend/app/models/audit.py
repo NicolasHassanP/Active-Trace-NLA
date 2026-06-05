@@ -59,6 +59,9 @@ class AuditAction(str, enum.Enum):
     ENCUENTRO_GESTIONAR = "ENCUENTRO_GESTIONAR"
     COLOQUIO_GESTIONAR = "COLOQUIO_GESTIONAR"
     AVISO_PUBLICAR = "AVISO_PUBLICAR"
+    TAREA_ASIGNAR = "TAREA_ASIGNAR"
+    TAREA_DELEGAR = "TAREA_DELEGAR"
+    TAREA_CAMBIAR_ESTADO = "TAREA_CAMBIAR_ESTADO"
 
 
 # ---------------------------------------------------------------------------

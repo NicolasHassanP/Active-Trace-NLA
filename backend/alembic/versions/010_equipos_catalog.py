@@ -127,14 +127,22 @@ def upgrade() -> None:
 def downgrade() -> None:
     # --- Revertir seed de permisos/grants (D4) ---
     op.execute("""
-        DELETE FROM rol_permiso
-        WHERE permiso_id IN (
-            SELECT id FROM permiso
-            WHERE codigo IN ('equipos:ver', 'equipos:asignar')
-        )
+        DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'rol_permiso') THEN
+                DELETE FROM rol_permiso
+                WHERE permiso_id IN (
+                    SELECT id FROM permiso
+                    WHERE codigo IN ('equipos:ver', 'equipos:asignar')
+                );
+            END IF;
+        END $$;
     """)
-    op.execute(
-        "DELETE FROM permiso WHERE codigo IN ('equipos:ver', 'equipos:asignar')"
-    )
+    op.execute("""
+        DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'permiso') THEN
+                DELETE FROM permiso WHERE codigo IN ('equipos:ver', 'equipos:asignar');
+            END IF;
+        END $$;
+    """)
     # Note: ALTER TYPE audit_action ADD VALUE is NOT reversible in Postgres.
     # EQUIPOS_* values remain in the enum after downgrade.

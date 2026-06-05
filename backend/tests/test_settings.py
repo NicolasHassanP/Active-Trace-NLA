@@ -40,7 +40,9 @@ def test_settings_fails_when_required_var_missing(monkeypatch):
     from app.core.config import Settings
 
     with pytest.raises(ValidationError):
-        Settings()
+        # Pass _env_file=None so pydantic-settings ignores the .env file on disk
+        # and relies only on environment variables (which monkeypatch removed above).
+        Settings(_env_file=None)
 
 
 def test_settings_fails_when_secret_key_too_short(monkeypatch):

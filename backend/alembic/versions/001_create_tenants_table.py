@@ -20,11 +20,14 @@ depends_on = None
 
 def upgrade() -> None:
     # Use raw SQL for full control (avoids SA DDL enum auto-creation edge cases)
+    op.execute(
+        "DO $$ BEGIN "
+        "  CREATE TYPE tenant_estado AS ENUM ('activo', 'inactivo'); "
+        "EXCEPTION WHEN duplicate_object THEN NULL; "
+        "END $$;"
+    )
     op.execute("""
-        CREATE TYPE tenant_estado AS ENUM ('activo', 'inactivo')
-    """)
-    op.execute("""
-        CREATE TABLE tenants (
+        CREATE TABLE IF NOT EXISTS tenants (
             id          UUID        NOT NULL DEFAULT gen_random_uuid(),
             nombre      VARCHAR(256) NOT NULL,
             estado      tenant_estado NOT NULL,

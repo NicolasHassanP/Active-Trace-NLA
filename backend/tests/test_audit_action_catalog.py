@@ -42,11 +42,18 @@ class TestAuditActionCatalogTriangulation:
     """Task 1.3 — Triangulación: catalog is uniform; invalid values rejected."""
 
     def test_catalog_has_expected_values(self):
-        """Catalog has 6 values: 3 initial (C-05) + PADRON_CARGAR (C-09) + CALIFICACIONES_IMPORTAR (C-10) + COMUNICACION_ENVIAR (C-12)."""
-        assert len(AuditAction) == 6
-        assert "PADRON_CARGAR" in [a.value for a in AuditAction]
-        assert "CALIFICACIONES_IMPORTAR" in [a.value for a in AuditAction]
-        assert "COMUNICACION_ENVIAR" in [a.value for a in AuditAction]
+        """Catalog grows with each change. Verify known values exist (not a fixed count)."""
+        values = [a.value for a in AuditAction]
+        # C-05 initial values
+        assert "PADRON_CARGAR" in values
+        assert "CALIFICACIONES_IMPORTAR" in values
+        assert "COMUNICACION_ENVIAR" in values
+        # C-15
+        assert "AVISO_PUBLICAR" in values
+        # C-16
+        assert "TAREA_ASIGNAR" in values
+        assert "TAREA_DELEGAR" in values
+        assert "TAREA_CAMBIAR_ESTADO" in values
 
     def test_catalog_values_are_uppercase_module_action_format(self):
         """All codes follow MODULO_ACCION uppercase format (RN-24)."""

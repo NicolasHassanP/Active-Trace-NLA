@@ -1,3 +1,6 @@
+## Purpose
+Implement internal task management workflow enabling coordinators to assign tasks to teaching staff with state machine, delegation, and comment threading.
+
 ## ADDED Requirements
 
 ### Requirement: Crear y asignar una tarea a otro docente (F8.2, FL-05)

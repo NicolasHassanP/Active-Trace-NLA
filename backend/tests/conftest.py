@@ -294,6 +294,64 @@ async def _ensure_schema(engine) -> None:
                 )
             )
 
+        # C-15: aviso enums
+        result_aviso_alcance = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'aviso_alcance'")
+        )
+        if result_aviso_alcance.scalar() is None:
+            await conn.execute(
+                text(
+                    "CREATE TYPE aviso_alcance AS ENUM "
+                    "('Global', 'PorMateria', 'PorCohorte', 'PorRol')"
+                )
+            )
+        result_aviso_sev = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'aviso_severidad'")
+        )
+        if result_aviso_sev.scalar() is None:
+            await conn.execute(
+                text(
+                    "CREATE TYPE aviso_severidad AS ENUM "
+                    "('Info', 'Advertencia', 'Critico')"
+                )
+            )
+        result_aviso_pub = await conn.execute(
+            text(
+                "SELECT 1 FROM pg_enum e "
+                "JOIN pg_type t ON e.enumtypid = t.oid "
+                "WHERE t.typname = 'audit_action' AND e.enumlabel = 'AVISO_PUBLICAR'"
+            )
+        )
+        if result_aviso_pub.scalar() is None:
+            await conn.execute(
+                text("ALTER TYPE audit_action ADD VALUE 'AVISO_PUBLICAR'")
+            )
+
+        # C-16: tarea enum and audit actions
+        result_tarea_estado = await conn.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = 'tarea_estado'")
+        )
+        if result_tarea_estado.scalar() is None:
+            await conn.execute(
+                text(
+                    "CREATE TYPE tarea_estado AS ENUM "
+                    "('Pendiente', 'EnProgreso', 'Resuelta', 'Cancelada')"
+                )
+            )
+        for tarea_action in ("TAREA_ASIGNAR", "TAREA_DELEGAR", "TAREA_CAMBIAR_ESTADO"):
+            result_ta = await conn.execute(
+                text(
+                    "SELECT 1 FROM pg_enum e "
+                    "JOIN pg_type t ON e.enumtypid = t.oid "
+                    "WHERE t.typname = 'audit_action' AND e.enumlabel = :label"
+                ),
+                {"label": tarea_action},
+            )
+            if result_ta.scalar() is None:
+                await conn.execute(
+                    text(f"ALTER TYPE audit_action ADD VALUE '{tarea_action}'")
+                )
+
 
 @pytest_asyncio.fixture(scope="session")
 async def create_tables(test_engine):
@@ -330,6 +388,11 @@ async def create_tables(test_engine):
         # C-14: evaluacion/coloquios enums
         await conn.execute(text("DROP TYPE IF EXISTS evaluacion_tipo CASCADE"))
         await conn.execute(text("DROP TYPE IF EXISTS reserva_estado CASCADE"))
+        # C-15: aviso enums
+        await conn.execute(text("DROP TYPE IF EXISTS aviso_alcance CASCADE"))
+        await conn.execute(text("DROP TYPE IF EXISTS aviso_severidad CASCADE"))
+        # C-16: tarea enum
+        await conn.execute(text("DROP TYPE IF EXISTS tarea_estado CASCADE"))
 
 
 @pytest_asyncio.fixture(scope="session")

@@ -33,8 +33,10 @@ def _alembic_env():
 
 
 def _run_alembic(*args):
+    # Use Python 3.10 alembic explicitly — asyncpg is installed there, not in system Python.
+    alembic_cmd = r"C:\Users\Leand\AppData\Local\Programs\Python\Python310\Scripts\alembic.exe"
     result = subprocess.run(
-        ["alembic", *args],
+        [alembic_cmd, *args],
         cwd=_backend_dir(),
         capture_output=True,
         text=True,
@@ -52,48 +54,40 @@ async def migration_engine():
     await engine.dispose()
 
 
-async def _drop_all_managed_tables(conn) -> None:
-    """Drop all tables managed by migrations (in dependency order) and their enums."""
-    # C-04 RBAC (003)
-    await conn.execute(text("DROP TABLE IF EXISTS rol_permiso CASCADE"))
-    await conn.execute(text("DROP TABLE IF EXISTS permiso CASCADE"))
-    await conn.execute(text("DROP TABLE IF EXISTS rol CASCADE"))
-    await conn.execute(text("DROP TYPE IF EXISTS permiso_scope CASCADE"))
-    # C-03 auth (002)
-    await conn.execute(text("DROP TABLE IF EXISTS password_recovery_tokens CASCADE"))
-    await conn.execute(text("DROP TABLE IF EXISTS refresh_sessions CASCADE"))
-    await conn.execute(text("DROP TABLE IF EXISTS auth_identities CASCADE"))
-    # C-01/C-02 base (001)
-    await conn.execute(text("DROP TABLE IF EXISTS tenants CASCADE"))
-    await conn.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
-    await conn.execute(text("DROP TYPE IF EXISTS tenant_estado CASCADE"))
+async def _force_clean_schema(engine) -> None:
+    """
+    Force-drop all application tables and types using CASCADE in a single
+    transaction. More reliable than `alembic downgrade base` because it
+    doesn't fail on FK cycles or partial migration states.
+    """
+    async with engine.begin() as conn:
+        # Drop all tables with CASCADE to bypass FK ordering issues
+        await conn.execute(text("DROP SCHEMA public CASCADE"))
+        await conn.execute(text("CREATE SCHEMA public"))
+        await conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
 
 
 @pytest.fixture
 async def clean_db(migration_engine):
     """
-    Drop all managed tables and types before each migration test.
+    Force-wipe the schema before each migration test, then restore it on teardown.
 
-    Teardown runs `alembic upgrade head` to restore the schema to the state
-    that the session-scoped `create_tables` fixture in conftest.py expects.
-    This prevents the migration tests from leaving the DB in a state that
-    breaks the shared session-scoped db_session fixture used by other tests.
+    Using DROP SCHEMA CASCADE is the only reliable way to reach a clean state
+    regardless of FK cycles or partial migration states.
     """
-    async with migration_engine.begin() as conn:
-        await _drop_all_managed_tables(conn)
+    await _force_clean_schema(migration_engine)
     yield migration_engine
     # Teardown: restore full schema so other tests can use the shared db_session.
-    async with migration_engine.begin() as conn:
-        await _drop_all_managed_tables(conn)
+    await _force_clean_schema(migration_engine)
     _run_alembic("upgrade", "head")
 
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_migration_002_upgrade_creates_auth_tables(clean_db):
     """
-    Running alembic upgrade head creates the three auth tables with correct columns.
+    Running alembic upgrade 002 creates the three auth tables with correct columns.
     """
-    result = _run_alembic("upgrade", "head")
+    result = _run_alembic("upgrade", "002")
     assert result.returncode == 0, f"alembic upgrade failed:\n{result.stdout}\n{result.stderr}"
 
     # Verify tables exist
@@ -113,9 +107,9 @@ async def test_migration_002_upgrade_creates_auth_tables(clean_db):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_migration_002_creates_unique_constraint(clean_db):
     """
-    The unique constraint (tenant_id, email_hash) exists on auth_identities.
+    The unique constraint (tenant_id, email_hash) exists on auth_identities after upgrade 002.
     """
-    _run_alembic("upgrade", "head")
+    _run_alembic("upgrade", "002")
 
     engine = clean_db
     async with engine.connect() as conn:
@@ -136,13 +130,13 @@ async def test_migration_002_creates_unique_constraint(clean_db):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_migration_002_downgrade_removes_auth_tables(clean_db):
     """
-    Running alembic downgrade removes the auth tables cleanly.
+    Running alembic downgrade -1 from 002 removes auth tables, keeping 001 (tenants).
     """
-    # First upgrade
-    _run_alembic("upgrade", "head")
+    # Upgrade just to 002 (not head — avoids running all 014 migrations)
+    result = _run_alembic("upgrade", "002")
+    assert result.returncode == 0, f"alembic upgrade 002 failed:\n{result.stdout}\n{result.stderr}"
 
-    # Downgrade to revision 001 explicitly (removes 003+002, keeping 001).
-    # Using "-1" would only remove 003 now that it is the head.
+    # Downgrade to 001 = reverts 002 (auth tables), leaves 001 (tenants) intact.
     result = _run_alembic("downgrade", "001")
     assert result.returncode == 0, f"alembic downgrade failed:\n{result.stdout}\n{result.stderr}"
 

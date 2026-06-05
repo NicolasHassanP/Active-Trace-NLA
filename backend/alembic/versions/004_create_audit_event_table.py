@@ -49,7 +49,7 @@ def upgrade() -> None:
     # NO updated_at, NO deleted_at — append-only (D2).
     # tenant_id FK with RESTRICT (event is not orphaned by tenant deletion).
     op.execute("""
-        CREATE TABLE audit_event (
+        CREATE TABLE IF NOT EXISTS audit_event (
             id                    UUID         NOT NULL DEFAULT gen_random_uuid(),
             tenant_id             UUID         NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
             actor_user_id         UUID         NOT NULL,
@@ -69,22 +69,17 @@ def upgrade() -> None:
         )
     """)
 
-    # --- Indexes (task 3.4) ---
-    op.create_index(
-        "ix_audit_event_tenant_created",
-        "audit_event",
-        ["tenant_id", "created_at"],
+    # --- Indexes (task 3.4, idempotent) ---
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_audit_event_tenant_created "
+        "ON audit_event (tenant_id, created_at)"
     )
-    op.create_index(
-        "ix_audit_event_tenant_actor",
-        "audit_event",
-        ["tenant_id", "actor_user_id"],
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_audit_event_tenant_actor "
+        "ON audit_event (tenant_id, actor_user_id)"
     )
 
-    # --- Immutability trigger (D3, task 3.5) ---
-    # A separate trigger function + trigger.
-    # The trigger fires BEFORE UPDATE OR DELETE and raises an exception.
-    # This prevents mutation from ANY path (ORM, scripts, direct SQL).
+    # --- Immutability trigger (D3, task 3.5, idempotent) ---
     op.execute("""
         CREATE OR REPLACE FUNCTION audit_event_immutable()
         RETURNS TRIGGER AS $$
@@ -97,9 +92,16 @@ def upgrade() -> None:
     """)
 
     op.execute("""
-        CREATE TRIGGER trg_audit_event_immutable
-        BEFORE UPDATE OR DELETE ON audit_event
-        FOR EACH ROW EXECUTE FUNCTION audit_event_immutable();
+        DO $$ BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_trigger
+                WHERE tgname = 'trg_audit_event_immutable'
+            ) THEN
+                CREATE TRIGGER trg_audit_event_immutable
+                BEFORE UPDATE OR DELETE ON audit_event
+                FOR EACH ROW EXECUTE FUNCTION audit_event_immutable();
+            END IF;
+        END $$;
     """)
 
 
@@ -110,9 +112,9 @@ def downgrade() -> None:
     op.execute("DROP TRIGGER IF EXISTS trg_audit_event_immutable ON audit_event")
     op.execute("DROP FUNCTION IF EXISTS audit_event_immutable()")
 
-    # --- Drop indexes ---
-    op.drop_index("ix_audit_event_tenant_actor", table_name="audit_event")
-    op.drop_index("ix_audit_event_tenant_created", table_name="audit_event")
+    # --- Drop indexes (idempotent) ---
+    op.execute("DROP INDEX IF EXISTS ix_audit_event_tenant_actor")
+    op.execute("DROP INDEX IF EXISTS ix_audit_event_tenant_created")
 
     # --- Drop table ---
     op.drop_table("audit_event")

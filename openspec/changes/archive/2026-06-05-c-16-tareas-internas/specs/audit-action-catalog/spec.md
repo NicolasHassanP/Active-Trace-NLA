@@ -1,3 +1,6 @@
+## Purpose
+Update the audit action catalog to include actions for internal tasks (TAREA_ASIGNAR, TAREA_DELEGAR, TAREA_CAMBIAR_ESTADO).
+
 ## MODIFIED Requirements
 
 ### Requirement: Catálogo cerrado de códigos de acción
