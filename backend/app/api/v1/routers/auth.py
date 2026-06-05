@@ -26,18 +26,17 @@ Tenant resolution for public endpoints:
 import uuid
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 
 from app.core.dependencies import CurrentUser, get_current_user, get_db
 from app.schemas.auth import (
     EnrollResponse,
     ForgotRequest,
     LoginRequest,
-    LogoutRequest,
     MessageResponse,
     MfaChallengeResponse,
     MfaVerifyRequest,
-    RefreshRequest,
     ResetRequest,
     TokenPair,
     Verify2FARequest,
@@ -106,11 +105,12 @@ async def login(
     body: LoginRequest,
     tenant_id: uuid.UUID = Depends(get_tenant_id_from_header),
     svc: AuthService = Depends(get_auth_service),
-) -> Dict[str, Any]:
+) -> Response:
     """
     Authenticate with email + password.
 
-    Returns TokenPair (no 2FA) or MfaChallengeResponse (2FA gate).
+    Returns access_token in JSON body (no 2FA) or MfaChallengeResponse (2FA gate).
+    When no 2FA: the refresh_token is set as an httpOnly cookie (path=/api/v1/auth).
     """
     try:
         result = await svc.login(
@@ -118,30 +118,79 @@ async def login(
         )
     except AuthenticationError:
         raise _auth_error()
-    return result
+
+    # MFA challenge — no refresh token yet, return challenge as-is
+    if "mfa_required" in result:
+        return JSONResponse(content=result)
+
+    # Full session — put refresh_token in httpOnly cookie, access_token in body
+    refresh_token = result["refresh_token"]
+    response = JSONResponse(content={
+        "access_token": result["access_token"],
+        "token_type": result.get("token_type", "bearer"),
+    })
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        path="/api/v1/auth",
+        max_age=60 * 60 * 24 * 30,  # 30 days
+    )
+    return response
 
 
 @router.post("/refresh", response_model=TokenPair)
 async def refresh(
-    body: RefreshRequest,
     svc: AuthService = Depends(get_auth_service),
-) -> TokenPair:
-    """Rotate a refresh token and return a new access+refresh pair."""
+    refresh_token: str | None = Cookie(default=None),
+) -> Response:
+    """Rotate a refresh token and return a new access token.
+
+    The refresh_token is read from the httpOnly cookie (not the request body).
+    The rotated refresh_token is set as a new httpOnly cookie.
+    """
+    if refresh_token is None:
+        raise _auth_error("Missing refresh token cookie")
     try:
-        result = await svc.refresh(body.refresh_token)
+        result = await svc.refresh(refresh_token)
     except AuthenticationError:
         raise _auth_error("Invalid or expired refresh token")
-    return TokenPair(**result)
+
+    new_refresh_token = result["refresh_token"]
+    response = JSONResponse(content={
+        "access_token": result["access_token"],
+        "token_type": result.get("token_type", "bearer"),
+    })
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        path="/api/v1/auth",
+        max_age=60 * 60 * 24 * 30,  # 30 days
+    )
+    return response
 
 
 @router.post("/logout", response_model=MessageResponse)
 async def logout(
-    body: LogoutRequest,
     svc: AuthService = Depends(get_auth_service),
-) -> MessageResponse:
-    """Revoke the active refresh session."""
-    await svc.logout(body.refresh_token)
-    return MessageResponse(message="Logged out successfully")
+    refresh_token: str | None = Cookie(default=None),
+) -> Response:
+    """Revoke the active refresh session.
+
+    The refresh_token is read from the httpOnly cookie (not the request body).
+    Idempotent: if no cookie is present, still returns 200 and clears cookie.
+    """
+    if refresh_token is not None:
+        await svc.logout(refresh_token)
+
+    response = JSONResponse(content={"message": "Logged out successfully"})
+    response.delete_cookie(key="refresh_token", path="/api/v1/auth")
+    return response
 
 
 @router.post("/forgot", response_model=MessageResponse)

@@ -28,14 +28,18 @@ class LoginRequest(_AuthBase):
 
 
 class TokenPair(_AuthBase):
-    """Access + refresh token pair returned after successful authentication."""
+    """Access token response returned after successful authentication.
+
+    The refresh token is no longer in the body — it travels as an httpOnly
+    cookie set by the server (transport change, C-03).
+    """
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
 
 
 # Alias for clarity at the router level
 LoginResponse = TokenPair
+AccessTokenResponse = TokenPair
 
 
 # ---------------------------------------------------------------------------
@@ -52,20 +56,6 @@ class MfaVerifyRequest(_AuthBase):
     """Client sends the mfa_token (from challenge) + TOTP code."""
     mfa_token: str
     code: str
-
-
-# ---------------------------------------------------------------------------
-# Token rotation and logout
-# ---------------------------------------------------------------------------
-
-class RefreshRequest(_AuthBase):
-    """Client sends the refresh token to rotate the session."""
-    refresh_token: str
-
-
-class LogoutRequest(_AuthBase):
-    """Client sends the refresh token to revoke the session."""
-    refresh_token: str
 
 
 # ---------------------------------------------------------------------------

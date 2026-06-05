@@ -133,7 +133,7 @@ async def router_tenant_id(test_engine, create_tables) -> uuid.UUID:
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_login_endpoint_success(async_client, test_engine, create_tables, router_tenant_id):
-    """POST /api/v1/auth/login returns 200 with tokens on valid credentials."""
+    """POST /api/v1/auth/login returns 200 with access_token in body, refresh_token in Set-Cookie."""
     _set_env()
     identity_id = await _raw_create_identity(
         test_engine, router_tenant_id, "loginok@router.com"
@@ -146,8 +146,11 @@ async def test_login_endpoint_success(async_client, test_engine, create_tables, 
         )
         assert response.status_code == 200
         data = response.json()
+        # access_token in body; refresh_token NOT in body
         assert "access_token" in data
-        assert "refresh_token" in data
+        assert "refresh_token" not in data
+        # refresh_token set as httpOnly cookie
+        assert "refresh_token" in response.cookies
     finally:
         await _raw_delete_identity(test_engine, identity_id)
 
@@ -172,7 +175,7 @@ async def test_login_endpoint_wrong_password_returns_401(async_client, test_engi
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_refresh_endpoint_success(async_client, test_engine, create_tables, router_tenant_id):
-    """POST /api/v1/auth/refresh returns 200 with new tokens."""
+    """POST /api/v1/auth/refresh returns 200 with new access_token; refresh_token from cookie."""
     _set_env()
     identity_id = await _raw_create_identity(
         test_engine, router_tenant_id, "refresh@router.com"
@@ -184,21 +187,26 @@ async def test_refresh_endpoint_success(async_client, test_engine, create_tables
             headers={"X-Tenant": str(router_tenant_id)},
         )
         assert login_resp.status_code == 200, f"Login failed: {login_resp.text}"
-        refresh_token = login_resp.json()["refresh_token"]
+        # refresh_token is now in the cookie, not the body
+        refresh_token = login_resp.cookies["refresh_token"]
 
         refresh_resp = await async_client.post(
             "/api/v1/auth/refresh",
-            json={"refresh_token": refresh_token},
+            cookies={"refresh_token": refresh_token},
         )
         assert refresh_resp.status_code == 200
-        assert "access_token" in refresh_resp.json()
+        data = refresh_resp.json()
+        assert "access_token" in data
+        assert "refresh_token" not in data
+        # rotated refresh_token is set as a new cookie
+        assert "refresh_token" in refresh_resp.cookies
     finally:
         await _raw_delete_identity(test_engine, identity_id)
 
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_logout_endpoint_success(async_client, test_engine, create_tables, router_tenant_id):
-    """POST /api/v1/auth/logout returns 200."""
+    """POST /api/v1/auth/logout returns 200 and clears the refresh_token cookie."""
     _set_env()
     identity_id = await _raw_create_identity(
         test_engine, router_tenant_id, "logout@router.com"
@@ -210,13 +218,15 @@ async def test_logout_endpoint_success(async_client, test_engine, create_tables,
             headers={"X-Tenant": str(router_tenant_id)},
         )
         assert login_resp.status_code == 200, f"Login failed: {login_resp.text}"
-        refresh_token = login_resp.json()["refresh_token"]
+        # refresh_token is now in the cookie, not the body
+        refresh_token = login_resp.cookies["refresh_token"]
 
         logout_resp = await async_client.post(
             "/api/v1/auth/logout",
-            json={"refresh_token": refresh_token},
+            cookies={"refresh_token": refresh_token},
         )
         assert logout_resp.status_code == 200
+        assert logout_resp.json()["message"] == "Logged out successfully"
     finally:
         await _raw_delete_identity(test_engine, identity_id)
 

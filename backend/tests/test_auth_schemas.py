@@ -37,15 +37,26 @@ def test_login_request_invalid_email():
 
 def test_token_pair_valid():
     from app.schemas.auth import TokenPair
-    tp = TokenPair(access_token="acc", refresh_token="ref", token_type="bearer")
+    # refresh_token is no longer in the body — only access_token + token_type
+    tp = TokenPair(access_token="acc", token_type="bearer")
     assert tp.token_type == "bearer"
+    assert tp.access_token == "acc"
 
 
 def test_token_pair_extra_field_forbidden():
     from pydantic import ValidationError
     from app.schemas.auth import TokenPair
     with pytest.raises(ValidationError):
-        TokenPair(access_token="a", refresh_token="r", token_type="bearer", extra="x")
+        TokenPair(access_token="a", token_type="bearer", extra="x")
+
+
+def test_token_pair_has_no_refresh_token_field():
+    """Verify that TokenPair no longer exposes refresh_token in the body."""
+    from pydantic import ValidationError
+    from app.schemas.auth import TokenPair
+    # Passing refresh_token should be rejected as an extra field
+    with pytest.raises(ValidationError):
+        TokenPair(access_token="a", refresh_token="r", token_type="bearer")
 
 
 # ==============================================================================
@@ -76,19 +87,23 @@ def test_mfa_verify_request_valid():
 
 
 # ==============================================================================
-# RefreshRequest / LogoutRequest
+# RefreshRequest / LogoutRequest — removed (transport moved to httpOnly cookie)
 # ==============================================================================
 
-def test_refresh_request_valid():
-    from app.schemas.auth import RefreshRequest
-    req = RefreshRequest(refresh_token="mytoken")
-    assert req.refresh_token == "mytoken"
+def test_refresh_request_removed():
+    """RefreshRequest no longer exists — refresh token travels as httpOnly cookie."""
+    import app.schemas.auth as auth_schemas
+    assert not hasattr(auth_schemas, "RefreshRequest"), (
+        "RefreshRequest should have been removed — refresh token is now a cookie"
+    )
 
 
-def test_logout_request_valid():
-    from app.schemas.auth import LogoutRequest
-    req = LogoutRequest(refresh_token="mytoken")
-    assert req.refresh_token == "mytoken"
+def test_logout_request_removed():
+    """LogoutRequest no longer exists — refresh token travels as httpOnly cookie."""
+    import app.schemas.auth as auth_schemas
+    assert not hasattr(auth_schemas, "LogoutRequest"), (
+        "LogoutRequest should have been removed — refresh token is now a cookie"
+    )
 
 
 # ==============================================================================
