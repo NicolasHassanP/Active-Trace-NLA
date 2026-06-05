@@ -10,6 +10,7 @@ Endpoints de gestión (avisos:publicar):
     POST   /avisos               — publicar aviso
     PUT    /avisos/{id}          — modificar aviso
     DELETE /avisos/{id}          — soft-delete aviso
+    GET    /avisos/gestion       — management list (ALL tenant avisos, C-23 OQ-1 fix)
 
 Endpoints de feed (any authenticated role):
     GET    /avisos               — full recipient feed (con ack_count)
@@ -183,6 +184,35 @@ async def listar_pendientes(
         cohorte_id=cohorte_id,
         actor=current_user,
     )
+
+
+# ---------------------------------------------------------------------------
+# Gestión: GET /avisos/gestion — management list (C-15 follow-up, C-23 OQ-1)
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/gestion",
+    response_model=List[AvisoRead],
+)
+async def listar_avisos_gestion(
+    _grant=Depends(require_permission("avisos:publicar")),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> List[AvisoRead]:
+    """
+    Lista de gestión: TODOS los avisos no eliminados del tenant del actor.
+
+    C-15 follow-up resolviendo el gap OQ-1 de C-23: el feed de audiencia filtra
+    por destinatario, lo que impide a un COORDINADOR ver avisos dirigidos a otros
+    segmentos. Este endpoint devuelve el set completo del tenant (sin filtro de
+    audiencia) para el panel de gestión.
+
+    Requiere permiso avisos:publicar (COORDINADOR, ADMIN). Fail-closed: sin
+    permiso → 403. Identidad y tenant SIEMPRE del JWT, nunca del body/URL.
+    Ordenado por created_at DESC (más reciente primero).
+    """
+    svc = _make_aviso_service(db, current_user.tenant_id)
+    return await svc.listar_gestion(current_user)
 
 
 # ---------------------------------------------------------------------------

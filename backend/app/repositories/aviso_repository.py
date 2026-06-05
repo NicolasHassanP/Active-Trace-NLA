@@ -43,6 +43,32 @@ class AvisoRepository(TenantScopedRepository[Aviso]):
         super().__init__(Aviso, session, tenant_id)
 
     # -----------------------------------------------------------------------
+    # Management list — all non-deleted avisos for the tenant (C-23 OQ-1 fix)
+    # -----------------------------------------------------------------------
+
+    async def listar_todos_gestion(self) -> List[Aviso]:
+        """
+        Returns ALL non-soft-deleted avisos for this tenant, unfiltered by audience.
+
+        Management view: does NOT apply the audience filter (no Global/PorRol/PorCohorte/
+        PorMateria branches). Returns the full set of tenant avisos ordered by
+        created_at DESC (newest first) for the management panel.
+
+        C-15 follow-up resolving OQ-1 of C-23. Tenant-scoped row-level isolation
+        is enforced by self._tenant_id exactly as all other repository queries.
+        """
+        stmt = (
+            select(Aviso)
+            .where(
+                Aviso.tenant_id == self._tenant_id,
+                Aviso.deleted_at.is_(None),
+            )
+            .order_by(Aviso.created_at.desc())
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    # -----------------------------------------------------------------------
     # Recipient feed — main query (D3)
     # -----------------------------------------------------------------------
 

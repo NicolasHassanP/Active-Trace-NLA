@@ -198,6 +198,24 @@ class AvisoService:
     # 5.5 — Feed / pending retrieval with derived counters
     # -----------------------------------------------------------------------
 
+    async def listar_gestion(
+        self,
+        actor: CurrentUser,
+    ) -> List[AvisoRead]:
+        """
+        Management list: ALL non-deleted avisos for the caller's tenant.
+
+        No audience filtering — returns the full tenant set ordered newest-first.
+        ack_count is derived per aviso via the acknowledgment repository (D4).
+
+        C-15 follow-up resolving OQ-1 of C-23: the audience feed is intentionally
+        recipient-scoped; management needs the unfiltered tenant-scoped list.
+        Requires avisos:publicar permission (enforced at the router layer).
+        Identity/tenant ALWAYS from actor (JWT) — never from request.
+        """
+        avisos = await self._aviso_repo.listar_todos_gestion()
+        return await self._build_feed_response(avisos)
+
     async def listar_feed(
         self,
         usuario_id: uuid.UUID,

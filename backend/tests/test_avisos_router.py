@@ -47,12 +47,13 @@ def test_router_prefix():
 
 
 def test_router_has_expected_routes():
-    """6.1 GREEN: avisos router has POST, GET, PUT, DELETE, and ack routes."""
+    """6.1 GREEN: avisos router has POST, GET, PUT, DELETE, ack, and gestion routes."""
     from app.api.v1.routers.avisos import router
     paths = {route.path for route in router.routes}
     # Router prefix is /avisos, so paths include the prefix
     assert "/avisos" in paths or "/avisos/pendientes" in paths
     assert "/avisos/pendientes" in paths
+    assert "/avisos/gestion" in paths  # C-23 OQ-1 management-list endpoint
     assert "/avisos/{aviso_id}" in paths
     assert "/avisos/{aviso_id}/ack" in paths
 
