@@ -17,6 +17,7 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
 import { AuthProvider } from '@/features/auth/hooks/AuthProvider'
 import ProtectedRoute from '@/shared/components/ProtectedRoute'
 import AppLayout from '@/features/shell/components/AppLayout'
@@ -25,6 +26,11 @@ import AppLayout from '@/features/shell/components/AppLayout'
 const LoginPage = lazy(() => import('@/features/auth/components/LoginPage'))
 const DashboardPlaceholder = lazy(() => import('@/shared/components/DashboardPlaceholder'))
 const NotFound404 = lazy(() => import('@/shared/components/NotFound404'))
+
+// C-22 lazy pages
+const PadronPage = lazy(() => import('@/features/padron/pages/PadronPage'))
+const AtrasadosPage = lazy(() => import('@/features/atrasados/pages/AtrasadosPage'))
+const ComunicacionesPage = lazy(() => import('@/features/comunicaciones/pages/ComunicacionesPage'))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,6 +54,7 @@ const PageFallback = () => (
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <Toaster richColors position="top-right" />
       <BrowserRouter>
         <AuthProvider>
           <Suspense fallback={<PageFallback />}>
@@ -60,13 +67,40 @@ export default function App() {
                 <Route element={<AppLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="/dashboard" element={<DashboardPlaceholder />} />
-                  {/*
-                    === Slot for C-22 / C-23 / C-24 ===
-                    Add lazy-loaded feature routes here as they are implemented.
-                    Example:
-                    <Route path="/materias" element={<MateriasPage />} />
-                    <Route path="/equipos" element={<EquiposPage />} />
-                  */}
+                  {/* === C-22 routes === */}
+                  <Route
+                    path="/padron"
+                    element={
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}>
+                        <PadronPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/materias/:materiaId/cohortes/:cohorteId/atrasados"
+                    element={
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}>
+                        <AtrasadosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/atrasados"
+                    element={
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}>
+                        <AtrasadosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/comunicaciones"
+                    element={
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}>
+                        <ComunicacionesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* === End C-22 routes === */}
                   <Route path="*" element={<NotFound404 />} />
                 </Route>
               </Route>

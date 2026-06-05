@@ -28,6 +28,20 @@ export const NAV_CATALOG: NavItem[] = [
     roles: ['PROFESOR', 'COORDINADOR', 'ADMIN'],
     icon: 'star',
   },
+  // C-22: Padrón — PROFESOR·TUTOR·COORDINADOR·ADMIN
+  {
+    label: 'Padrón',
+    path: '/padron',
+    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
+    icon: 'users',
+  },
+  // C-22: Atrasados — PROFESOR·TUTOR·COORDINADOR·ADMIN
+  {
+    label: 'Atrasados',
+    path: '/atrasados',
+    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
+    icon: 'alert-circle',
+  },
   // --- COORDINADOR ---
   {
     label: 'Equipos docentes',
@@ -47,10 +61,11 @@ export const NAV_CATALOG: NavItem[] = [
     roles: ['COORDINADOR', 'ADMIN'],
     icon: 'clipboard',
   },
+  // C-22: Comunicaciones expanded to PROFESOR·TUTOR (comunicacion:enviar)
   {
     label: 'Comunicaciones',
     path: '/comunicaciones',
-    roles: ['COORDINADOR', 'ADMIN'],
+    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
     icon: 'mail',
   },
   // --- FINANZAS ---
