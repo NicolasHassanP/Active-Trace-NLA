@@ -61,6 +61,34 @@ export const NAV_CATALOG: NavItem[] = [
     roles: ['COORDINADOR', 'ADMIN'],
     icon: 'clipboard',
   },
+  // C-23: Avisos — bandeja (PROFESOR·TUTOR·COORDINADOR·ADMIN); gestión inside page
+  {
+    label: 'Avisos',
+    path: '/avisos',
+    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
+    icon: 'bell',
+  },
+  // C-23: Tareas internas — mis-tareas (TUTOR·PROFESOR·COORDINADOR·ADMIN); admin panel inside page
+  {
+    label: 'Tareas',
+    path: '/tareas',
+    roles: ['TUTOR', 'PROFESOR', 'COORDINADOR', 'ADMIN'],
+    icon: 'check-square',
+  },
+  // C-23: Monitor — COORDINADOR·ADMIN only
+  {
+    label: 'Monitor',
+    path: '/monitor',
+    roles: ['COORDINADOR', 'ADMIN'],
+    icon: 'bar-chart-2',
+  },
+  // C-23: Setup cuatrimestre — COORDINADOR·ADMIN only
+  {
+    label: 'Setup cuatrimestre',
+    path: '/setup-cuatrimestre',
+    roles: ['COORDINADOR', 'ADMIN'],
+    icon: 'settings',
+  },
   // C-22: Comunicaciones expanded to PROFESOR·TUTOR (comunicacion:enviar)
   {
     label: 'Comunicaciones',

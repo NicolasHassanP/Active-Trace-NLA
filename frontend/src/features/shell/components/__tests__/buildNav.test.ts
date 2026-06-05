@@ -55,3 +55,67 @@ describe('buildNav — pure function', () => {
     expect(buildNav([])).toEqual([])
   })
 })
+
+// ---------------------------------------------------------------------------
+// C-23 role-gated items (task 8.3)
+// ---------------------------------------------------------------------------
+
+describe('buildNav — C-23 coordination items', () => {
+  it('COORDINADOR sees all coordination-exclusive items (/avisos, /tareas, /monitor, /setup-cuatrimestre, /equipos, /encuentros, /coloquios)', () => {
+    const items = buildNav(['COORDINADOR'])
+    const paths = items.map((i) => i.path)
+    expect(paths).toContain('/avisos')
+    expect(paths).toContain('/tareas')
+    expect(paths).toContain('/monitor')
+    expect(paths).toContain('/setup-cuatrimestre')
+    expect(paths).toContain('/equipos')
+    expect(paths).toContain('/encuentros')
+    expect(paths).toContain('/coloquios')
+  })
+
+  it('ADMIN sees all coordination items', () => {
+    const items = buildNav(['ADMIN'])
+    const paths = items.map((i) => i.path)
+    expect(paths).toContain('/avisos')
+    expect(paths).toContain('/tareas')
+    expect(paths).toContain('/monitor')
+    expect(paths).toContain('/setup-cuatrimestre')
+    expect(paths).toContain('/equipos')
+    expect(paths).toContain('/encuentros')
+    expect(paths).toContain('/coloquios')
+  })
+
+  it('PROFESOR sees /avisos and /tareas but NOT /monitor, /setup-cuatrimestre, /equipos (coordination-exclusive)', () => {
+    const items = buildNav(['PROFESOR'])
+    const paths = items.map((i) => i.path)
+    // Bandeja de avisos (broad) and tareas (own) are visible to PROFESOR
+    expect(paths).toContain('/avisos')
+    expect(paths).toContain('/tareas')
+    // Coordination-exclusive items must NOT appear
+    expect(paths).not.toContain('/monitor')
+    expect(paths).not.toContain('/setup-cuatrimestre')
+    expect(paths).not.toContain('/equipos')
+    expect(paths).not.toContain('/encuentros')
+    expect(paths).not.toContain('/coloquios')
+  })
+
+  it('FINANZAS does NOT see any coordination items', () => {
+    const items = buildNav(['FINANZAS'])
+    const paths = items.map((i) => i.path)
+    expect(paths).not.toContain('/avisos')
+    expect(paths).not.toContain('/tareas')
+    expect(paths).not.toContain('/monitor')
+    expect(paths).not.toContain('/setup-cuatrimestre')
+    expect(paths).not.toContain('/equipos')
+    expect(paths).not.toContain('/encuentros')
+    expect(paths).not.toContain('/coloquios')
+  })
+
+  it('TUTOR sees /tareas (gestión tareas propias) but NOT /monitor or /setup-cuatrimestre', () => {
+    const items = buildNav(['TUTOR'])
+    const paths = items.map((i) => i.path)
+    expect(paths).toContain('/tareas')
+    expect(paths).not.toContain('/monitor')
+    expect(paths).not.toContain('/setup-cuatrimestre')
+  })
+})

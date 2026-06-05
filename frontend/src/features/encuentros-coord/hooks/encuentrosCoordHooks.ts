@@ -1,0 +1,53 @@
+/**
+ * EncuentrosCoord TanStack Query hooks.
+ * queryKey MUST include ALL active filter params for correct cache isolation.
+ * Task 5.5.
+ */
+import { useQuery } from '@tanstack/react-query'
+import { listarInstancias, listarGuardias } from '../services/encuentrosCoordService'
+import type { InstanciasParams, GuardiaParams } from '../types'
+
+// ---------------------------------------------------------------------------
+// useInstancias — GET /api/v1/encuentros/instancias
+// ---------------------------------------------------------------------------
+
+function instanciasKey(params: InstanciasParams) {
+  return ['encuentros-instancias', params.materia_id ?? null] as const
+}
+
+/**
+ * Query hook for GET /api/v1/encuentros/instancias.
+ * queryKey includes materia_id so different filter values produce separate cache entries.
+ */
+export function useInstancias(params: InstanciasParams) {
+  return useQuery({
+    queryKey: instanciasKey(params),
+    queryFn: () => listarInstancias(params),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// useGuardias — GET /api/v1/guardias
+// ---------------------------------------------------------------------------
+
+function guardiasKey(params: GuardiaParams) {
+  return [
+    'guardias',
+    params.materia_id ?? null,
+    params.carrera_id ?? null,
+    params.cohorte_id ?? null,
+    params.dia ?? null,
+    params.estado ?? null,
+  ] as const
+}
+
+/**
+ * Query hook for GET /api/v1/guardias.
+ * queryKey includes ALL filter fields so different filter combos produce separate cache entries.
+ */
+export function useGuardias(params: GuardiaParams) {
+  return useQuery({
+    queryKey: guardiasKey(params),
+    queryFn: () => listarGuardias(params),
+  })
+}

@@ -32,6 +32,17 @@ const PadronPage = lazy(() => import('@/features/padron/pages/PadronPage'))
 const AtrasadosPage = lazy(() => import('@/features/atrasados/pages/AtrasadosPage'))
 const ComunicacionesPage = lazy(() => import('@/features/comunicaciones/pages/ComunicacionesPage'))
 
+// C-23 lazy pages
+const EquiposPage = lazy(() => import('@/features/equipos/pages/EquiposPage'))
+const AvisosPage = lazy(() => import('@/features/avisos/pages/AvisosPage'))
+const TareasPage = lazy(() => import('@/features/tareas/pages/TareasPage'))
+const MonitorPage = lazy(() => import('@/features/monitores/pages/MonitorPage'))
+const EncuentrosPage = lazy(() => import('@/features/encuentros-coord/pages/EncuentrosPage'))
+const ColoquiosPage = lazy(() => import('@/features/coloquios/pages/ColoquiosPage'))
+const SetupCuatrimestrePage = lazy(
+  () => import('@/features/setup-cuatrimestre/pages/SetupCuatrimestrePage'),
+)
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -100,7 +111,71 @@ export default function App() {
                       </ProtectedRoute>
                     }
                   />
-                  {/* === End C-22 routes === */}
+                  {/* === C-23 routes === */}
+                  {/* /equipos — COORDINADOR/ADMIN for management; PROFESOR/TUTOR/NEXO for mis-equipos (page decides render) */}
+                  <Route
+                    path="/equipos"
+                    element={
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN', 'NEXO']}>
+                        <EquiposPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* /avisos — any authenticated user (bandeja); management gated inside page */}
+                  <Route
+                    path="/avisos"
+                    element={
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN', 'NEXO', 'ALUMNO', 'FINANZAS']}>
+                        <AvisosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* /tareas — TUTOR/PROFESOR/COORDINADOR/ADMIN; admin panel gated inside page */}
+                  <Route
+                    path="/tareas"
+                    element={
+                      <ProtectedRoute requiredRoles={['TUTOR', 'PROFESOR', 'COORDINADOR', 'ADMIN']}>
+                        <TareasPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* /monitor — COORDINADOR/ADMIN only */}
+                  <Route
+                    path="/monitor"
+                    element={
+                      <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN']}>
+                        <MonitorPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* /encuentros — COORDINADOR/ADMIN only */}
+                  <Route
+                    path="/encuentros"
+                    element={
+                      <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN']}>
+                        <EncuentrosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* /coloquios — COORDINADOR/ADMIN only */}
+                  <Route
+                    path="/coloquios"
+                    element={
+                      <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN']}>
+                        <ColoquiosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* /setup-cuatrimestre — COORDINADOR/ADMIN only */}
+                  <Route
+                    path="/setup-cuatrimestre"
+                    element={
+                      <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN']}>
+                        <SetupCuatrimestrePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* === End C-23 routes === */}
                   <Route path="*" element={<NotFound404 />} />
                 </Route>
               </Route>
