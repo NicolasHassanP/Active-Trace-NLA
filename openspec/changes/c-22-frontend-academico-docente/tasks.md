@@ -1,7 +1,8 @@
 ## 1. Andamiaje y tipos compartidos
 
-- [ ] 1.1 Crear la estructura de carpetas `features/padron`, `features/atrasados`, `features/comunicaciones` con subcarpetas `types/`, `services/`, `hooks/`, `components/`, `pages/`
-- [ ] 1.2 Definir un tipo/helper de error de dominio reutilizable que extraiga `status` y `detail` de un `AxiosError` (sin `any`), usado por los tres services para traducir 422/502/503/409/404/403
+- [ ] 1.1 Instalar `sonner` en `frontend/package.json`; agregar `<Toaster />` en `App.tsx` a nivel global (OQ-3 cerrada — C-21 no tiene toasts)
+- [ ] 1.2 Crear la estructura de carpetas `features/padron`, `features/atrasados`, `features/comunicaciones` con subcarpetas `types/`, `services/`, `hooks/`, `components/`, `pages/`
+- [ ] 1.3 Definir un tipo/helper de error de dominio reutilizable que extraiga `status` y `detail` de un `AxiosError` (sin `any`), usado por los tres services para traducir 422/502/503/409/404/403
 
 ## 2. Padrón — tipos y service (BAJO, con test)
 
@@ -27,7 +28,7 @@
 
 - [ ] 5.1 RED/GREEN: `useAtrasados` y `useReporteMateria` con `queryKey` que incluye los filtros activos
 - [ ] 5.2 Componente `AtrasadosTable` (< 200 LOC): tabla con `actividades_faltantes`/`actividades_no_aprobadas`, estado vacío, y paginación client-side
-- [ ] 5.3 Componente `AtrasadosFilters` (< 200 LOC): filtros de materia/cohorte/actividades que actualizan el `queryKey`
+- [ ] 5.3 Ruta `/materias/:materiaId/cohortes/:cohorteId/atrasados` — leer `materiaId`/`cohorteId` con `useParams()` y pasarlos al `queryKey` (OQ-1); componente `AtrasadosFilters` para filtro de `actividades[]`
 - [ ] 5.4 Componente `ReporteMateriaHeader` (< 200 LOC): métricas (total alumnos, atrasados, tasa) con manejo de `sin_datos`
 - [ ] 5.5 Selección de alumnos (checkbox) en estado local que habilita "Comunicar a seleccionados" y propaga los emails; test de habilitación/deshabilitación
 - [ ] 5.6 `AtrasadosPage` que compone filtros + header + tabla + acción de comunicar; tests de render por estado
@@ -42,11 +43,11 @@
 ## 7. Comunicaciones — hooks (MEDIO, con test)
 
 - [ ] 7.1 RED/GREEN: mutations `usePreviewComunicacion`, `useEncolarLote`, `useAprobarLote`, `useCancelarLote`, `useAprobarIndividual`, `useCancelarIndividual` con invalidación de la query del lote
-- [ ] 7.2 RED/GREEN: `useLoteStatus` (query) con `refetchInterval` activo solo mientras haya mensajes Pendiente/Enviando y detenido en estado terminal
+- [ ] 7.2 RED/GREEN: `useLoteStatus` (query) con `refetchInterval` activo solo mientras haya mensajes `Pendiente`/`Enviando` (estado observable directamente del backend — OQ-2); detenido cuando todos los mensajes son terminales (`Enviado`/`Error`/`Cancelado`)
 
 ## 8. Comunicaciones — vistas (MEDIO, con test)
 
-- [ ] 8.1 Schema Zod + form `ComposeComunicacion` (RHF, < 200 LOC): `asunto_plantilla`, `cuerpo_plantilla`, destinatarios; validación de campos vacíos/sin destinatarios
+- [ ] 8.1 Schema Zod + form `ComposeComunicacion` (RHF, < 200 LOC): `asunto_plantilla`, `cuerpo_plantilla`, destinatarios; `variables_por_destinatario` construidas automáticamente desde `AlumnoAtrasado` (solo lectura, sin edición manual por alumno — OQ-4); validación de campos vacíos/sin destinatarios
 - [ ] 8.2 Preview de plantilla en el form: 200 muestra render, 422 muestra variable faltante y bloquea encolar; test de ambos caminos
 - [ ] 8.3 Encolar → retiene `lote_id` y abre la bandeja; test de éxito y de 422
 - [ ] 8.4 Componente `LoteStatusBandeja` (< 200 LOC): contadores (pendientes/enviados/errores/cancelados) + detalle por mensaje; test de refresco mientras hay mensajes en curso
@@ -63,4 +64,4 @@
 
 - [ ] 10.1 Ejecutar la suite de tests del frontend y confirmar verde sin romper tests de C-21
 - [ ] 10.2 Verificar que ningún archivo nuevo usa `any`, ningún componente supera 200 LOC, y todos los componentes son funcionales
-- [ ] 10.3 Revisar que las open questions del design (origen de materia/cohorte, estado "Enviando", toasts, variables por destinatario) están resueltas o anotadas como deuda explícita
+- [ ] 10.3 Confirmar que las 4 OQs están implementadas: rutas con params (OQ-1), polling sobre estado real del backend (OQ-2), `sonner` integrado (OQ-3), variables read-only (OQ-4)
