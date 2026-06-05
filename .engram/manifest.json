@@ -208,6 +208,14 @@
       "sessions": 0,
       "memories": 1,
       "prompts": 0
+    },
+    {
+      "id": "68e44c6d",
+      "created_by": "Acel",
+      "created_at": "2026-06-05T05:01:35Z",
+      "sessions": 1,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }

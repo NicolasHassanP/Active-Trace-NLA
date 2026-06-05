@@ -58,3 +58,8 @@ class Settings(BaseSettings):
     # NOTA_MAXIMA_DEFECTO: Nota máxima asumida para actividades numéricas si el
     # archivo no incluye la nota máxima en el header (OQ-2).
     NOTA_MAXIMA_DEFECTO: float = 10.0
+
+    # ---- C-19: audit panel ---------------------------------------------------
+    # AUDIT_PANEL_LOG_MAX: Maximum number of records the panel log endpoint may
+    # return. Default 200. A request with limite > this value is rejected (D4).
+    AUDIT_PANEL_LOG_MAX: int = 200
