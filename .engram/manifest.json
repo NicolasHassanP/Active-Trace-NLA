@@ -240,6 +240,22 @@
       "sessions": 0,
       "memories": 2,
       "prompts": 0
+    },
+    {
+      "id": "ee2a99df",
+      "created_by": "Leand",
+      "created_at": "2026-06-05T19:56:39Z",
+      "sessions": 0,
+      "memories": 4,
+      "prompts": 0
+    },
+    {
+      "id": "03e45038",
+      "created_by": "Leand",
+      "created_at": "2026-06-05T20:04:15Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }
