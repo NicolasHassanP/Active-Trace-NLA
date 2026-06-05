@@ -351,6 +351,51 @@ async def _ensure_schema(engine) -> None:
                 await conn.execute(
                     text(f"ALTER TYPE audit_action ADD VALUE '{tarea_action}'")
                 )
+        # C-17: programa/fecha_academica audit actions
+        for acad_action in ("PROGRAMA_GESTIONAR", "FECHA_ACADEMICA_GESTIONAR"):
+            result_acad = await conn.execute(
+                text(
+                    "SELECT 1 FROM pg_enum e "
+                    "JOIN pg_type t ON e.enumtypid = t.oid "
+                    "WHERE t.typname = 'audit_action' AND e.enumlabel = :label"
+                ),
+                {"label": acad_action},
+            )
+            if result_acad.scalar() is None:
+                await conn.execute(
+                    text(f"ALTER TYPE audit_action ADD VALUE '{acad_action}'")
+                )
+        # C-17: partial unique indexes for programa_materia and fecha_academica
+        result_pm_idx = await conn.execute(
+            text(
+                "SELECT 1 FROM pg_indexes "
+                "WHERE tablename = 'programa_materia' "
+                "AND indexname = 'ux_programa_materia_tenant_combo'"
+            )
+        )
+        if result_pm_idx.scalar() is None:
+            await conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_programa_materia_tenant_combo "
+                    "ON programa_materia (tenant_id, materia_id, carrera_id, cohorte_id) "
+                    "WHERE deleted_at IS NULL"
+                )
+            )
+        result_fa_idx = await conn.execute(
+            text(
+                "SELECT 1 FROM pg_indexes "
+                "WHERE tablename = 'fecha_academica' "
+                "AND indexname = 'ux_fecha_academica_tenant_combo'"
+            )
+        )
+        if result_fa_idx.scalar() is None:
+            await conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_fecha_academica_tenant_combo "
+                    "ON fecha_academica (tenant_id, materia_id, cohorte_id, tipo, numero, periodo) "
+                    "WHERE deleted_at IS NULL"
+                )
+            )
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -393,6 +438,7 @@ async def create_tables(test_engine):
         await conn.execute(text("DROP TYPE IF EXISTS aviso_severidad CASCADE"))
         # C-16: tarea enum
         await conn.execute(text("DROP TYPE IF EXISTS tarea_estado CASCADE"))
+        # C-17: no new enum (reuses evaluacion_tipo from C-14)
 
 
 @pytest_asyncio.fixture(scope="session")

@@ -69,3 +69,8 @@ from app.models.tarea import (  # noqa: F401
     Tarea,
     ComentarioTarea,
 )
+from app.models.academico import (  # noqa: F401
+    FechaAcademicaTipo,
+    ProgramaMateria,
+    FechaAcademica,
+)
