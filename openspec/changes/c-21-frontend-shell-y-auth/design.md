@@ -29,19 +29,21 @@ Restricciones de contrato (reglas duras del proyecto y stack):
 
 ## Decisions
 
-### D1 — Access token en memoria, refresh en cookie httpOnly (no localStorage)
-El access token vive solo en memoria (módulo/estado del `AuthProvider`); el refresh token lo gestiona el backend como cookie httpOnly + Secure + SameSite. **Por qué:** mitiga XSS (un token en `localStorage` es legible por cualquier script inyectado) y CSRF (httpOnly + SameSite). Alinea con la regla dura "tokens JWT nunca en localStorage si hay alternativa más segura".
+### D1 — Access token en memoria, refresh en cookie httpOnly (no localStorage) — OQ-2 confirmada
+El access token vive solo en memoria (módulo/estado del `AuthProvider`); el refresh token lo gestiona el backend como cookie httpOnly + Secure + SameSite. **Por qué:** mitiga XSS y CSRF. Alinea con la regla dura "tokens JWT nunca en localStorage si hay alternativa más segura".
+- **Axios configurado con `withCredentials: true`** en el cliente global y en el endpoint de refresh específicamente, para que el browser envíe automáticamente la cookie httpOnly en los requests cross-origin.
 - *Alternativa descartada:* token en `localStorage` — simple pero expuesto a XSS; rechazado.
-- *Alternativa descartada:* ambos tokens en memoria sin cookie — pierde la sesión en cada recarga sin posibilidad de rehidratar; rechazado.
-- *Costo:* al recargar la página el access token se pierde y debe rehidratarse con un refresh inicial; se asume como trade-off aceptable.
+- *Alternativa descartada:* ambos tokens en memoria sin cookie — pierde la sesión en cada recarga; rechazado.
+- *Costo:* al recargar la página el access token se pierde y debe rehidratarse con un refresh inicial; trade-off aceptable.
 
 ### D2 — Refresh automático vía interceptor de response de Axios
 El interceptor de response intercepta `401`, dispara el refresh, y reintenta la petición original. Un flag por request (`_retry`) evita bucles; una promesa de refresh compartida serializa los refrescos concurrentes (las peticiones que llegan durante un refresh en curso se encolan y se reintentan con el nuevo token). **Por qué:** centraliza el manejo de expiración en un solo lugar; los hooks de feature no se enteran del refresh.
 - *Alternativa descartada:* refresh proactivo por timer antes del `exp` — más complejo, sensible a drift de reloj; el reactivo por `401` es más robusto. Se puede agregar después.
 
-### D3 — Rehidratación de identidad desde el backend (endpoint de sesión)
-Al arrancar la app (y tras un refresh), la identidad/roles/tenant se obtienen del backend (`GET /api/v1/auth/me` o equivalente), no se decodifican del JWT en el cliente. **Por qué:** la regla de oro del proyecto — identidad SIEMPRE desde la sesión verificada por el servidor. El cliente no confía en claims que él mismo podría leer/manipular; trata el JWT como opaco.
-- *Alternativa descartada:* decodificar el JWT en el cliente para leer `roles`/`tenant_id` — viola la regla de oro y acopla el cliente al formato del token; rechazado.
+### D3 — Rehidratación de identidad desde el payload del JWT (OQ-1 cerrada)
+No existe `GET /api/v1/auth/me`. La identidad (`user_id`, `tenant_id`, `roles`, `exp`) viene en los claims del access token generado por C-03. El frontend decodifica el payload Base64 del JWT (sin verificar la firma — eso lo hace el backend) para hidratar `AuthUser`. **Por qué:** es la única fuente disponible, y es válida: el JWT fue emitido y firmado por el backend; leer sus claims públicos es seguro. La regla de oro del proyecto aplica a la *autorización* — identidad NUNCA desde parámetros de la petición, y la firma del token la verifica el servidor en cada request protegido.
+- *Importante:* el frontend trata el access token como firmado-por-el-backend; no lo manipula ni confía en tokens que él mismo construya. El decode es solo de lectura para UX (mostrar nombre, filtrar nav).
+- *Alternativa descartada:* endpoint `/me` — no existe en C-03; introducirlo requeriría un change de backend fuera de scope.
 
 ### D4 — Navegación por ROL en el cliente; autorización fina en el backend
 El sidebar y `ProtectedRoute` deciden visibilidad/acceso por **rol** (dato de la sesión). Los permisos finos `modulo:accion` NO se evalúan en el cliente: cada endpoint del backend los enforce y responde `403` si corresponde. **Por qué:** el cliente es una conveniencia de UX, no un control de seguridad; duplicar la matriz de permisos en el front sería frágil y redundante. La seguridad real vive server-side.
@@ -71,8 +73,8 @@ No aplica migración de datos ni rollback de schema: es la creación de un proye
 
 ## Open Questions
 
-- **OQ-1 — Endpoint de identidad:** ¿el backend de auth (C-03) expone `GET /api/v1/auth/me` para rehidratar `user`/`roles`/`tenantId`, o esos datos vienen en el payload de `login`/`refresh`? Asumido: existe un endpoint o el payload los incluye; aislado en `auth/services/`.
-- **OQ-2 — Transporte del refresh token:** ¿el backend entrega el refresh como cookie httpOnly (asunción de este diseño) o en el body de la respuesta? Si fuera en el body, habría que revisar D1 (almacenamiento). Confirmar con el contrato de C-03.
-- **OQ-3 — 2FA y recuperación de contraseña en la UI:** se difieren fuera del shell mínimo. ¿Entran como tasks de este change o como un change posterior de la feature `auth`? Asumido: fuera de C-21 (ver Non-Goals).
-- **OQ-4 — Destinos de navegación por rol:** el catálogo `NavItem[]` definitivo depende de las rutas que aporten C-22/C-23/C-24. En C-21 se entrega la infraestructura de navegación y un catálogo inicial mínimo (placeholder por rol); cada change de dominio agrega sus items.
-- **OQ-5 — Rol ALUMNO / NEXO en el shell:** ALUMNO tiene un alcance acotado (consultar estado propio, reservar coloquios) y NEXO está pendiente de semántica (PA-25). En C-21 se contemplan en el modelo de roles pero sin destinos de navegación específicos hasta que sus módulos existan.
+- **OQ-1** ✅ **CERRADA (2026-06-05):** No existe `GET /auth/me`. Identidad (`user_id`, `tenant_id`, `roles`, `exp`) viene en los claims del JWT access token de C-03. El frontend decodifica el payload para hidratar `AuthUser` — ver D3.
+- **OQ-2** ✅ **CERRADA (2026-06-05):** D1 confirmada. Refresh token como cookie httpOnly. Axios configurado con `withCredentials: true` en el cliente global y en el endpoint de refresh — ver D1.
+- **OQ-3:** 2FA y recuperación de contraseña en la UI diferidas fuera de C-21 (Non-Goal).
+- **OQ-4:** Catálogo `NavItem[]` definitivo depende de C-22/C-23/C-24; C-21 entrega infra + placeholders por rol.
+- **OQ-5:** ALUMNO y NEXO contemplados en el modelo de roles pero sin destinos de navegación hasta que sus módulos existan.

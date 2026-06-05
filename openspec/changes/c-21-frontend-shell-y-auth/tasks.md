@@ -16,7 +16,7 @@
 ## 3. Cliente HTTP centralizado y refresh (auth-flow)
 
 - [ ] 3.1 RED: test del interceptor de request — adjunta `Authorization: Bearer <token>` cuando hay token; no lo adjunta cuando no lo hay (2 casos)
-- [ ] 3.2 GREEN: crear instancia Axios única en `shared/services/api.ts` con `baseURL` `/api/v1` e interceptor de request que lee el access token en memoria
+- [ ] 3.2 GREEN: crear instancia Axios única en `shared/services/api.ts` con `baseURL` `/api/v1`, `withCredentials: true` (para cookie httpOnly de refresh — OQ-2) e interceptor de request que adjunta `Authorization: Bearer <token>` desde memoria
 - [ ] 3.3 RED: test del interceptor de response — `401` con refresh válido → refresca, reintenta y resuelve; refresh inválido → limpia sesión y señaliza logout
 - [ ] 3.4 GREEN: implementar interceptor de response con refresh contra `POST /auth/refresh`, reintento único (flag `_retry`) y promesa de refresh compartida
 - [ ] 3.5 TRIANGULATE: test de peticiones concurrentes (un solo refresh, todas reintentan) y de no-bucle (petición ya reintentada que vuelve a 401 fuerza logout)
@@ -26,14 +26,14 @@
 
 - [ ] 4.1 RED: test de `useAuth` — sin sesión reporta `isAuthenticated=false`, `user=null`, `roles=[]`; con sesión refleja identidad del backend
 - [ ] 4.2 GREEN: implementar `AuthProvider` (Context) y `useAuth` exponiendo `user`, `roles`, `tenantId`, `isAuthenticated`, `login()`, `logout()`
-- [ ] 4.3 RED: test de rehidratación — al montar, intenta refresh inicial; éxito → hidrata identidad desde el backend; fallo → estado no autenticado
-- [ ] 4.4 GREEN: implementar rehidratación de sesión al arrancar (refresh + fetch de identidad `GET /auth/me`), tratando el JWT como opaco (identidad SIEMPRE desde el backend)
+- [ ] 4.3 RED: test de rehidratación — al montar, intenta refresh inicial; éxito → decodifica payload del JWT para hidratar `AuthUser` (`user_id`, `tenant_id`, `roles`, `exp`); fallo → estado no autenticado
+- [ ] 4.4 GREEN: implementar rehidratación de sesión al arrancar: `POST /auth/refresh` (cookie httpOnly viaja automáticamente por `withCredentials`) → decodificar payload Base64 del access token devuelto → poblar `AuthUser` — OQ-1 cerrada: no existe `/auth/me`
 - [ ] 4.5 REFACTOR: consolidar el estado de carga de sesión (`isInitializing`) para que los guards puedan esperar
 
 ## 5. Servicios y hooks de auth (auth-flow)
 
 - [ ] 5.1 RED: test del schema Zod de login (email válido/ inválido, password requerido)
-- [ ] 5.2 GREEN: definir el schema Zod y los servicios `login`/`logout`/`refresh`/`me` en `features/auth/services/` (todos vía el cliente Axios central)
+- [ ] 5.2 GREEN: definir el schema Zod y los servicios `login`/`logout`/`refresh` en `features/auth/services/` (sin `me` — OQ-1); todos vía el cliente Axios central; login y refresh decodifican el payload JWT para extraer `AuthUser`
 - [ ] 5.3 RED: test del hook `useLogin` (TanStack mutation) — éxito guarda token e hidrata sesión; `401` expone error
 - [ ] 5.4 GREEN: implementar `useLogin` y `useLogout` como hooks de `services/` con TanStack Query; en logout, invalidar/limpiar la caché de Query
 
