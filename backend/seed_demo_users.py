@@ -22,7 +22,6 @@ from app.core.security.passwords import hash_password, email_lookup_hash
 from app.core.security.crypto import encrypt
 
 TENANT_ID = '8531f634-3f1f-45da-9549-2f801d85c39b'
-DB = 'postgresql+asyncpg://postgres:280502@localhost:5432/activia_trace'
 
 USERS = [
     {
@@ -57,7 +56,8 @@ USERS = [
 
 
 async def seed() -> None:
-    engine = create_async_engine(DB)
+    from app.core.config import Settings
+    engine = create_async_engine(Settings().DATABASE_URL)
 
     async with engine.begin() as conn:
         # 0) Tenant Demo — idempotente
