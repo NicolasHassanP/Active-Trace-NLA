@@ -9,6 +9,7 @@
  *
  * Fail-closed: no role match → 403.
  */
+import { type ReactNode } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import type { Role } from '@/features/auth/types'
@@ -16,9 +17,10 @@ import Forbidden403 from './Forbidden403'
 
 interface Props {
   requiredRoles?: Role[]
+  children?: ReactNode
 }
 
-export default function ProtectedRoute({ requiredRoles }: Props) {
+export default function ProtectedRoute({ requiredRoles, children }: Props) {
   const { isAuthenticated, isInitializing, roles } = useAuth()
   const location = useLocation()
 
@@ -47,5 +49,5 @@ export default function ProtectedRoute({ requiredRoles }: Props) {
     }
   }
 
-  return <Outlet />
+  return children ? <>{children}</> : <Outlet />
 }

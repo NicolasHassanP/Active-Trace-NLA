@@ -32,8 +32,15 @@ const PadronPage = lazy(() => import('@/features/padron/pages/PadronPage'))
 const AtrasadosPage = lazy(() => import('@/features/atrasados/pages/AtrasadosPage'))
 const ComunicacionesPage = lazy(() => import('@/features/comunicaciones/pages/ComunicacionesPage'))
 
+// Calificaciones lazy page (C-22 backfill)
+const CalificacionesPage = lazy(() => import('@/features/calificaciones/pages/CalificacionesPage'))
+
+// Seguimiento lazy page (F2.8 — Monitor de seguimiento TUTOR/PROFESOR)
+const SeguimientoPage = lazy(() => import('@/features/seguimiento/pages/SeguimientoPage'))
+
 // C-23 lazy pages
 const EquiposPage = lazy(() => import('@/features/equipos/pages/EquiposPage'))
+const MateriasPage = lazy(() => import('@/features/materias/pages/MateriasPage'))
 const AvisosPage = lazy(() => import('@/features/avisos/pages/AvisosPage'))
 const TareasPage = lazy(() => import('@/features/tareas/pages/TareasPage'))
 const MonitorPage = lazy(() => import('@/features/monitores/pages/MonitorPage'))
@@ -111,6 +118,15 @@ export default function App() {
                       </ProtectedRoute>
                     }
                   />
+                  {/* === Calificaciones route (C-22 backfill) === */}
+                  <Route
+                    path="/calificaciones"
+                    element={
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'COORDINADOR', 'ADMIN']}>
+                        <CalificacionesPage />
+                      </ProtectedRoute>
+                    }
+                  />
                   {/* === C-23 routes === */}
                   {/* /equipos — COORDINADOR/ADMIN for management; PROFESOR/TUTOR/NEXO for mis-equipos (page decides render) */}
                   <Route
@@ -118,6 +134,15 @@ export default function App() {
                     element={
                       <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN', 'NEXO']}>
                         <EquiposPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* /materias — F4.2 Vista de mis equipos: PROFESOR/TUTOR/COORDINADOR/ADMIN/NEXO */}
+                  <Route
+                    path="/materias"
+                    element={
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN', 'NEXO']}>
+                        <MateriasPage />
                       </ProtectedRoute>
                     }
                   />
@@ -172,6 +197,15 @@ export default function App() {
                     element={
                       <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN']}>
                         <SetupCuatrimestrePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* /seguimiento — F2.8 Monitor de seguimiento TUTOR/PROFESOR/COORD/ADMIN */}
+                  <Route
+                    path="/seguimiento"
+                    element={
+                      <ProtectedRoute requiredRoles={['TUTOR', 'PROFESOR', 'COORDINADOR', 'ADMIN']}>
+                        <SeguimientoPage />
                       </ProtectedRoute>
                     }
                   />
