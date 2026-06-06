@@ -40,7 +40,7 @@ export default function ComunicacionesPage() {
   const [loteId, setLoteId] = useState<string | null>(null)
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 p-6">
+    <div className="space-y-8">
       <PageHeader
         title="Comunicaciones"
         subtitle={destinatarios.length > 0 ? `${destinatarios.length} destinatario(s) preseleccionado(s) desde alumnos atrasados.` : undefined}

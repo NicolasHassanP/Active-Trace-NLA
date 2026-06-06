@@ -48,7 +48,7 @@ export default function TareasPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 p-6">
+    <div className="space-y-8">
       <PageHeader title="Tareas" />
 
       {/* Admin panel — COORDINADOR / ADMIN only */}

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import type { Role } from '@/features/auth/types'
+import { useLogout } from '@/features/auth/hooks/useLogout'
 
 const ROLE_GRADIENT: Record<string, string> = {
   COORDINADOR: 'linear-gradient(150deg, #818cf8, #4338ca)',
@@ -40,6 +41,7 @@ function initials(name?: string, email?: string): string {
 export function RoleSwitcher({ roles, name, email }: RoleSwitcherProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const logoutMutation = useLogout()
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -54,38 +56,68 @@ export function RoleSwitcher({ roles, name, email }: RoleSwitcherProps) {
 
   return (
     <div ref={ref} className="relative mt-3">
-      {/* Trigger */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-[10px] p-[10px] rounded-[11px] border border-line cursor-pointer hover:bg-[#fafbff] transition-colors"
-      >
-        <div
-          className="w-[34px] h-[34px] rounded-full shrink-0 flex items-center justify-center text-white text-[13px] font-bold"
-          style={{ background: gradient(activeRole) }}
+      {/* User card row: trigger + logout */}
+      <div className="flex items-center gap-[6px]">
+        {/* Trigger (role switcher) */}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex-1 flex items-center gap-[10px] p-[10px] rounded-[11px] border border-line cursor-pointer hover:bg-[#fafbff] transition-colors min-w-0"
         >
-          {initials(name, email)}
-        </div>
-        <div className="min-w-0 text-left flex-1">
-          <p className="text-[13px] font-extrabold text-ink truncate">{name ?? email ?? 'Usuario'}</p>
-          <p className="text-[11.5px] text-faint">{ROLE_LABEL[activeRole] ?? activeRole}</p>
-        </div>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={['w-[13px] h-[13px] text-faint shrink-0 transition-transform', open ? 'rotate-180' : ''].join(' ')}
-          aria-hidden="true"
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
+          <div
+            className="w-[34px] h-[34px] rounded-full shrink-0 flex items-center justify-center text-white text-[13px] font-bold"
+            style={{ background: gradient(activeRole) }}
+          >
+            {initials(name, email)}
+          </div>
+          <div className="min-w-0 text-left flex-1">
+            <p className="text-[13px] font-extrabold text-ink truncate">{name ?? email ?? 'Usuario'}</p>
+            <p className="text-[11.5px] text-faint">{ROLE_LABEL[activeRole] ?? activeRole}</p>
+          </div>
+          {otherRoles.length > 0 && (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={['w-[13px] h-[13px] text-faint shrink-0 transition-transform', open ? 'rotate-180' : ''].join(' ')}
+              aria-hidden="true"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          )}
+        </button>
 
-      {/* Dropdown */}
+        {/* Logout button */}
+        <button
+          type="button"
+          onClick={() => logoutMutation.mutate()}
+          disabled={logoutMutation.isPending}
+          className="shrink-0 w-[36px] h-[36px] rounded-[10px] border border-line flex items-center justify-center text-faint hover:text-warn hover:border-warn/30 hover:bg-warnBg transition-colors disabled:opacity-50"
+          aria-label="Cerrar sesión"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-[15px] h-[15px]"
+            aria-hidden="true"
+          >
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Role dropdown */}
       {open && otherRoles.length > 0 && (
         <div
           className="absolute bottom-full left-0 right-0 mb-[6px] bg-white border border-line rounded-[14px] overflow-hidden z-50"

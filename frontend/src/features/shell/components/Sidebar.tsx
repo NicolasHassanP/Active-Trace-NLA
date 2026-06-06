@@ -3,6 +3,22 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { buildNav } from './buildNav'
 import { NavIcon } from '@/shared/components/ui/NavIcon'
 import { RoleSwitcher } from './RoleSwitcher'
+import type { NavItem } from '../types'
+
+function groupNavItems(items: NavItem[]): { label: string; items: NavItem[] }[] {
+  const groups: { label: string; items: NavItem[] }[] = []
+  const map = new Map<string, NavItem[]>()
+  for (const item of items) {
+    const key = item.group ?? ''
+    if (!map.has(key)) {
+      const arr: NavItem[] = []
+      map.set(key, arr)
+      groups.push({ label: key, items: arr })
+    }
+    map.get(key)!.push(item)
+  }
+  return groups
+}
 
 export default function Sidebar() {
   const { roles, user, isInitializing, isAuthenticated } = useAuth()
@@ -10,6 +26,7 @@ export default function Sidebar() {
   if (isInitializing || !isAuthenticated) return null
 
   const navItems = buildNav(roles)
+  const groups = groupNavItems(navItems)
 
   return (
     <aside
@@ -33,39 +50,48 @@ export default function Sidebar() {
         {navItems.length === 0 ? (
           <p className="text-[11px] text-faint px-[10px]">Sin ítems de navegación</p>
         ) : (
-          <ul>
-            {navItems.map((item) => (
-              <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    [
-                      'flex items-center gap-[11px] px-[10px] py-[7.5px] rounded-[9px] mb-[1px] text-[13.5px] font-semibold cursor-pointer transition-colors',
-                      isActive
-                        ? 'bg-indBg text-ind2'
-                        : 'text-[#4b5563] hover:bg-[#f4f4f8] hover:text-ink',
-                    ].join(' ')
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      {item.icon && (
-                        <NavIcon
-                          name={item.icon}
-                          className={['w-[15px] h-[15px] shrink-0', isActive ? 'text-ind' : ''].join(' ')}
-                        />
+          groups.map(({ label, items }) => (
+            <div key={label}>
+              {label && (
+                <p className="text-[10.5px] font-bold tracking-[0.6px] uppercase text-faint px-[10px] mt-[14px] mb-[4px]">
+                  {label}
+                </p>
+              )}
+              <ul>
+                {items.map((item) => (
+                  <li key={item.path}>
+                    <NavLink
+                      to={item.path}
+                      className={({ isActive }) =>
+                        [
+                          'flex items-center gap-[11px] px-[10px] py-[7.5px] rounded-[9px] mb-[1px] text-[13.5px] font-semibold cursor-pointer transition-colors',
+                          isActive
+                            ? 'bg-indBg text-ind2'
+                            : 'text-[#4b5563] hover:bg-[#f4f4f8] hover:text-ink',
+                        ].join(' ')
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          {item.icon && (
+                            <NavIcon
+                              name={item.icon}
+                              className={['w-[15px] h-[15px] shrink-0', isActive ? 'text-ind' : ''].join(' ')}
+                            />
+                          )}
+                          {item.label}
+                        </>
                       )}
-                      {item.label}
-                    </>
-                  )}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
         )}
       </nav>
 
-      {/* Role switcher / user card */}
+      {/* User card + logout */}
       {user && (
         <RoleSwitcher roles={roles} name={user.name} email={user.email} />
       )}

@@ -15,119 +15,129 @@ import type { NavItem } from '../types'
  * ALUMNO and NEXO have no items until their modules exist (C-22+).
  */
 export const NAV_CATALOG: NavItem[] = [
-  // --- PROFESOR ---
+  // ── MI CÁTEDRA ──────────────────────────────────────────
   {
     label: 'Mis materias',
     path: '/materias',
     roles: ['PROFESOR', 'COORDINADOR', 'ADMIN'],
     icon: 'book',
+    group: 'MI CÁTEDRA',
   },
   {
     label: 'Calificaciones',
     path: '/calificaciones',
     roles: ['PROFESOR', 'COORDINADOR', 'ADMIN'],
     icon: 'star',
+    group: 'MI CÁTEDRA',
   },
-  // C-22: Padrón — PROFESOR·TUTOR·COORDINADOR·ADMIN
   {
     label: 'Padrón',
     path: '/padron',
     roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
     icon: 'users',
+    group: 'MI CÁTEDRA',
   },
-  // C-22: Atrasados — PROFESOR·TUTOR·COORDINADOR·ADMIN
   {
     label: 'Atrasados',
     path: '/atrasados',
     roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
     icon: 'alert-circle',
+    group: 'MI CÁTEDRA',
   },
-  // --- COORDINADOR ---
   {
     label: 'Equipos docentes',
     path: '/equipos',
     roles: ['COORDINADOR', 'ADMIN'],
     icon: 'users',
+    group: 'MI CÁTEDRA',
   },
+  {
+    label: 'Seguimiento',
+    path: '/seguimiento',
+    roles: ['TUTOR', 'COORDINADOR', 'ADMIN'],
+    icon: 'eye',
+    group: 'MI CÁTEDRA',
+  },
+  // ── INSTANCIAS ───────────────────────────────────────────
   {
     label: 'Encuentros',
     path: '/encuentros',
     roles: ['COORDINADOR', 'ADMIN'],
     icon: 'calendar',
+    group: 'INSTANCIAS',
   },
   {
     label: 'Coloquios',
     path: '/coloquios',
-    roles: ['COORDINADOR', 'ADMIN'],
+    roles: ['COORDINADOR', 'ADMIN', 'ALUMNO'],
     icon: 'clipboard',
+    group: 'INSTANCIAS',
   },
-  // C-23: Avisos — bandeja (PROFESOR·TUTOR·COORDINADOR·ADMIN); gestión inside page
+  // ── TRABAJO ──────────────────────────────────────────────
   {
     label: 'Avisos',
     path: '/avisos',
-    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
+    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN', 'ALUMNO', 'FINANZAS'],
     icon: 'bell',
+    group: 'TRABAJO',
   },
-  // C-23: Tareas internas — mis-tareas (TUTOR·PROFESOR·COORDINADOR·ADMIN); admin panel inside page
   {
     label: 'Tareas',
     path: '/tareas',
     roles: ['TUTOR', 'PROFESOR', 'COORDINADOR', 'ADMIN'],
     icon: 'check-square',
+    group: 'TRABAJO',
   },
-  // C-23: Monitor — COORDINADOR·ADMIN only
-  {
-    label: 'Monitor',
-    path: '/monitor',
-    roles: ['COORDINADOR', 'ADMIN'],
-    icon: 'bar-chart-2',
-  },
-  // C-23: Setup cuatrimestre — COORDINADOR·ADMIN only
-  {
-    label: 'Setup cuatrimestre',
-    path: '/setup-cuatrimestre',
-    roles: ['COORDINADOR', 'ADMIN'],
-    icon: 'settings',
-  },
-  // C-22: Comunicaciones expanded to PROFESOR·TUTOR (comunicacion:enviar)
   {
     label: 'Comunicaciones',
     path: '/comunicaciones',
     roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
     icon: 'mail',
+    group: 'TRABAJO',
   },
-  // --- FINANZAS ---
+  {
+    label: 'Monitor',
+    path: '/monitor',
+    roles: ['COORDINADOR', 'ADMIN'],
+    icon: 'bar-chart-2',
+    group: 'TRABAJO',
+  },
+  {
+    label: 'Setup cuatrimestre',
+    path: '/setup-cuatrimestre',
+    roles: ['COORDINADOR', 'ADMIN'],
+    icon: 'settings',
+    group: 'TRABAJO',
+  },
+  // ── FINANZAS ─────────────────────────────────────────────
   {
     label: 'Liquidaciones',
     path: '/liquidaciones',
     roles: ['FINANZAS', 'ADMIN'],
     icon: 'dollar-sign',
+    group: 'FINANZAS',
   },
-  // --- ADMIN ---
+  // ── ADMINISTRACIÓN ───────────────────────────────────────
   {
     label: 'Usuarios',
     path: '/admin/usuarios',
     roles: ['ADMIN'],
     icon: 'shield',
+    group: 'ADMINISTRACIÓN',
   },
   {
     label: 'Estructura académica',
     path: '/admin/estructura',
     roles: ['ADMIN'],
     icon: 'database',
+    group: 'ADMINISTRACIÓN',
   },
   {
     label: 'Auditoría',
     path: '/admin/auditoria',
     roles: ['ADMIN'],
     icon: 'activity',
-  },
-  // --- TUTOR ---
-  {
-    label: 'Seguimiento',
-    path: '/seguimiento',
-    roles: ['TUTOR', 'COORDINADOR', 'ADMIN'],
-    icon: 'eye',
+    group: 'ADMINISTRACIÓN',
   },
 ]
 

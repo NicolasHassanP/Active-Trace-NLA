@@ -182,11 +182,11 @@ export default function App() {
                       </ProtectedRoute>
                     }
                   />
-                  {/* /coloquios — COORDINADOR/ADMIN only */}
+                  {/* /coloquios — COORDINADOR/ADMIN gestión; ALUMNO reserva (gating inside page) */}
                   <Route
                     path="/coloquios"
                     element={
-                      <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN']}>
+                      <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN', 'ALUMNO']}>
                         <ColoquiosPage />
                       </ProtectedRoute>
                     }

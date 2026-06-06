@@ -16,7 +16,7 @@ export default function PadronPage() {
   const hasContext = materiaId.trim() !== '' && cohorteId.trim() !== ''
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 p-6">
+    <div className="space-y-8">
       <PageHeader title="Importación de Padrón" />
 
       {/* Selector de contexto */}

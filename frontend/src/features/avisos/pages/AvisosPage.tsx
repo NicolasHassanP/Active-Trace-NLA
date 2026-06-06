@@ -49,7 +49,7 @@ export default function AvisosPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 p-6">
+    <div className="space-y-8">
       <PageHeader title="Avisos" />
 
       {/* Management panel — COORDINADOR / ADMIN only */}

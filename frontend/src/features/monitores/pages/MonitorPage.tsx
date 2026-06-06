@@ -35,7 +35,7 @@ export default function MonitorPage() {
 
   if (!isAllowed) {
     return (
-      <div data-testid="monitor-access-denied" className="max-w-6xl mx-auto p-6">
+      <div data-testid="monitor-access-denied">
         <div role="alert" className="rounded bg-red-50 p-4 text-sm text-red-700">
           Acceso denegado. Esta sección es exclusiva para Coordinadores y Administradores.
         </div>
@@ -44,7 +44,7 @@ export default function MonitorPage() {
   }
 
   return (
-    <div data-testid="monitor-panel" className="max-w-6xl mx-auto space-y-6 p-6">
+    <div data-testid="monitor-panel" className="space-y-6">
       <PageHeader title="Monitor general de actividades" />
 
       <MonitorFilters onFilter={handleFilter} onClear={handleClear} />

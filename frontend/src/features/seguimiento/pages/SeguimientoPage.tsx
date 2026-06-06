@@ -36,7 +36,7 @@ export default function SeguimientoPage() {
   }
 
   return (
-    <div data-testid="seguimiento-panel" className="mx-auto max-w-6xl space-y-6 p-6">
+    <div data-testid="seguimiento-panel" className="space-y-6">
       {/* Header */}
       <PageHeader title="Seguimiento de alumnos" />
 
