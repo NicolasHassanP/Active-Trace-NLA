@@ -17,6 +17,7 @@ import UmbralConfig from '../components/UmbralConfig'
 import RankingTable from '../components/RankingTable'
 import ReporteMateriaPanel from '../components/ReporteMateria'
 import NotasFinalesTable from '../components/NotasFinalesTable'
+import { PageHeader } from '@/shared/components/ui'
 
 type Tab = 'importar' | 'umbral' | 'ranking' | 'reporte' | 'notas'
 
@@ -38,7 +39,7 @@ export default function CalificacionesPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 p-6">
-      <h1 className="text-2xl font-bold text-gray-900">Calificaciones</h1>
+      <PageHeader title="Calificaciones" />
 
       <SelectorMateriaCohorte
         materiaId={materiaId}

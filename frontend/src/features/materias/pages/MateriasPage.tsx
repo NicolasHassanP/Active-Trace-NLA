@@ -6,6 +6,7 @@
  */
 import { useMisMaterias } from '../hooks/materiasHooks'
 import MisMateriasTable from '../components/MisMateriasTable'
+import { PageHeader, EmptyState } from '@/shared/components/ui'
 
 export default function MateriasPage() {
   const { data, isLoading, isError } = useMisMaterias()
@@ -14,12 +15,10 @@ export default function MateriasPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Mis materias</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Tus asignaciones como docente: materia, carrera, cohorte, rol y vigencia.
-        </p>
-      </div>
+      <PageHeader
+        title="Mis materias"
+        subtitle="Tus asignaciones como docente: materia, carrera, cohorte, rol y vigencia."
+      />
 
       {isLoading && (
         <p className="text-sm text-gray-500">Cargando asignaciones…</p>
@@ -31,7 +30,14 @@ export default function MateriasPage() {
         </div>
       )}
 
-      {!isLoading && !isError && (
+      {!isLoading && !isError && items.length === 0 && (
+        <EmptyState
+          title="No tenés asignaciones actualmente."
+          description="Cuando se te asigne una materia, aparecerá aquí."
+        />
+      )}
+
+      {!isLoading && !isError && items.length > 0 && (
         <MisMateriasTable items={items} />
       )}
     </div>

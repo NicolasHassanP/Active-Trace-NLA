@@ -1,14 +1,17 @@
 /**
  * MisMateriasTable — table for F4.2 Vista de mis equipos.
  * Shows: Rol | Materia ID | Carrera | Cohorte | Comisiones | Vigencia | Estado
- * - Badge de color por estado_vigencia: verde=vigente, amarillo=futura, gris=vencida
- * - Badge de color por rol: PROFESOR=indigo, TUTOR=purple, COORDINADOR=blue, NEXO=orange
+ * - StatusBadge for estado_vigencia: verde=vigente, amarillo=futura, gris=vencida
+ * - Badge for rol: PROFESOR=indigo, TUTOR=purple, COORDINADOR=blue, NEXO=orange
  * - IDs shown as first 8 chars of UUID (no name endpoint yet)
  * - Client-side filter by estado_vigencia (Todos / Vigentes / Futuras / Vencidas)
  * < 200 LOC.
  */
 import { useState } from 'react'
-import type { MisMateriasItem, RolAsignacion, EstadoVigencia, VigenciaFilter } from '../types'
+import type { MisMateriasItem, EstadoVigencia, VigenciaFilter } from '../types'
+import type { RolAsignacion } from '../types'
+import { Badge, StatusBadge } from '@/shared/components/ui'
+import type { BadgeVariant } from '@/shared/components/ui'
 
 interface Props {
   items: MisMateriasItem[]
@@ -24,20 +27,17 @@ const VIGENCIA_LABEL: Record<EstadoVigencia, string> = {
   futura: 'Futura',
 }
 
-const VIGENCIA_BADGE: Record<EstadoVigencia, string> = {
-  vigente: 'text-green-700 bg-green-100',
-  futura: 'text-yellow-700 bg-yellow-100',
-  vencida: 'text-gray-600 bg-gray-100',
-}
+// StatusBadge maps 'vigente' → green, 'futura' → yellow, 'vencida' → gray
+// via its internal STATUS_COLOR_MAP. We only need to pass the status key.
 
-const ROL_BADGE: Record<RolAsignacion, string> = {
-  PROFESOR: 'text-indigo-700 bg-indigo-100',
-  TUTOR: 'text-purple-700 bg-purple-100',
-  COORDINADOR: 'text-blue-700 bg-blue-100',
-  NEXO: 'text-orange-700 bg-orange-100',
-  ADMIN: 'text-red-700 bg-red-100',
-  FINANZAS: 'text-teal-700 bg-teal-100',
-  ALUMNO: 'text-gray-700 bg-gray-100',
+const ROL_BADGE_VARIANT: Record<RolAsignacion, BadgeVariant> = {
+  PROFESOR:     'indigo',
+  TUTOR:        'purple',
+  COORDINADOR:  'info',
+  NEXO:         'orange',
+  ADMIN:        'danger',
+  FINANZAS:     'success',
+  ALUMNO:       'gray',
 }
 
 // ---------------------------------------------------------------------------
@@ -120,11 +120,9 @@ export default function MisMateriasTable({ items }: Props) {
               {filtered.map((item) => (
                 <tr key={item.asignacion_id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${ROL_BADGE[item.rol] ?? 'text-gray-700 bg-gray-100'}`}
-                    >
+                    <Badge variant={ROL_BADGE_VARIANT[item.rol] ?? 'gray'}>
                       {item.rol}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="px-4 py-3 font-mono text-gray-700">{shortId(item.materia_id)}</td>
                   <td className="px-4 py-3 font-mono text-gray-700">{shortId(item.carrera_id)}</td>
@@ -137,11 +135,10 @@ export default function MisMateriasTable({ items }: Props) {
                     {item.hasta ? ` → ${item.hasta}` : ' → abierta'}
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${VIGENCIA_BADGE[item.estado_vigencia] ?? ''}`}
-                    >
-                      {VIGENCIA_LABEL[item.estado_vigencia] ?? item.estado_vigencia}
-                    </span>
+                    <StatusBadge
+                      status={item.estado_vigencia}
+                      label={VIGENCIA_LABEL[item.estado_vigencia] ?? item.estado_vigencia}
+                    />
                   </td>
                 </tr>
               ))}

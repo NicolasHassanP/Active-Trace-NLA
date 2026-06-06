@@ -15,6 +15,7 @@ import { useSeguimiento } from '../hooks/seguimientoHooks'
 import SeguimientoFiltros from '../components/SeguimientoFiltros'
 import SeguimientoTable from '../components/SeguimientoTable'
 import type { SeguimientoParams } from '../types'
+import { PageHeader, Card, CardContent, StatusBadge } from '@/shared/components/ui'
 
 const EMPTY_PARAMS: SeguimientoParams = {}
 
@@ -37,25 +38,30 @@ export default function SeguimientoPage() {
   return (
     <div data-testid="seguimiento-panel" className="mx-auto max-w-6xl space-y-6 p-6">
       {/* Header */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Seguimiento de alumnos</h1>
-        {!query.isLoading && !query.isError && (
-          <div
-            data-testid="seguimiento-counters"
-            className="flex items-center gap-3 text-sm text-gray-600"
-          >
-            <span>
-              <span className="font-semibold text-gray-900">{totalAlumnos}</span>{' '}
-              {totalAlumnos === 1 ? 'alumno' : 'alumnos'}
-            </span>
-            {totalAtrasados > 0 && (
-              <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-                {totalAtrasados} atrasado{totalAtrasados !== 1 ? 's' : ''}
+      <PageHeader title="Seguimiento de alumnos" />
+
+      {/* Counter card — shown once data is ready */}
+      {!query.isLoading && !query.isError && (
+        <Card>
+          <CardContent>
+            <div
+              data-testid="seguimiento-counters"
+              className="flex items-center gap-4 text-sm text-gray-600"
+            >
+              <span>
+                <span className="font-semibold text-gray-900">{totalAlumnos}</span>{' '}
+                {totalAlumnos === 1 ? 'alumno' : 'alumnos'}
               </span>
-            )}
-          </div>
-        )}
-      </div>
+              {totalAtrasados > 0 && (
+                <StatusBadge
+                  status="atrasado"
+                  label={`${totalAtrasados} atrasado${totalAtrasados !== 1 ? 's' : ''}`}
+                />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <SeguimientoFiltros onFilter={handleFilter} onClear={handleClear} />

@@ -2,21 +2,16 @@
  * SeguimientoTable — renders SeguimientoFila rows.
  *
  * Columns: Alumno ID (short UUID) | Estado | Aprobadas | Faltantes
- * Badge colors: rojo=atrasado, verde=al_dia, gris=sin_datos
+ * Uses StatusBadge for estado: rojo=atrasado, verde=al_dia, gris=sin_datos
  * Empty state: shown when filas.length === 0.
  *
  * < 200 LOC. No `any`. Only Tailwind.
  */
 import type { SeguimientoFila } from '../types'
+import { StatusBadge } from '@/shared/components/ui'
 
 interface Props {
   filas: SeguimientoFila[]
-}
-
-const ESTADO_STYLES: Record<string, string> = {
-  atrasado: 'bg-red-100 text-red-800',
-  al_dia: 'bg-green-100 text-green-800',
-  sin_datos: 'bg-gray-100 text-gray-600',
 }
 
 const ESTADO_LABELS: Record<string, string> = {
@@ -60,13 +55,10 @@ export default function SeguimientoTable({ filas }: Props) {
                 {shortId(fila.entrada_padron_id)}
               </td>
               <td className="px-4 py-3">
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    ESTADO_STYLES[fila.estado] ?? 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  {ESTADO_LABELS[fila.estado] ?? fila.estado}
-                </span>
+                <StatusBadge
+                  status={fila.estado}
+                  label={ESTADO_LABELS[fila.estado] ?? fila.estado}
+                />
               </td>
               <td className="px-4 py-3 text-gray-700">{fila.aprobadas}</td>
               <td className="px-4 py-3 text-gray-700">{fila.faltantes}</td>
