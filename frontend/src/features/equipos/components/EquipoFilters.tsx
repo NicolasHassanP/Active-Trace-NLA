@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { EquipoQueryParams, RolAsignacion } from '../types'
+import { Button } from '@/shared/components/ui'
 
 const schema = z.object({
   materia_id: z.string().min(1, 'Materia obligatoria'),
@@ -69,9 +70,9 @@ export default function EquipoFilters({ onSearch }: Props) {
         <input {...register('responsable_id')} className="w-full rounded border border-gray-300 px-3 py-2 text-sm" />
       </div>
       <div className="flex items-end">
-        <button type="submit" className="w-full rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700">
+        <Button type="submit" className="w-full">
           Consultar equipo
-        </button>
+        </Button>
       </div>
     </form>
   )

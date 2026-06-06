@@ -5,6 +5,7 @@
 import { useState } from 'react'
 import { useImportarCandidatos } from '../hooks/coloquiosHooks'
 import type { ImportarCandidatosRequest } from '../types'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   evaluacionId: string
@@ -70,20 +71,17 @@ export default function ImportarCandidatosDialog({ evaluacionId, onClose, onSucc
           )}
 
           <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
+            <Button variant="secondary" type="button" onClick={onClose}>
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
               type="submit"
               disabled={importarMutation.isPending}
-              className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+              isLoading={importarMutation.isPending}
             >
               {importarMutation.isPending ? 'Importando…' : 'Importar'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

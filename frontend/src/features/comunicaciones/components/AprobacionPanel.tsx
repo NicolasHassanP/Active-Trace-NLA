@@ -8,6 +8,7 @@ import { useAprobarLote, useCancelarLote, useAprobarIndividual, useCancelarIndiv
 import type { DomainError } from '@/shared/services/domainError'
 import type { ComunicacionRead } from '../types'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { Button, StatusBadge } from '@/shared/components/ui'
 
 interface Props {
   loteId: string
@@ -73,22 +74,23 @@ export default function AprobacionPanel({ loteId, mensajes }: Props) {
   return (
     <div className="space-y-4" data-testid="aprobacion-panel">
       <div className="flex gap-3">
-        <button
+        <Button
           onClick={handleAprobarLote}
-          disabled={aprobarLote.isPending}
-          className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+          isLoading={aprobarLote.isPending}
+          size="sm"
           data-testid="aprobar-lote-btn"
         >
           Aprobar lote
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="danger"
           onClick={handleCancelarLote}
-          disabled={cancelarLote.isPending}
-          className="px-3 py-1.5 text-sm border border-red-300 text-red-700 rounded hover:bg-red-50 disabled:opacity-50"
+          isLoading={cancelarLote.isPending}
+          size="sm"
           data-testid="cancelar-lote-btn"
         >
           Cancelar lote
-        </button>
+        </Button>
       </div>
 
       <div className="overflow-x-auto">
@@ -104,7 +106,9 @@ export default function AprobacionPanel({ loteId, mensajes }: Props) {
             {mensajes.map((msg) => (
               <tr key={msg.id} className="border-t">
                 <td className="px-2 py-1">{msg.destinatario_email}</td>
-                <td className="px-2 py-1">{msg.estado}</td>
+                <td className="px-2 py-1">
+                  <StatusBadge status={msg.estado} />
+                </td>
                 <td className="px-2 py-1 flex gap-2">
                   {msg.estado === 'Pendiente' && (
                     <>

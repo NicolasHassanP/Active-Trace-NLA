@@ -3,24 +3,18 @@
  * Task 3.7. < 200 LOC.
  */
 import type { TareaRead } from '../types'
+import { EmptyState } from '@/shared/components/ui'
 
 interface Props {
   tareas: TareaRead[]
 }
 
-const ESTADO_STYLES: Record<string, string> = {
-  Pendiente: 'bg-yellow-100 text-yellow-800',
-  EnProgreso: 'bg-blue-100 text-blue-800',
-  Resuelta: 'bg-green-100 text-green-800',
-  Cancelada: 'bg-gray-100 text-gray-600',
-}
-
 export default function MisTareasList({ tareas }: Props) {
   if (tareas.length === 0) {
     return (
-      <p data-testid="mis-tareas-empty" className="text-sm text-gray-500">
-        No hay tareas asignadas.
-      </p>
+      <div data-testid="mis-tareas-empty">
+        <EmptyState title="No hay tareas asignadas." />
+      </div>
     )
   }
 
@@ -39,7 +33,12 @@ export default function MisTareasList({ tareas }: Props) {
           </div>
           <span
             className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              ESTADO_STYLES[tarea.estado] ?? 'bg-gray-100 text-gray-600'
+              {
+                Pendiente: 'bg-yellow-100 text-yellow-800',
+                EnProgreso: 'bg-blue-100 text-blue-800',
+                Resuelta: 'bg-green-100 text-green-800',
+                Cancelada: 'bg-gray-100 text-gray-600',
+              }[tarea.estado] ?? 'bg-gray-100 text-gray-600'
             }`}
           >
             {tarea.estado}

@@ -3,18 +3,10 @@
  * Polling is controlled by useLoteStatus (bounded by terminal states). < 200 LOC.
  */
 import { useLoteStatus } from '../hooks/comunicacionHooks'
-import type { EstadoComunicacion } from '../types'
+import { StatusBadge } from '@/shared/components/ui'
 
 interface Props {
   loteId: string
-}
-
-const estadoColors: Record<EstadoComunicacion, string> = {
-  Pendiente: 'bg-yellow-100 text-yellow-800',
-  Enviando: 'bg-blue-100 text-blue-800',
-  Enviado: 'bg-green-100 text-green-800',
-  Fallido: 'bg-red-100 text-red-800',
-  Cancelado: 'bg-gray-100 text-gray-600',
 }
 
 export default function LoteStatusBandeja({ loteId }: Props) {
@@ -56,9 +48,7 @@ export default function LoteStatusBandeja({ loteId }: Props) {
               <tr key={msg.id} className="border-t">
                 <td className="px-2 py-1">{msg.destinatario_email}</td>
                 <td className="px-2 py-1">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${estadoColors[msg.estado] ?? 'bg-gray-100'}`}>
-                    {msg.estado}
-                  </span>
+                  <StatusBadge status={msg.estado} />
                 </td>
               </tr>
             ))}

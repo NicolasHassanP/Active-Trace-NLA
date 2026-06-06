@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { useVigenciaGeneral } from '../hooks/equiposHooks'
+import { Button } from '@/shared/components/ui'
 
 const schema = z.object({
   materia_id: z.string().min(1, 'Obligatorio'),
@@ -70,13 +71,13 @@ export default function VigenciaGeneralForm() {
           <input type="date" {...register('hasta')} className="w-full rounded border border-gray-300 px-3 py-2 text-sm" />
         </div>
       </div>
-      <button
+      <Button
         type="submit"
+        isLoading={mutation.isPending}
         disabled={mutation.isPending}
-        className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
       >
-        {mutation.isPending ? 'Actualizando…' : 'Actualizar vigencia'}
-      </button>
+        Actualizar vigencia
+      </Button>
     </form>
   )
 }

@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { usePreviewPadron, useActivarPadron } from '../hooks/padronHooks'
 import type { DomainError } from '@/shared/services/domainError'
 import type { PadronRowDTO } from '../types'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   materia_id: string
@@ -116,14 +117,14 @@ export default function PadronImportForm({ materia_id, cohorte_id, onSuccess }: 
               </tbody>
             </table>
           </div>
-          <button
+          <Button
             onClick={handleConfirm}
+            isLoading={activar.isPending}
             disabled={activar.isPending}
-            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
             data-testid="confirm-import"
           >
-            {activar.isPending ? 'Importando…' : 'Confirmar importación'}
-          </button>
+            Confirmar importación
+          </Button>
         </div>
       )}
     </div>

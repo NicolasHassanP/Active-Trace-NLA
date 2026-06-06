@@ -7,6 +7,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { Button } from '@/shared/components/ui'
 
 const schema = z.object({
   cohorte_id: z.string().min(1, 'Cohorte ID obligatorio'),
@@ -65,13 +66,9 @@ export default function PasoCohorte({ onSuccess, onError: _onError }: PasoCohort
         )}
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
-      >
+      <Button type="submit" variant="primary" disabled={isSubmitting} isLoading={isSubmitting}>
         {isSubmitting ? 'Guardando…' : 'Confirmar cohorte'}
-      </button>
+      </Button>
     </form>
   )
 }

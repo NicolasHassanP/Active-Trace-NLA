@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { asignacionMasiva } from '@/features/equipos/services/equiposService'
 import { parseDomainError } from '@/shared/services/domainError'
 import type { RolAsignacion } from '@/features/equipos/types'
+import { Button } from '@/shared/components/ui'
 
 const ROL_OPTIONS: RolAsignacion[] = ['PROFESOR', 'TUTOR', 'COORDINADOR', 'NEXO']
 
@@ -118,13 +119,9 @@ export default function PasoAsignaciones({ onSuccess, onError }: Props) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
-      >
+      <Button type="submit" variant="primary" disabled={isSubmitting} isLoading={isSubmitting}>
         {isSubmitting ? 'Asignando…' : 'Aplicar asignaciones'}
-      </button>
+      </Button>
     </form>
   )
 }

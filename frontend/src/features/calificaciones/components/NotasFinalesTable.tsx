@@ -6,6 +6,7 @@
 import { useNotasFinales } from '../hooks/calificacionesHooks'
 import type { DomainError } from '@/shared/services/domainError'
 import type { NotaFinalAlumno } from '../types'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   materia_id: string
@@ -56,13 +57,14 @@ export default function NotasFinalesTable({ materia_id, actividades = [] }: Prop
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => exportCsv(data)}
-          className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 border"
           data-testid="export-notas-csv"
         >
           Exportar CSV
-        </button>
+        </Button>
       </div>
 
       <div className="overflow-x-auto">

@@ -11,6 +11,7 @@ import { usePreviewComunicacion, useEncolarLote } from '../hooks/comunicacionHoo
 import type { DomainError } from '@/shared/services/domainError'
 import type { AlumnoAtrasado } from '@/features/atrasados/types'
 import type { PreviewResponse } from '../types'
+import { Button } from '@/shared/components/ui'
 
 const schema = z.object({
   asunto_plantilla: z.string().min(1, 'El asunto es requerido'),
@@ -150,23 +151,24 @@ export default function ComposeComunicacion({ destinatarios, onEncolado }: Props
       )}
 
       <div className="flex gap-3">
-        <button
+        <Button
           type="button"
+          variant="secondary"
           onClick={handlePreview}
+          isLoading={preview.isPending}
           disabled={preview.isPending || destinatarios.length === 0}
-          className="px-4 py-2 border text-sm rounded hover:bg-gray-50 disabled:opacity-50"
           data-testid="preview-btn"
         >
           Previsualizar
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
+          isLoading={encolar.isPending}
           disabled={!canEncolar || encolar.isPending}
-          className="px-4 py-2 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 disabled:opacity-50"
           data-testid="encolar-btn"
         >
-          {encolar.isPending ? 'Encolando…' : 'Encolar'}
-        </button>
+          Encolar
+        </Button>
       </div>
     </form>
   )

@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { useAsignacionMasiva } from '../hooks/equiposHooks'
 import type { RolAsignacion } from '../types'
+import { Button } from '@/shared/components/ui'
 
 const schema = z.object({
   usuario_ids_raw: z.string().min(1, 'Ingresá al menos un usuario ID'),
@@ -105,13 +106,13 @@ export default function AsignacionMasivaForm() {
         </div>
       </div>
 
-      <button
+      <Button
         type="submit"
+        isLoading={mutation.isPending}
         disabled={mutation.isPending}
-        className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
       >
-        {mutation.isPending ? 'Asignando…' : 'Asignar'}
-      </button>
+        Asignar
+      </Button>
     </form>
   )
 }

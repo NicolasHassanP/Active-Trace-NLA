@@ -10,6 +10,7 @@ import LoteStatusBandeja from '../components/LoteStatusBandeja'
 import AprobacionPanel from '../components/AprobacionPanel'
 import { useLoteStatus } from '../hooks/comunicacionHooks'
 import type { AlumnoAtrasado } from '@/features/atrasados/types'
+import { PageHeader } from '@/shared/components/ui'
 
 /** Build minimal AlumnoAtrasado stubs from email list for the compose form */
 function buildDestinatariosFromEmails(emails: string[]): AlumnoAtrasado[] {
@@ -40,13 +41,10 @@ export default function ComunicacionesPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 p-6">
-      <h1 className="text-2xl font-bold text-gray-900">Comunicaciones</h1>
-
-      {destinatarios.length > 0 && (
-        <p className="text-sm text-gray-600">
-          {destinatarios.length} destinatario(s) preseleccionado(s) desde alumnos atrasados.
-        </p>
-      )}
+      <PageHeader
+        title="Comunicaciones"
+        subtitle={destinatarios.length > 0 ? `${destinatarios.length} destinatario(s) preseleccionado(s) desde alumnos atrasados.` : undefined}
+      />
 
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-gray-700">Componer mensaje</h2>

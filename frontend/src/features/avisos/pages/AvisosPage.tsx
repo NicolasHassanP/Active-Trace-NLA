@@ -14,6 +14,7 @@ import BandejaAvisos from '../components/BandejaAvisos'
 import type { AvisoRead } from '../types'
 import type { Role } from '@/features/auth/types'
 import { toast } from 'sonner'
+import { Button, PageHeader } from '@/shared/components/ui'
 
 const MANAGEMENT_ROLES: Role[] = ['COORDINADOR', 'ADMIN']
 
@@ -49,19 +50,20 @@ export default function AvisosPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 p-6">
-      <h1 className="text-2xl font-bold text-gray-900">Avisos</h1>
+      <PageHeader title="Avisos" />
 
       {/* Management panel — COORDINADOR / ADMIN only */}
       {isManager && (
         <section data-testid="avisos-gestion" className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-700">Gestión de avisos</h2>
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => { setEditingAviso(null); setShowForm(true) }}
-              className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
             >
               Nuevo aviso
-            </button>
+            </Button>
           </div>
 
           {showForm && (

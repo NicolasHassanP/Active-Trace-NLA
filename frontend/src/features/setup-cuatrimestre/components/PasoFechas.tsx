@@ -12,6 +12,7 @@ import {
 import type { FechaAcademicaFormValues } from '../services/setupCuatrimestreService'
 import { parseDomainError } from '@/shared/services/domainError'
 import type { FechaAcademicaTipo } from '../types'
+import { Button } from '@/shared/components/ui'
 
 const TIPO_OPTIONS: FechaAcademicaTipo[] = [
   'Parcial',
@@ -127,13 +128,9 @@ export default function PasoFechas({ onSuccess, onError }: Props) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
-      >
+      <Button type="submit" variant="primary" disabled={isSubmitting} isLoading={isSubmitting}>
         {isSubmitting ? 'Cargando…' : 'Registrar fecha'}
-      </button>
+      </Button>
     </form>
   )
 }

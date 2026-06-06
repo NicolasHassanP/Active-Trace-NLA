@@ -4,6 +4,7 @@
  */
 import { useState } from 'react'
 import type { AlumnoAtrasado } from '../types'
+import { EmptyState, Button } from '@/shared/components/ui'
 
 const PAGE_SIZE = 20
 
@@ -18,11 +19,11 @@ export default function AtrasadosTable({ alumnos, selectedEmails, onToggleSelect
 
   if (alumnos.length === 0) {
     return (
-      <div
-        className="text-center py-12 text-gray-500"
-        data-testid="atrasados-empty"
-      >
-        No hay alumnos atrasados para los filtros seleccionados.
+      <div data-testid="atrasados-empty">
+        <EmptyState
+          title="Sin alumnos atrasados"
+          description="No hay alumnos atrasados para los filtros seleccionados."
+        />
       </div>
     )
   }
@@ -76,21 +77,23 @@ export default function AtrasadosTable({ alumnos, selectedEmails, onToggleSelect
 
       {totalPages > 1 && (
         <div className="flex items-center gap-2 text-sm">
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
-            className="px-2 py-1 border rounded disabled:opacity-40"
           >
             ←
-          </button>
+          </Button>
           <span>Página {page + 1} de {totalPages}</span>
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={page === totalPages - 1}
-            className="px-2 py-1 border rounded disabled:opacity-40"
           >
             →
-          </button>
+          </Button>
         </div>
       )}
     </div>

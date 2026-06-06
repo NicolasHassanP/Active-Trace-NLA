@@ -3,22 +3,18 @@
  * Task 6.10. < 200 LOC. Tailwind only.
  */
 import type { AgendaItemRead } from '../types'
+import { EmptyState, StatusBadge } from '@/shared/components/ui'
 
 interface Props {
   items: AgendaItemRead[]
 }
 
-const ESTADO_COLORS: Record<string, string> = {
-  activa: 'bg-green-100 text-green-800',
-  cancelada: 'bg-red-100 text-red-800',
-}
-
 export default function AgendaReservas({ items }: Props) {
   if (items.length === 0) {
     return (
-      <p data-testid="agenda-empty" className="text-sm text-gray-500 py-4">
-        No hay reservas activas en el período.
-      </p>
+      <div data-testid="agenda-empty">
+        <EmptyState title="No hay reservas activas en el período." />
+      </div>
     )
   }
 
@@ -46,11 +42,7 @@ export default function AgendaReservas({ items }: Props) {
               <td className="px-4 py-3 text-gray-900">{item.fecha_turno}</td>
               <td className="px-4 py-3 text-gray-700 font-mono text-xs">{item.alumno_id}</td>
               <td className="px-4 py-3">
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ESTADO_COLORS[item.estado] ?? 'bg-gray-100 text-gray-700'}`}
-                >
-                  {item.estado}
-                </span>
+                <StatusBadge status={item.estado} />
               </td>
             </tr>
           ))}

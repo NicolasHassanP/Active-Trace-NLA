@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { vigenciaGeneral } from '@/features/equipos/services/equiposService'
 import { parseDomainError } from '@/shared/services/domainError'
+import { Button } from '@/shared/components/ui'
 
 const schema = z.object({
   materia_id: z.string().min(1, 'Materia obligatoria'),
@@ -83,13 +84,9 @@ export default function PasoVigencias({ onSuccess, onError }: Props) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
-      >
+      <Button type="submit" variant="primary" disabled={isSubmitting} isLoading={isSubmitting}>
         {isSubmitting ? 'Actualizando…' : 'Actualizar vigencias'}
-      </button>
+      </Button>
     </form>
   )
 }

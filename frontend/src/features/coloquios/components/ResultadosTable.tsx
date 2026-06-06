@@ -3,6 +3,7 @@
  * Task 6.10. < 200 LOC. Tailwind only.
  */
 import type { ResultadoRead } from '../types'
+import { EmptyState } from '@/shared/components/ui'
 
 interface Props {
   resultados: ResultadoRead[]
@@ -11,9 +12,9 @@ interface Props {
 export default function ResultadosTable({ resultados: rows }: Props) {
   if (rows.length === 0) {
     return (
-      <p data-testid="resultados-empty" className="text-sm text-gray-500 py-4">
-        No hay resultados registrados.
-      </p>
+      <div data-testid="resultados-empty">
+        <EmptyState title="No hay resultados registrados." />
+      </div>
     )
   }
 

@@ -4,6 +4,7 @@
  */
 import { useState } from 'react'
 import type { GuardiaParams } from '../types'
+import { Button } from '@/shared/components/ui'
 
 const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
 const ESTADOS = ['Pendiente', 'Realizada', 'Cancelada']
@@ -70,20 +71,12 @@ export default function GuardiasFilters({ onFilter, onClear }: Props) {
         </select>
       </div>
 
-      <button
-        type="button"
-        onClick={handleFilter}
-        className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700"
-      >
+      <Button variant="primary" size="sm" onClick={handleFilter}>
         Filtrar
-      </button>
-      <button
-        type="button"
-        onClick={handleClear}
-        className="rounded border border-gray-300 px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-      >
+      </Button>
+      <Button variant="secondary" size="sm" onClick={handleClear}>
         Limpiar filtros
-      </button>
+      </Button>
     </div>
   )
 }

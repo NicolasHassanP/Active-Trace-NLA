@@ -5,6 +5,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useComentariosTarea, useAgregarComentario } from '../hooks/tareasHooks'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   tareaId: string
@@ -65,13 +66,15 @@ export default function ComentariosThread({ tareaId }: Props) {
           placeholder="Agregar comentario…"
           className="flex-1 rounded border border-gray-300 px-3 py-1.5 text-sm"
         />
-        <button
+        <Button
           type="submit"
+          variant="primary"
+          size="sm"
           disabled={agregarMutation.isPending || !cuerpo.trim()}
-          className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
+          isLoading={agregarMutation.isPending}
         >
           {agregarMutation.isPending ? '…' : 'Enviar'}
-        </button>
+        </Button>
       </form>
     </div>
   )

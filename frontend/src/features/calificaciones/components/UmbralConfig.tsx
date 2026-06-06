@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useConfigurarUmbral, useUmbral } from '../hooks/calificacionesHooks'
 import type { DomainError } from '@/shared/services/domainError'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   materia_id: string
@@ -100,14 +101,15 @@ export default function UmbralConfig({ materia_id }: Props) {
         />
       </div>
 
-      <button
+      <Button
         type="submit"
+        variant="primary"
         disabled={configurar.isPending}
-        className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+        isLoading={configurar.isPending}
         data-testid="guardar-umbral"
       >
         {configurar.isPending ? 'Guardando…' : 'Guardar umbral'}
-      </button>
+      </Button>
     </form>
   )
 }

@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { clonarEquipo } from '@/features/equipos/services/equiposService'
 import { parseDomainError } from '@/shared/services/domainError'
+import { Button } from '@/shared/components/ui'
 
 const schema = z.object({
   origen_materia_id: z.string().min(1, 'Materia origen obligatorio'),
@@ -104,13 +105,9 @@ export default function PasoClonarEquipo({ onSuccess, onError }: Props) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
-      >
+      <Button type="submit" variant="primary" disabled={isSubmitting} isLoading={isSubmitting}>
         {isSubmitting ? 'Clonando…' : 'Clonar equipo'}
-      </button>
+      </Button>
     </form>
   )
 }

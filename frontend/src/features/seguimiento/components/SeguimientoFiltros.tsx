@@ -10,6 +10,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import type { SeguimientoParams } from '../types'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   onFilter: (params: SeguimientoParams) => void
@@ -117,13 +118,9 @@ export default function SeguimientoFiltros({ onFilter, onClear }: Props) {
         />
       </div>
       <div>
-        <button
-          onClick={handleClear}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
-          type="button"
-        >
+        <Button variant="secondary" size="sm" onClick={handleClear}>
           Limpiar filtros
-        </button>
+        </Button>
       </div>
     </div>
   )

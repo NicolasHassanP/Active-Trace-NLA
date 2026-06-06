@@ -4,6 +4,7 @@
  * Task 2.7. < 200 LOC.
  */
 import type { AvisoRead } from '../types'
+import { EmptyState } from '@/shared/components/ui'
 
 interface Props {
   avisos: AvisoRead[]
@@ -13,7 +14,7 @@ interface Props {
 
 export default function AvisosTable({ avisos, onEdit, onDelete }: Props) {
   if (avisos.length === 0) {
-    return <p className="text-sm text-gray-500 py-2">No hay avisos publicados.</p>
+    return <EmptyState title="No hay avisos publicados." />
   }
 
   return (

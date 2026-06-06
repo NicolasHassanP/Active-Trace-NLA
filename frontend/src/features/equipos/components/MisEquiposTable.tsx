@@ -3,29 +3,18 @@
  * Task 1.9. < 200 LOC.
  */
 import type { MisEquiposItem } from '../types'
+import { EmptyState, StatusBadge } from '@/shared/components/ui'
 
 interface Props {
   items: MisEquiposItem[]
 }
 
-const VIGENCIA_LABEL: Record<string, string> = {
-  vigente: 'Vigente',
-  vencida: 'Vencida',
-  futura: 'Futura',
-}
-
-const VIGENCIA_COLOR: Record<string, string> = {
-  vigente: 'text-green-700 bg-green-50',
-  vencida: 'text-red-700 bg-red-50',
-  futura: 'text-yellow-700 bg-yellow-50',
-}
-
 export default function MisEquiposTable({ items }: Props) {
   if (items.length === 0) {
     return (
-      <p data-testid="equipos-empty" className="text-sm text-gray-500 py-4">
-        No tenés asignaciones actualmente.
-      </p>
+      <div data-testid="equipos-empty">
+        <EmptyState title="Sin asignaciones" description="No tenés asignaciones actualmente." />
+      </div>
     )
   }
 
@@ -53,9 +42,7 @@ export default function MisEquiposTable({ items }: Props) {
               <td className="px-4 py-3 text-gray-600">{item.desde}</td>
               <td className="px-4 py-3 text-gray-600">{item.hasta ?? '—'}</td>
               <td className="px-4 py-3">
-                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${VIGENCIA_COLOR[item.estado_vigencia] ?? ''}`}>
-                  {VIGENCIA_LABEL[item.estado_vigencia] ?? item.estado_vigencia}
-                </span>
+                <StatusBadge status={item.estado_vigencia} />
               </td>
             </tr>
           ))}

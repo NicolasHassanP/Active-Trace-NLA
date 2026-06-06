@@ -5,6 +5,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { convocatoriaSchema, type ConvocatoriaFormValues } from '../services/convocatoriaSchema'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   onSubmit: (values: ConvocatoriaFormValues) => void
@@ -148,13 +149,9 @@ export default function ConvocatoriaForm({ onSubmit, isLoading = false }: Props)
       </div>
 
       <div className="flex justify-end pt-2">
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="rounded bg-blue-600 px-6 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
-        >
+        <Button type="submit" variant="primary" disabled={isLoading} isLoading={isLoading}>
           {isLoading ? 'Creando…' : 'Crear convocatoria'}
-        </button>
+        </Button>
       </div>
     </form>
   )

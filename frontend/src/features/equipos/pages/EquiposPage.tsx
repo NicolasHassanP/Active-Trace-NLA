@@ -17,6 +17,7 @@ import ClonarEquipoDialog from '../components/ClonarEquipoDialog'
 import VigenciaGeneralForm from '../components/VigenciaGeneralForm'
 import type { EquipoQueryParams } from '../types'
 import type { Role } from '@/features/auth/types'
+import { Button, PageHeader } from '@/shared/components/ui'
 
 const MANAGEMENT_ROLES: Role[] = ['COORDINADOR', 'ADMIN']
 
@@ -47,7 +48,7 @@ export default function EquiposPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 p-6">
-      <h1 className="text-2xl font-bold text-gray-900">Equipos docentes</h1>
+      <PageHeader title="Equipos docentes" />
 
       {/* Mis equipos — visible for all authorized roles */}
       <section>
@@ -78,13 +79,16 @@ export default function EquiposPage() {
             {equipoParams && equipoQuery.data && equipoQuery.data.length > 0 && (
               <div className="mt-4">
                 <MisEquiposTable items={equipoQuery.data} />
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={handleExport}
+                  isLoading={exporting}
                   disabled={exporting}
-                  className="mt-2 rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50"
+                  className="mt-2"
                 >
-                  {exporting ? 'Exportando…' : 'Exportar CSV'}
-                </button>
+                  Exportar CSV
+                </Button>
               </div>
             )}
           </div>

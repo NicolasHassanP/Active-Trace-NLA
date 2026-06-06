@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { crearPrograma, programaCreateSchema } from '../services/setupCuatrimestreService'
 import type { ProgramaFormValues } from '../services/setupCuatrimestreService'
 import { parseDomainError } from '@/shared/services/domainError'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   onSuccess: () => void
@@ -79,13 +80,9 @@ export default function PasoProgramas({ onSuccess, onError }: Props) {
         )}
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
-      >
+      <Button type="submit" variant="primary" disabled={isSubmitting} isLoading={isSubmitting}>
         {isSubmitting ? 'Cargando…' : 'Registrar programa'}
-      </button>
+      </Button>
     </form>
   )
 }

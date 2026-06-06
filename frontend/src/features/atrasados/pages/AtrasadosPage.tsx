@@ -9,6 +9,7 @@ import { useReporteMateria } from '../hooks/atrasadosHooks'
 import AtrasadosTable from '../components/AtrasadosTable'
 import AtrasadosFilters from '../components/AtrasadosFilters'
 import ReporteMateriaHeader from '../components/ReporteMateriaHeader'
+import { Button, PageHeader } from '@/shared/components/ui'
 
 export default function AtrasadosPage() {
   const { materiaId = '', cohorteId = '' } = useParams<{ materiaId: string; cohorteId: string }>()
@@ -42,7 +43,7 @@ export default function AtrasadosPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 p-6">
-      <h1 className="text-2xl font-bold text-gray-900">Alumnos atrasados</h1>
+      <PageHeader title="Alumnos atrasados" />
 
       <ReporteMateriaHeader
         reporte={reporteQuery.data}
@@ -73,14 +74,13 @@ export default function AtrasadosPage() {
                 ? `${selectedEmails.size} alumno(s) seleccionado(s)`
                 : 'Seleccioná alumnos para comunicar'}
             </p>
-            <button
+            <Button
               onClick={handleComunicar}
               disabled={selectedEmails.size === 0}
-              className="px-4 py-2 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 disabled:opacity-40"
               data-testid="comunicar-btn"
             >
               Comunicar a seleccionados
-            </button>
+            </Button>
           </div>
 
           <AtrasadosTable

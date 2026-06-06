@@ -19,6 +19,7 @@ import type { Role } from '@/features/auth/types'
 import type { ConvocatoriaFormValues } from '../services/convocatoriaSchema'
 import { crearConvocatoria } from '../services/coloquiosService'
 import type { CrearConvocatoriaRequest } from '../types'
+import { Button, PageHeader } from '@/shared/components/ui'
 
 const ALLOWED_ROLES: Role[] = ['COORDINADOR', 'ADMIN']
 
@@ -72,7 +73,7 @@ export default function ColoquiosPage() {
 
   return (
     <div data-testid="coloquios-panel" className="max-w-6xl mx-auto space-y-8 p-6">
-      <h1 className="text-2xl font-bold text-gray-900">Coloquios</h1>
+      <PageHeader title="Coloquios" />
 
       {/* ---- Métricas ---- */}
       {metricasQuery.isLoading && (
@@ -89,13 +90,13 @@ export default function ColoquiosPage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-800">Convocatorias</h2>
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => setShowForm((v) => !v)}
-            className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700"
           >
             Nueva convocatoria
-          </button>
+          </Button>
         </div>
 
         {showForm && (

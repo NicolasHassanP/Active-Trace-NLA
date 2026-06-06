@@ -3,6 +3,7 @@
  * Task 6.10. < 200 LOC. Tailwind only.
  */
 import type { ConvocatoriaMetricasRead } from '../types'
+import { EmptyState, StatusBadge, Button } from '@/shared/components/ui'
 
 interface Props {
   convocatorias: ConvocatoriaMetricasRead[]
@@ -19,9 +20,9 @@ export default function ConvocatoriasTable({
 }: Props) {
   if (convocatorias.length === 0) {
     return (
-      <p data-testid="convocatorias-empty" className="text-sm text-gray-500 py-4">
-        No hay convocatorias activas.
-      </p>
+      <div data-testid="convocatorias-empty">
+        <EmptyState title="No hay convocatorias activas." />
+      </div>
     )
   }
 
@@ -62,40 +63,20 @@ export default function ConvocatoriasTable({
               <td className="px-4 py-3 text-right text-gray-700">{conv.reservas_activas}</td>
               <td className="px-4 py-3 text-right text-gray-700">{conv.cupos_libres}</td>
               <td className="px-4 py-3">
-                {conv.cerrada ? (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                    Cerrada
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-                    Activa
-                  </span>
-                )}
+                <StatusBadge status={conv.cerrada ? 'cancelado' : 'activo'} label={conv.cerrada ? 'Cerrada' : 'Activa'} />
               </td>
               <td className="px-4 py-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => onImportar(conv.id)}
-                  className="text-xs rounded bg-blue-50 px-2 py-1 text-blue-700 hover:bg-blue-100"
-                >
+                <Button variant="secondary" size="sm" onClick={() => onImportar(conv.id)}>
                   Importar
-                </button>
+                </Button>
                 {!conv.cerrada && (
-                  <button
-                    type="button"
-                    onClick={() => onCerrar(conv.id)}
-                    className="text-xs rounded bg-red-50 px-2 py-1 text-red-700 hover:bg-red-100"
-                  >
+                  <Button variant="danger" size="sm" onClick={() => onCerrar(conv.id)}>
                     Cerrar
-                  </button>
+                  </Button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => onVerResultados(conv.id)}
-                  className="text-xs rounded bg-gray-50 px-2 py-1 text-gray-700 hover:bg-gray-100"
-                >
+                <Button variant="ghost" size="sm" onClick={() => onVerResultados(conv.id)}>
                   Resultados
-                </button>
+                </Button>
               </td>
             </tr>
           ))}

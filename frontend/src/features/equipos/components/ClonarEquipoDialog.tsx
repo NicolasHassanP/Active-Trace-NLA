@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { useClonarEquipo } from '../hooks/equiposHooks'
+import { Button } from '@/shared/components/ui'
 
 const schema = z.object({
   origen_materia_id: z.string().min(1, 'Obligatorio'),
@@ -47,12 +48,9 @@ export default function ClonarEquipoDialog() {
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
-      >
+      <Button variant="secondary" onClick={() => setOpen(true)}>
         Clonar equipo
-      </button>
+      </Button>
     )
   }
 
@@ -91,12 +89,12 @@ export default function ClonarEquipoDialog() {
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setOpen(false)} className="rounded border border-gray-300 px-4 py-2 text-sm">
+            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
               Cancelar
-            </button>
-            <button type="submit" disabled={mutation.isPending} className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50">
-              {mutation.isPending ? 'Clonando…' : 'Clonar'}
-            </button>
+            </Button>
+            <Button type="submit" isLoading={mutation.isPending} disabled={mutation.isPending}>
+              Clonar
+            </Button>
           </div>
         </form>
       </div>

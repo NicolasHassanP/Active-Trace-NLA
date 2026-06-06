@@ -4,6 +4,7 @@
  */
 import { toast } from 'sonner'
 import { useAckAviso } from '../hooks/avisosHooks'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   avisoId: string
@@ -27,13 +28,15 @@ export default function AckButton({ avisoId, onAcked }: Props) {
   }
 
   return (
-    <button
+    <Button
+      variant="primary"
+      size="sm"
       onClick={handleAck}
       disabled={mutation.isPending}
+      isLoading={mutation.isPending}
       data-testid={`ack-btn-${avisoId}`}
-      className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50"
     >
       {mutation.isPending ? 'Confirmando…' : 'Confirmar lectura'}
-    </button>
+    </Button>
   )
 }

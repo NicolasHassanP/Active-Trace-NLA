@@ -6,6 +6,7 @@ import { useState } from 'react'
 import PadronImportForm from '../components/PadronImportForm'
 import SyncMoodlePanel from '../components/SyncMoodlePanel'
 import VaciarPadronButton from '../components/VaciarPadronButton'
+import { PageHeader } from '@/shared/components/ui'
 
 export default function PadronPage() {
   const [materiaId, setMateriaId] = useState('')
@@ -16,7 +17,7 @@ export default function PadronPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 p-6">
-      <h1 className="text-2xl font-bold text-gray-900">Importación de Padrón</h1>
+      <PageHeader title="Importación de Padrón" />
 
       {/* Selector de contexto */}
       <section className="space-y-3">

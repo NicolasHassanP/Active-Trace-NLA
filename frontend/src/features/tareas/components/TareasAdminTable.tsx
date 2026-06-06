@@ -3,6 +3,7 @@
  * Task 3.7. < 200 LOC.
  */
 import type { TareaRead, TareaEstado } from '../types'
+import { EmptyState, Button } from '@/shared/components/ui'
 
 interface Props {
   tareas: TareaRead[]
@@ -10,19 +11,12 @@ interface Props {
   onDelegar: (tareaId: string) => void
 }
 
-const ESTADO_STYLES: Record<string, string> = {
-  Pendiente: 'bg-yellow-100 text-yellow-800',
-  EnProgreso: 'bg-blue-100 text-blue-800',
-  Resuelta: 'bg-green-100 text-green-800',
-  Cancelada: 'bg-gray-100 text-gray-600',
-}
-
 export default function TareasAdminTable({ tareas, onCambiarEstado, onDelegar }: Props) {
   if (tareas.length === 0) {
     return (
-      <p data-testid="tareas-admin-empty" className="text-sm text-gray-500">
-        No se encontraron tareas con los filtros aplicados.
-      </p>
+      <div data-testid="tareas-admin-empty">
+        <EmptyState title="No se encontraron tareas con los filtros aplicados." />
+      </div>
     )
   }
 
@@ -45,7 +39,12 @@ export default function TareasAdminTable({ tareas, onCambiarEstado, onDelegar }:
               <td className="px-4 py-3">
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    ESTADO_STYLES[tarea.estado] ?? 'bg-gray-100 text-gray-600'
+                    {
+                      Pendiente: 'bg-yellow-100 text-yellow-800',
+                      EnProgreso: 'bg-blue-100 text-blue-800',
+                      Resuelta: 'bg-green-100 text-green-800',
+                      Cancelada: 'bg-gray-100 text-gray-600',
+                    }[tarea.estado] ?? 'bg-gray-100 text-gray-600'
                   }`}
                 >
                   {tarea.estado}
@@ -54,19 +53,21 @@ export default function TareasAdminTable({ tareas, onCambiarEstado, onDelegar }:
               <td className="px-4 py-3">
                 <div className="flex gap-2">
                   {tarea.estado !== 'Cancelada' && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => onCambiarEstado(tarea.id, tarea.estado === 'Pendiente' ? 'EnProgreso' : 'Resuelta')}
-                      className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50"
                     >
                       Avanzar
-                    </button>
+                    </Button>
                   )}
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => onDelegar(tarea.id)}
-                    className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50"
                   >
                     Delegar
-                  </button>
+                  </Button>
                 </div>
               </td>
             </tr>

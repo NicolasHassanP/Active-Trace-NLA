@@ -16,6 +16,7 @@ import PasoFechas from '../components/PasoFechas'
 import PasoAvisoBienvenida from '../components/PasoAvisoBienvenida'
 import { useSetupWizard } from '../hooks/useSetupWizard'
 import type { Role } from '@/features/auth/types'
+import { PageHeader } from '@/shared/components/ui'
 
 const ALLOWED_ROLES: Role[] = ['COORDINADOR', 'ADMIN']
 
@@ -67,7 +68,7 @@ function SetupWizard() {
 
       {/* Right panel: active step form */}
       <main className="col-span-2 space-y-4">
-        <h1 className="text-2xl font-bold text-gray-900">Setup de cuatrimestre</h1>
+        <PageHeader title="Setup de cuatrimestre" />
 
         {pasoActivo === 0 && (
           <PasoCohorte

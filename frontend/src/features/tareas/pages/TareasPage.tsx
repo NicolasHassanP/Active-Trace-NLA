@@ -17,6 +17,7 @@ import type { TareasAdminParams, TareaEstado } from '../types'
 import type { Role } from '@/features/auth/types'
 import { toast } from 'sonner'
 import { useCambiarEstado } from '../hooks/tareasHooks'
+import { Button, PageHeader } from '@/shared/components/ui'
 
 const ADMIN_ROLES: Role[] = ['COORDINADOR', 'ADMIN']
 
@@ -48,19 +49,20 @@ export default function TareasPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 p-6">
-      <h1 className="text-2xl font-bold text-gray-900">Tareas</h1>
+      <PageHeader title="Tareas" />
 
       {/* Admin panel — COORDINADOR / ADMIN only */}
       {isAdmin && (
         <section data-testid="tareas-admin" className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-700">Panel de administración</h2>
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => setShowForm((v) => !v)}
-              className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
             >
               Nueva tarea
-            </button>
+            </Button>
           </div>
 
           {showForm && (

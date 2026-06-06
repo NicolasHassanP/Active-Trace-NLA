@@ -4,6 +4,7 @@
  */
 import { useState } from 'react'
 import type { TareasAdminParams, TareaEstado } from '../types'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   onFilter: (params: TareasAdminParams) => void
@@ -67,18 +68,12 @@ export default function TareasFilters({ onFilter }: Props) {
         onChange={(e) => setQ(e.target.value)}
         className="rounded border border-gray-300 px-3 py-1.5 text-sm"
       />
-      <button
-        onClick={handleApply}
-        className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-700"
-      >
+      <Button variant="primary" size="sm" onClick={handleApply}>
         Filtrar
-      </button>
-      <button
-        onClick={handleClear}
-        className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
-      >
+      </Button>
+      <Button variant="secondary" size="sm" onClick={handleClear}>
         Limpiar
-      </button>
+      </Button>
     </div>
   )
 }

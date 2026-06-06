@@ -5,6 +5,7 @@
  */
 import AckButton from './AckButton'
 import type { AvisoRead } from '../types'
+import { EmptyState } from '@/shared/components/ui'
 
 interface Props {
   avisos: AvisoRead[]
@@ -25,9 +26,9 @@ export default function BandejaAvisos({ avisos, pendientes, isLoading }: Props) 
 
   if (avisos.length === 0) {
     return (
-      <p data-testid="avisos-empty" className="text-sm text-gray-500 py-4">
-        No hay avisos en este momento.
-      </p>
+      <div data-testid="avisos-empty">
+        <EmptyState title="No hay avisos en este momento." />
+      </div>
     )
   }
 

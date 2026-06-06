@@ -12,6 +12,7 @@ import MonitorTable from '../components/MonitorTable'
 import MonitorToolbar from '../components/MonitorToolbar'
 import type { MonitorParams } from '../types'
 import type { Role } from '@/features/auth/types'
+import { PageHeader } from '@/shared/components/ui'
 
 const ALLOWED_ROLES: Role[] = ['COORDINADOR', 'ADMIN']
 
@@ -44,7 +45,7 @@ export default function MonitorPage() {
 
   return (
     <div data-testid="monitor-panel" className="max-w-6xl mx-auto space-y-6 p-6">
-      <h1 className="text-2xl font-bold text-gray-900">Monitor general de actividades</h1>
+      <PageHeader title="Monitor general de actividades" />
 
       <MonitorFilters onFilter={handleFilter} onClear={handleClear} />
 

@@ -3,6 +3,7 @@
  * Task 6.10. < 200 LOC. Tailwind only.
  */
 import type { MetricasRead } from '../types'
+import { Card, CardContent } from '@/shared/components/ui'
 
 interface Props {
   metricas: MetricasRead
@@ -15,10 +16,12 @@ interface StatCardProps {
 
 function StatCard({ label, value }: StatCardProps) {
   return (
-    <div className="rounded-lg bg-white p-4 shadow-sm border border-gray-100">
-      <dt className="text-sm font-medium text-gray-500">{label}</dt>
-      <dd className="mt-1 text-3xl font-semibold text-gray-900">{value}</dd>
-    </div>
+    <Card>
+      <CardContent>
+        <dt className="text-sm font-medium text-gray-500">{label}</dt>
+        <dd className="mt-1 text-3xl font-semibold text-gray-900">{value}</dd>
+      </CardContent>
+    </Card>
   )
 }
 

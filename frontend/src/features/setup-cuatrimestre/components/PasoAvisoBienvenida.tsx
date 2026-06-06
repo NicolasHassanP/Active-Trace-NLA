@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { crearAviso } from '@/features/avisos/services/avisosService'
 import { parseDomainError } from '@/shared/services/domainError'
 import type { AvisoSeveridad } from '@/features/avisos/types'
+import { Button } from '@/shared/components/ui'
 
 const schema = z.object({
   titulo: z.string().min(1, 'Título obligatorio'),
@@ -118,13 +119,9 @@ export default function PasoAvisoBienvenida({ onSuccess, onError }: Props) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
-      >
+      <Button type="submit" variant="primary" disabled={isSubmitting} isLoading={isSubmitting}>
         {isSubmitting ? 'Publicando…' : 'Publicar aviso de bienvenida'}
-      </button>
+      </Button>
     </form>
   )
 }

@@ -14,6 +14,7 @@ import GuardiasTable from '../components/GuardiasTable'
 import GuardiasFilters from '../components/GuardiasFilters'
 import type { GuardiaParams } from '../types'
 import type { Role } from '@/features/auth/types'
+import { Button, PageHeader } from '@/shared/components/ui'
 
 const ALLOWED_ROLES: Role[] = ['COORDINADOR', 'ADMIN']
 
@@ -48,7 +49,7 @@ export default function EncuentrosPage() {
 
   return (
     <div data-testid="encuentros-panel" className="max-w-6xl mx-auto space-y-8 p-6">
-      <h1 className="text-2xl font-bold text-gray-900">Encuentros y guardias</h1>
+      <PageHeader title="Encuentros y guardias" />
 
       {/* ---- Instancias de encuentro ---- */}
       <section className="space-y-4">
@@ -73,13 +74,13 @@ export default function EncuentrosPage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-800">Registro de guardias</h2>
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => void handleExportarGuardias()}
-            className="rounded bg-green-600 px-4 py-1.5 text-sm text-white hover:bg-green-700"
           >
             Exportar guardias
-          </button>
+          </Button>
         </div>
 
         <GuardiasFilters

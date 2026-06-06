@@ -8,6 +8,7 @@
 import { exportarMonitorCsv } from '../services/monitoresService'
 import { downloadFile } from '@/shared/services/downloadFile'
 import type { MonitorFila } from '../types'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   filas: MonitorFila[]
@@ -23,19 +24,17 @@ export default function MonitorToolbar({ filas, onClear, exporting = false }: Pr
 
   return (
     <div data-testid="monitor-toolbar" className="flex items-center gap-3">
-      <button
-        onClick={onClear}
-        className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
-      >
+      <Button variant="secondary" size="sm" onClick={onClear}>
         Limpiar filtros
-      </button>
-      <button
+      </Button>
+      <Button
+        size="sm"
         onClick={handleExport}
+        isLoading={exporting}
         disabled={exporting || filas.length === 0}
-        className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
       >
-        {exporting ? 'Exportando…' : 'Exportar CSV'}
-      </button>
+        Exportar CSV
+      </Button>
     </div>
   )
 }

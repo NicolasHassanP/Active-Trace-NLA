@@ -3,6 +3,7 @@
  * Handles sin_datos=true gracefully. < 200 LOC.
  */
 import type { ReporteMateria } from '../types'
+import { Card, CardContent } from '@/shared/components/ui'
 
 interface Props {
   reporte: ReporteMateria | undefined
@@ -31,18 +32,24 @@ export default function ReporteMateriaHeader({ reporte, isLoading }: Props) {
 
   return (
     <div className="grid grid-cols-3 gap-4" data-testid="reporte-metrics">
-      <div className="p-4 bg-white border rounded shadow-sm text-center">
-        <p className="text-2xl font-bold text-gray-900">{reporte.total_alumnos}</p>
-        <p className="text-xs text-gray-500 mt-1">Total alumnos</p>
-      </div>
-      <div className="p-4 bg-white border rounded shadow-sm text-center">
-        <p className="text-2xl font-bold text-red-600">{reporte.total_atrasados}</p>
-        <p className="text-xs text-gray-500 mt-1">Atrasados</p>
-      </div>
-      <div className="p-4 bg-white border rounded shadow-sm text-center">
-        <p className="text-2xl font-bold text-green-600">{tasaPercent}%</p>
-        <p className="text-xs text-gray-500 mt-1">Tasa de aprobación</p>
-      </div>
+      <Card>
+        <CardContent className="text-center">
+          <p className="text-2xl font-bold text-gray-900">{reporte.total_alumnos}</p>
+          <p className="text-xs text-gray-500 mt-1">Total alumnos</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="text-center">
+          <p className="text-2xl font-bold text-red-600">{reporte.total_atrasados}</p>
+          <p className="text-xs text-gray-500 mt-1">Atrasados</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="text-center">
+          <p className="text-2xl font-bold text-green-600">{tasaPercent}%</p>
+          <p className="text-xs text-gray-500 mt-1">Tasa de aprobación</p>
+        </CardContent>
+      </Card>
     </div>
   )
 }

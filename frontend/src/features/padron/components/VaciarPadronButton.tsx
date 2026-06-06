@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useVaciarPadron } from '../hooks/padronHooks'
 import type { DomainError } from '@/shared/services/domainError'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   materia_id: string
@@ -57,32 +58,36 @@ export default function VaciarPadronButton({ materia_id, cohorte_id, onSuccess }
         <span className="text-sm text-red-800">
           ¿Confirmás el vaciado del padrón? Esta acción no se puede deshacer.
         </span>
-        <button
+        <Button
+          variant="danger"
+          size="sm"
           onClick={handleConfirm}
-          className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
           data-testid="vaciar-confirm-btn"
         >
           Sí, vaciar
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={handleCancel}
-          className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
           data-testid="vaciar-cancel-btn"
         >
           Cancelar
-        </button>
+        </Button>
       </div>
     )
   }
 
   return (
-    <button
+    <Button
+      variant="danger"
+      size="sm"
       onClick={handleRequest}
+      isLoading={vaciar.isPending}
       disabled={vaciar.isPending}
-      className="px-3 py-1.5 text-sm border border-red-300 text-red-700 rounded hover:bg-red-50 disabled:opacity-50"
       data-testid="vaciar-padron-btn"
     >
       Vaciar padrón
-    </button>
+    </Button>
   )
 }

@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useSyncMoodlePadron } from '../hooks/padronHooks'
 import type { DomainError } from '@/shared/services/domainError'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   materia_id: string
@@ -42,14 +43,14 @@ export default function SyncMoodlePanel({ materia_id, cohorte_id, course_id }: P
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
-        <button
+        <Button
           onClick={handleSync}
+          isLoading={sync.isPending}
           disabled={sync.isPending}
-          className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
           data-testid="sync-moodle-btn"
         >
-          {sync.isPending ? 'Sincronizando…' : 'Sincronizar desde Moodle'}
-        </button>
+          Sincronizar desde Moodle
+        </Button>
       </div>
 
       {localError?.kind === '503' && (
