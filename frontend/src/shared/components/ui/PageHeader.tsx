@@ -1,8 +1,3 @@
-/**
- * PageHeader — consistent page-level heading with optional subtitle and action area.
- * Props: title (string), subtitle? (string), actions? (ReactNode).
- * < 200 LOC. No `any`. Only Tailwind v3.
- */
 import { type ReactNode } from 'react'
 
 interface PageHeaderProps {
@@ -13,11 +8,11 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
   return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+    <div className="flex items-start justify-between gap-4 mb-5">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+        <h1 className="text-[22px] font-extrabold tracking-[-0.6px] text-ink">{title}</h1>
         {subtitle && (
-          <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+          <p className="text-[13.5px] text-mut mt-1 max-w-[640px]">{subtitle}</p>
         )}
       </div>
       {actions && (

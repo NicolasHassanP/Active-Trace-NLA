@@ -1,7 +1,3 @@
-/**
- * Card — container with sub-components CardHeader, CardTitle, CardContent, CardFooter.
- * < 200 LOC. No `any`. Only Tailwind v3.
- */
 import { type ReactNode } from 'react'
 
 interface CardProps {
@@ -12,7 +8,7 @@ interface CardProps {
 export function Card({ children, className = '' }: CardProps) {
   return (
     <div
-      className={['rounded-xl border border-gray-200 bg-white shadow-sm', className]
+      className={['bg-white border border-line rounded-card shadow-card', className]
         .filter(Boolean)
         .join(' ')}
     >
@@ -29,7 +25,7 @@ interface CardHeaderProps {
 export function CardHeader({ children, className = '' }: CardHeaderProps) {
   return (
     <div
-      className={['flex items-center justify-between px-6 py-4 border-b border-gray-100', className]
+      className={['flex items-center justify-between px-[18px] py-[14px] border-b border-line', className]
         .filter(Boolean)
         .join(' ')}
     >
@@ -46,7 +42,7 @@ interface CardTitleProps {
 export function CardTitle({ children, className = '' }: CardTitleProps) {
   return (
     <h3
-      className={['text-base font-semibold text-gray-900', className]
+      className={['text-[14.5px] font-extrabold text-ink', className]
         .filter(Boolean)
         .join(' ')}
     >
@@ -62,7 +58,7 @@ interface CardContentProps {
 
 export function CardContent({ children, className = '' }: CardContentProps) {
   return (
-    <div className={['px-6 py-4', className].filter(Boolean).join(' ')}>
+    <div className={['px-[18px] py-[14px]', className].filter(Boolean).join(' ')}>
       {children}
     </div>
   )
@@ -77,7 +73,7 @@ export function CardFooter({ children, className = '' }: CardFooterProps) {
   return (
     <div
       className={[
-        'flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-gray-50 rounded-b-xl',
+        'flex items-center justify-between px-[18px] py-[11px] border-t border-line bg-[#fafbff] rounded-b-card',
         className,
       ]
         .filter(Boolean)
