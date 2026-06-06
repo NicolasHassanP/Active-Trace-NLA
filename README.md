@@ -83,7 +83,17 @@ Esto aplica las 4 migraciones existentes (001 base, 002 auth, 003 rbac, 004 audi
 
 Para la DB de tests, las migraciones se aplican automáticamente al correr los tests por primera vez (el conftest usa `create_all`).
 
-### 5. Verificar
+### 5. Seed de datos de prueba (tenant Demo)
+
+```bash
+cd backend
+python seed_rbac_demo.py   # roles, permisos y matriz RBAC
+python seed_demo_user.py   # usuario admin@demo.com / Admin1234!
+```
+
+Ambos scripts son idempotentes — pueden correrse más de una vez sin problema.
+
+### 6. Verificar
 
 ```bash
 cd backend
