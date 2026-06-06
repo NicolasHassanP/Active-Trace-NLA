@@ -2,30 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { buildNav } from './buildNav'
 import { NavIcon } from '@/shared/components/ui/NavIcon'
-import type { Role } from '@/features/auth/types'
-
-const ROLE_GRADIENT: Record<string, string> = {
-  COORDINADOR: 'linear-gradient(150deg, #818cf8, #4338ca)',
-  PROFESOR:    'linear-gradient(150deg, #34d399, #0a9488)',
-  ALUMNO:      'linear-gradient(150deg, #fbbf24, #d97706)',
-  ADMIN:       'linear-gradient(150deg, #f472b6, #be185d)',
-  FINANZAS:    'linear-gradient(150deg, #34d399, #047857)',
-  TUTOR:       'linear-gradient(150deg, #60a5fa, #2563eb)',
-  NEXO:        'linear-gradient(150deg, #a78bfa, #7c3aed)',
-}
-
-function avatarGradient(roles: Role[]): string {
-  for (const role of roles) {
-    if (ROLE_GRADIENT[role]) return ROLE_GRADIENT[role]
-  }
-  return 'linear-gradient(150deg, #94a3b8, #475569)'
-}
-
-function initials(name?: string, email?: string): string {
-  if (name) return name.slice(0, 2).toUpperCase()
-  if (email) return email.slice(0, 2).toUpperCase()
-  return 'U'
-}
+import { RoleSwitcher } from './RoleSwitcher'
 
 export default function Sidebar() {
   const { roles, user, isInitializing, isAuthenticated } = useAuth()
@@ -88,20 +65,9 @@ export default function Sidebar() {
         )}
       </nav>
 
-      {/* User card */}
+      {/* Role switcher / user card */}
       {user && (
-        <div className="flex items-center gap-[10px] p-[10px] rounded-[11px] border border-line mt-4">
-          <div
-            className="w-[34px] h-[34px] rounded-full shrink-0 flex items-center justify-center text-white text-[13px] font-bold"
-            style={{ background: avatarGradient(roles) }}
-          >
-            {initials(user.name, user.email)}
-          </div>
-          <div className="min-w-0">
-            <p className="text-[13px] font-bold text-ink truncate">{user.name ?? user.email}</p>
-            <p className="text-[11px] text-faint truncate">{roles[0] ?? ''}</p>
-          </div>
-        </div>
+        <RoleSwitcher roles={roles} name={user.name} email={user.email} />
       )}
     </aside>
   )
