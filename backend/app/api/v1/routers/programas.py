@@ -54,7 +54,7 @@ def _make_programa_service(db: AsyncSession, tenant_id: uuid.UUID) -> ProgramaSe
 )
 async def crear_programa(
     body: ProgramaCreate,
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("programas:gestionar")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProgramaRead:
@@ -87,7 +87,7 @@ async def listar_programas(
     materia_id: Optional[uuid.UUID] = Query(None),
     carrera_id: Optional[uuid.UUID] = Query(None),
     cohorte_id: Optional[uuid.UUID] = Query(None),
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("programas:gestionar")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[ProgramaRead]:
@@ -114,7 +114,7 @@ async def listar_programas(
 )
 async def obtener_programa(
     programa_id: uuid.UUID,
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("programas:gestionar")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProgramaRead:
@@ -144,7 +144,7 @@ async def obtener_programa(
 )
 async def eliminar_programa(
     programa_id: uuid.UUID,
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("programas:gestionar")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:

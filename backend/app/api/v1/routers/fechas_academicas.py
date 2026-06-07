@@ -64,7 +64,7 @@ def _make_fecha_service(db: AsyncSession, tenant_id: uuid.UUID) -> FechaAcademic
 )
 async def crear_fecha_academica(
     body: FechaAcademicaCreate,
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("fechas_academicas:gestionar")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> FechaAcademicaRead:
@@ -99,7 +99,7 @@ async def listar_fechas_academicas(
     cohorte_id: Optional[uuid.UUID] = Query(None),
     tipo: Optional[FechaAcademicaTipo] = Query(None),
     periodo: Optional[str] = Query(None),
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("fechas_academicas:gestionar")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[FechaAcademicaRead]:
@@ -129,7 +129,7 @@ async def listar_fechas_academicas(
 async def listar_calendario(
     materia_id: uuid.UUID = Query(...),
     cohorte_id: uuid.UUID = Query(...),
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("fechas_academicas:gestionar")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[FechaAcademicaRead]:
@@ -153,7 +153,7 @@ async def listar_calendario(
 )
 async def obtener_fecha_academica(
     fecha_id: uuid.UUID,
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("fechas_academicas:gestionar")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> FechaAcademicaRead:
@@ -184,7 +184,7 @@ async def obtener_fecha_academica(
 async def editar_fecha_academica(
     fecha_id: uuid.UUID,
     body: FechaAcademicaUpdate,
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("fechas_academicas:gestionar")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> FechaAcademicaRead:
@@ -215,7 +215,7 @@ async def editar_fecha_academica(
 )
 async def eliminar_fecha_academica(
     fecha_id: uuid.UUID,
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("fechas_academicas:gestionar")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
@@ -246,7 +246,7 @@ async def eliminar_fecha_academica(
 )
 async def contenido_lms(
     fecha_id: uuid.UUID,
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("fechas_academicas:gestionar")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> FragmentoLMSResponse:
