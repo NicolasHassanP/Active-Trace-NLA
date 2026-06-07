@@ -186,6 +186,9 @@ class MisEquiposItem(BaseModel):
     materia_id: Optional[uuid.UUID]
     carrera_id: Optional[uuid.UUID]
     cohorte_id: Optional[uuid.UUID]
+    materia_nombre: Optional[str] = None
+    carrera_nombre: Optional[str] = None
+    cohorte_nombre: Optional[str] = None
     rol: RolAsignacion
     desde: date
     hasta: Optional[date]
