@@ -25,7 +25,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.comunicacion_repository import ComunicacionRepository
 from app.repositories.tenant_config_repository import TenantConfigRepository
@@ -65,11 +65,14 @@ def _to_read(com) -> ComunicacionRead:
         estado=com.estado.value if hasattr(com.estado, "value") else str(com.estado),
         lote_id=com.lote_id,
         asunto=com.asunto,
+        cuerpo=com.cuerpo,
+        destinatario_email=com.destinatario,
         enviado_at=com.enviado_at,
         error_detalle=com.error_detalle,
         enviado_por=com.enviado_por,
         aprobado_por=com.aprobado_por,
-        created_at=com.created_at,
+        creado_en=com.created_at,
+        actualizado_en=com.updated_at,
     )
 
 
@@ -125,6 +128,7 @@ async def encolar_comunicaciones(
     La identidad/tenant del remitente viene del JWT — nunca del body.
     Audita COMUNICACION_ENVIAR exactamente una vez.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     try:
         lote_id, coms = await svc.encolar(
@@ -133,6 +137,7 @@ async def encolar_comunicaciones(
             cuerpo_plantilla=body.cuerpo_plantilla,
             variables_por_destinatario=body.variables_por_destinatario,
             current_user=current_user,
+            domain_user_id=domain_user_id,
         )
     except VariablePlantillaFaltanteError as exc:
         raise HTTPException(
@@ -162,8 +167,9 @@ async def aprobar_lote(
 
     La identidad del aprobador viene del JWT.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
-    actualizados = await svc.aprobar_lote(lote_id=body.lote_id, current_user=current_user)
+    actualizados = await svc.aprobar_lote(lote_id=body.lote_id, current_user=current_user, domain_user_id=domain_user_id)
     return [_to_read(c) for c in actualizados]
 
 
@@ -210,11 +216,13 @@ async def aprobar_individual(
 
     Retorna 404 si el mensaje no existe en el tenant del actor.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     try:
         com = await svc.aprobar_individual(
             comunicacion_id=body.comunicacion_id,
             current_user=current_user,
+            domain_user_id=domain_user_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
@@ -275,7 +283,7 @@ async def get_lote(
         total=len(mensajes),
         pendientes=sum(1 for m in mensajes if m.estado == ModelEstado.Pendiente),
         enviados=sum(1 for m in mensajes if m.estado == ModelEstado.Enviado),
-        errores=sum(1 for m in mensajes if m.estado == ModelEstado.Error),
+        fallidos=sum(1 for m in mensajes if m.estado == ModelEstado.Error),
         cancelados=sum(1 for m in mensajes if m.estado == ModelEstado.Cancelado),
         mensajes=[_to_read(m) for m in mensajes],
     )

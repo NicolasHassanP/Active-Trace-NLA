@@ -87,6 +87,7 @@ class ComunicacionService:
         cuerpo_plantilla: str,
         variables_por_destinatario: Dict[str, Dict[str, Any]],
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> Tuple[uuid.UUID, List[Comunicacion]]:
         """
         Crea un lote de comunicaciones Pendiente.
@@ -98,7 +99,8 @@ class ComunicacionService:
 
         Para el scope 'propio' del PROFESOR (OQ-6): la validación la hace
         el caller (router) con require_permission('comunicacion:enviar').
-        El service registra enviado_por desde current_user.
+        El service registra enviado_por desde domain_user_id (usuario.id),
+        que el router resuelve con resolve_domain_user_id antes de llamar.
 
         Audita COMUNICACION_ENVIAR exactamente una vez (D6).
 
@@ -133,7 +135,7 @@ class ComunicacionService:
                 cuerpo=cuerpo,
                 estado=ModelEstado.Pendiente,
                 lote_id=lote_id,
-                enviado_por=current_user.user_id,
+                enviado_por=domain_user_id,
             )
             self._repo._session.add(com)
             created.append(com)
@@ -167,6 +169,7 @@ class ComunicacionService:
         self,
         lote_id: uuid.UUID,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> List[Comunicacion]:
         """
         Aprueba todos los mensajes Pendiente del lote para despacho.
@@ -185,7 +188,7 @@ class ComunicacionService:
                 await self._repo.actualizar_estado(
                     comunicacion=com,
                     nuevo_estado=ModelEstado.Pendiente,
-                    aprobado_por=current_user.user_id,
+                    aprobado_por=domain_user_id,
                 )
                 actualizados.append(com)
 
@@ -276,6 +279,7 @@ class ComunicacionService:
         self,
         comunicacion_id: uuid.UUID,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> Comunicacion:
         """
         Aprueba un mensaje específico para despacho.
@@ -292,5 +296,5 @@ class ComunicacionService:
         return await self._repo.actualizar_estado(
             comunicacion=com,
             nuevo_estado=ModelEstado.Pendiente,
-            aprobado_por=current_user.user_id,
+            aprobado_por=domain_user_id,
         )

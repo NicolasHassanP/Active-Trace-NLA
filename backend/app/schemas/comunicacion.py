@@ -32,11 +32,14 @@ class ComunicacionRead(BaseModel):
     estado: str
     lote_id: uuid.UUID
     asunto: str
+    cuerpo: str
+    destinatario_email: str
     enviado_at: Optional[datetime] = None
     error_detalle: Optional[str] = None
     enviado_por: Optional[uuid.UUID] = None
     aprobado_por: Optional[uuid.UUID] = None
-    created_at: datetime
+    creado_en: datetime
+    actualizado_en: datetime
 
 
 # ---------------------------------------------------------------------------
@@ -130,6 +133,6 @@ class LoteStatusResponse(BaseModel):
     total: int
     pendientes: int
     enviados: int
-    errores: int
+    fallidos: int
     cancelados: int
     mensajes: List[ComunicacionRead]
