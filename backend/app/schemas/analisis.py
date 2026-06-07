@@ -102,6 +102,17 @@ class NotaFinalAlumno(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# ActividadResumen — detalle de una actividad por alumno en el monitor
+# ---------------------------------------------------------------------------
+
+class ActividadResumen(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    actividad: str
+    aprobado: bool
+    nota: Optional[str] = None
+
+
 # MonitorFila — fila del monitor de seguimiento (F2.7/F2.8)
 # ---------------------------------------------------------------------------
 
@@ -112,7 +123,8 @@ class MonitorFila(BaseModel):
     estado: 'atrasado' | 'al_dia' | 'sin_datos'
     aprobadas: cantidad de actividades aprobadas en el período filtrado.
     faltantes: cantidad de actividades seleccionadas sin calificación.
-    nombre / apellidos: datos del alumno desde EntradaPadron.
+    nombre / apellidos / email / comision / regional: datos desde EntradaPadron.
+    actividades_detalle: lista de actividades con su resultado individual.
     """
     model_config = ConfigDict(extra="forbid")
 
@@ -122,6 +134,10 @@ class MonitorFila(BaseModel):
     faltantes: int
     nombre: Optional[str] = None
     apellidos: Optional[str] = None
+    email: Optional[str] = None
+    comision: Optional[str] = None
+    regional: Optional[str] = None
+    actividades_detalle: List[ActividadResumen] = []
 
 
 # ---------------------------------------------------------------------------

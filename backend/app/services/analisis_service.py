@@ -29,6 +29,7 @@ from app.models.rbac import PermisoScope
 from app.repositories.analisis_repository import AnalisisRepository
 from app.repositories.audit_repository import AuditRepository
 from app.schemas.analisis import (
+    ActividadResumen,
     AlumnoAtrasado,
     MonitorFila,
     MonitorFiltros,
@@ -403,6 +404,20 @@ class AnalisisService:
             if filtros.min_cumplidas is not None and aprobadas < filtros.min_cumplidas:
                 continue
 
+            detalle = [
+                ActividadResumen(
+                    actividad=c["actividad"],
+                    aprobado=c["aprobado"],
+                    nota=(
+                        str(c["nota_numerica"])
+                        if c["nota_numerica"] is not None
+                        else c["nota_textual"]
+                    ),
+                )
+                for c in cals
+                if not actividades_set or c["actividad"] in actividades_set
+            ]
+
             filas.append(MonitorFila(
                 entrada_padron_id=entrada.id,
                 estado=estado,
@@ -410,6 +425,10 @@ class AnalisisService:
                 faltantes=faltantes,
                 nombre=getattr(entrada, "nombre", None),
                 apellidos=getattr(entrada, "apellidos", None),
+                email=getattr(entrada, "email_encrypted", None),
+                comision=getattr(entrada, "comision", None),
+                regional=getattr(entrada, "regional", None),
+                actividades_detalle=detalle,
             ))
 
         return filas

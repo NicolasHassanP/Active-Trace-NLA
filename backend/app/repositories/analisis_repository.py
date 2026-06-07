@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.calificacion import Calificacion
@@ -138,15 +138,18 @@ class AnalisisRepository(TenantScopedRepository[Calificacion]):
 
         # Filtros opcionales (no-op si None) — OQ-C11-2
         if comision is not None:
-            stmt = stmt.where(EntradaPadron.comision == comision)
+            stmt = stmt.where(EntradaPadron.comision.ilike(f"%{comision}%"))
 
         if regional is not None:
-            stmt = stmt.where(EntradaPadron.regional == regional)
+            stmt = stmt.where(EntradaPadron.regional.ilike(f"%{regional}%"))
 
         if busqueda is not None:
-            # Búsqueda libre por nombre (ILIKE)
+            term = f"%{busqueda}%"
             stmt = stmt.where(
-                EntradaPadron.nombre.ilike(f"%{busqueda}%")
+                or_(
+                    EntradaPadron.nombre.ilike(term),
+                    EntradaPadron.apellidos.ilike(term),
+                )
             )
 
         stmt = stmt.order_by(EntradaPadron.apellidos, EntradaPadron.nombre)
