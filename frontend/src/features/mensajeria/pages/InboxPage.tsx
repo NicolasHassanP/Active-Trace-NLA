@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { Button } from '@/shared/components/ui/Button'
 import { Card } from '@/shared/components/ui/Card'
@@ -10,8 +11,16 @@ import { ResponderForm } from '../components/ResponderForm'
 import { useHilos, useHilo } from '../hooks/mensajeriaHooks'
 
 export default function InboxPage() {
-  const [selectedHiloId, setSelectedHiloId] = useState<string | null>(null)
+  const [searchParams] = useSearchParams()
+  const hiloParam = searchParams.get('hilo')
+
+  const [selectedHiloId, setSelectedHiloId] = useState<string | null>(hiloParam)
   const [showNuevoForm, setShowNuevoForm] = useState(false)
+
+  // Sync URL param into state when navigating from notifications
+  useEffect(() => {
+    if (hiloParam) setSelectedHiloId(hiloParam)
+  }, [hiloParam])
 
   const { data: hilos = [], isLoading: hilosLoading } = useHilos()
   const { data: mensajes = [], isLoading: mensajesLoading } = useHilo(selectedHiloId)

@@ -13,6 +13,7 @@ export interface InboxHiloRead {
   asunto: string | null
   no_leidos: number
   ultimo_mensaje_at: string | null  // ISO datetime string
+  otro_participante_nombre: string | null
 }
 
 /** Mensaje completo — mirrors MensajeRead */

@@ -11,12 +11,23 @@ const KEYS = {
   hilo: (hiloId: string) => ['mensajeria-hilo', hiloId] as const,
 }
 
-/** Task 3.1 — GET /inbox: lista de hilos del usuario autenticado. */
+/** Task 3.1 — GET /inbox: lista de hilos del usuario autenticado. Polls every 30s. */
 export function useHilos() {
   return useQuery({
     queryKey: KEYS.hilos,
     queryFn: listarHilos,
+    refetchInterval: 30_000,
   })
+}
+
+/** Total de mensajes no leídos en todos los hilos — para el badge de la campanita. */
+export function useNoLeidosInbox(): number {
+  const { data: hilos = [] } = useQuery({
+    queryKey: KEYS.hilos,
+    queryFn: listarHilos,
+    refetchInterval: 30_000,
+  })
+  return hilos.reduce((sum, h) => sum + (h.no_leidos ?? 0), 0)
 }
 
 /** Task 3.2 — GET /inbox/{hilo_id}: mensajes del hilo; enabled solo si hay hiloId. */
