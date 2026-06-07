@@ -12,7 +12,25 @@
  */
 import apiClient from '@/shared/services/api'
 import { parseDomainError } from '@/shared/services/domainError'
-import type { InstanciaEncuentroRead, GuardiaRead, InstanciasParams, GuardiaParams } from '../types'
+import type { InstanciaEncuentroRead, GuardiaRead, InstanciasParams, GuardiaParams, CrearSlotRequest, CrearSlotResponse } from '../types'
+
+// ---------------------------------------------------------------------------
+// crearSlot — POST /api/v1/encuentros/slots
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/v1/encuentros/slots
+ * Creates a slot with one or more instancias (recurring or one-time).
+ * Identity/tenant from JWT — never in the request body.
+ */
+export async function crearSlot(payload: CrearSlotRequest): Promise<CrearSlotResponse> {
+  try {
+    const response = await apiClient.post<CrearSlotResponse>('/encuentros/slots', payload)
+    return response.data
+  } catch (err) {
+    throw parseDomainError(err)
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Task 5.2 — listarInstancias

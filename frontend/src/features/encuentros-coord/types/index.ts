@@ -46,6 +46,33 @@ export interface InstanciasParams {
   materia_id?: string | null
 }
 
+/**
+ * Modes for CrearSlotRequest.
+ * unico: fecha_unica set, cant_semanas = 0.
+ * recurrente: dia_semana + fecha_inicio + cant_semanas > 0.
+ */
+export type SlotModo = 'unico' | 'recurrente'
+
+/** POST /api/v1/encuentros/slots — mirrors CrearSlotRequest */
+export interface CrearSlotRequest {
+  materia_id: string
+  titulo: string
+  hora: string           // "HH:MM"
+  dia_semana?: string | null
+  fecha_inicio?: string | null  // YYYY-MM-DD
+  cant_semanas: number
+  fecha_unica?: string | null   // YYYY-MM-DD
+  meet_url?: string | null
+  vig_desde?: string | null
+  vig_hasta?: string | null
+}
+
+/** POST /api/v1/encuentros/slots — mirrors CrearSlotResponse */
+export interface CrearSlotResponse {
+  slot_id: string
+  instancias_creadas: number
+}
+
 // ---------------------------------------------------------------------------
 // Guardias — response types
 // ---------------------------------------------------------------------------

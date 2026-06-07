@@ -3,9 +3,27 @@
  * queryKey MUST include ALL active filter params for correct cache isolation.
  * Task 5.5.
  */
-import { useQuery } from '@tanstack/react-query'
-import { listarInstancias, listarGuardias } from '../services/encuentrosCoordService'
-import type { InstanciasParams, GuardiaParams } from '../types'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { crearSlot, listarInstancias, listarGuardias } from '../services/encuentrosCoordService'
+import type { CrearSlotRequest, InstanciasParams, GuardiaParams } from '../types'
+
+// ---------------------------------------------------------------------------
+// useCrearSlot — POST /api/v1/encuentros/slots
+// ---------------------------------------------------------------------------
+
+/**
+ * Mutation hook for POST /api/v1/encuentros/slots.
+ * On success invalidates the instancias query so the table refreshes.
+ */
+export function useCrearSlot() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: CrearSlotRequest) => crearSlot(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['encuentros-instancias'] })
+    },
+  })
+}
 
 // ---------------------------------------------------------------------------
 // useInstancias — GET /api/v1/encuentros/instancias
