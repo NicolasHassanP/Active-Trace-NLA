@@ -21,16 +21,32 @@ Sin lógica de negocio en el router (regla dura #11).
 snake_case; ≤500 LOC.
 """
 import uuid
+from datetime import date
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.models.estructura import Cohorte, Materia
+from app.models.usuario import Asignacion, Usuario
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.perfil_repository import PerfilRepository
 from app.schemas.perfil import PerfilRead, PerfilUpdate
 from app.services.audit_service import AuditService
 from app.services.perfil_service import ConflictoEmailPerfil, PerfilNoEncontrado, PerfilService
+
+
+class MiAsignacionRead(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=False)
+    materia_id: Optional[uuid.UUID] = None
+    materia_nombre: Optional[str] = None
+    cohorte_id: Optional[uuid.UUID] = None
+    cohorte_nombre: Optional[str] = None
+    rol: str
+    comisiones: List[str] = []
 
 router = APIRouter(prefix="/perfil", tags=["perfil"])
 
@@ -93,6 +109,46 @@ async def obtener_perfil(
     except PerfilNoEncontrado as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     return _build_perfil_read(usuario)
+
+
+@router.get("/mis-asignaciones", response_model=List[MiAsignacionRead])
+async def mis_asignaciones(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> List[MiAsignacionRead]:
+    """
+    Devuelve las asignaciones vigentes del usuario autenticado con nombres de materia y cohorte.
+    Sin permiso especial — identidad del JWT, no del body.
+    """
+    hoy = date.today()
+    # current_user.user_id = auth_identities.id (JWT sub).
+    # Asignacion.usuario_id = usuario.id → resolvemos via Usuario.auth_identity_id.
+    stmt = (
+        select(Asignacion, Materia, Cohorte)
+        .join(Usuario, (Usuario.id == Asignacion.usuario_id) & (Usuario.deleted_at.is_(None)))
+        .outerjoin(Materia, (Asignacion.materia_id == Materia.id) & (Materia.deleted_at.is_(None)))
+        .outerjoin(Cohorte, (Asignacion.cohorte_id == Cohorte.id) & (Cohorte.deleted_at.is_(None)))
+        .where(
+            Asignacion.tenant_id == current_user.tenant_id,
+            Usuario.auth_identity_id == current_user.user_id,
+            Asignacion.deleted_at.is_(None),
+            Asignacion.desde <= hoy,
+            (Asignacion.hasta.is_(None)) | (Asignacion.hasta >= hoy),
+        )
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+    return [
+        MiAsignacionRead(
+            materia_id=a.materia_id,
+            materia_nombre=m.nombre if m else None,
+            cohorte_id=a.cohorte_id,
+            cohorte_nombre=c.nombre if c else None,
+            rol=a.rol.value if hasattr(a.rol, "value") else str(a.rol),
+            comisiones=a.comisiones or [],
+        )
+        for a, m, c in rows
+    ]
 
 
 @router.patch("", response_model=PerfilRead)

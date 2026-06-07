@@ -92,6 +92,41 @@ async def get_current_user(request: Request) -> CurrentUser:
 
 
 # ---------------------------------------------------------------------------
+# resolve_domain_user_id — traduce auth_identities.id → usuario.id
+# ---------------------------------------------------------------------------
+
+async def resolve_domain_user_id(
+    current_user: "CurrentUser",
+    db: AsyncSession,
+) -> uuid.UUID:
+    """
+    Resuelve el usuario.id de dominio a partir del auth_identity_id del JWT.
+
+    current_user.user_id = auth_identities.id (sub del JWT).
+    Las FKs de dominio (cargado_por, etc.) referencian usuario.id.
+    Esta función hace el puente entre ambas tablas.
+
+    Lanza 500 si el usuario de dominio no existe (inconsistencia de datos).
+    """
+    from sqlalchemy import select
+    from app.models.usuario import Usuario
+
+    stmt = select(Usuario.id).where(
+        Usuario.tenant_id == current_user.tenant_id,
+        Usuario.auth_identity_id == current_user.user_id,
+        Usuario.deleted_at.is_(None),
+    )
+    result = await db.execute(stmt)
+    uid = result.scalar_one_or_none()
+    if uid is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Usuario de dominio no encontrado para la identidad autenticada",
+        )
+    return uid
+
+
+# ---------------------------------------------------------------------------
 # C-04: require_permission — guard factory
 # ---------------------------------------------------------------------------
 

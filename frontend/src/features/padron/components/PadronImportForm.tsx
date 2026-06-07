@@ -78,9 +78,16 @@ export default function PadronImportForm({ materia_id, cohorte_id, onSuccess }: 
       )}
 
       {previewError && (
-        <p role="alert" className="text-sm text-red-600">
-          {previewError}
-        </p>
+        <div role="alert" className="flex items-start gap-2 rounded border border-red-300 bg-red-50 px-3 py-2">
+          <p className="flex-1 text-sm text-red-700">{previewError}</p>
+          <button
+            onClick={() => setPreviewError(null)}
+            className="shrink-0 text-red-400 hover:text-red-600"
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       {previewRows && previewRows.length > 0 && (

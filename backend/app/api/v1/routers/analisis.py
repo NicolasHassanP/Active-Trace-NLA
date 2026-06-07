@@ -26,7 +26,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from fastapi import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.repositories.analisis_repository import AnalisisRepository
 from app.repositories.audit_repository import AuditRepository
 from app.schemas.analisis import (
@@ -74,6 +74,7 @@ async def listar_atrasados(
     Scope global: todas las importaciones del tenant.
     Identidad/tenant SIEMPRE desde el JWT (regla dura #8).
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     return await svc.atrasados(
         materia_id=materia_id,
@@ -81,6 +82,7 @@ async def listar_atrasados(
         actividades=actividades,
         current_user=current_user,
         grant=grant,
+        domain_user_id=domain_user_id,
     )
 
 
@@ -126,6 +128,7 @@ async def obtener_reporte_materia(
     Métricas consolidadas de una materia×cohorte (F2.4).
     sin_datos=True si no hay calificaciones o actividades vacías.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     return await svc.reporte_materia(
         materia_id=materia_id,
@@ -133,6 +136,7 @@ async def obtener_reporte_materia(
         actividades=actividades,
         current_user=current_user,
         grant=grant,
+        domain_user_id=domain_user_id,
     )
 
 

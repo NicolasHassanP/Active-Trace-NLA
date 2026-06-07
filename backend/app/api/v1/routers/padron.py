@@ -22,7 +22,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.padron_repository import PadronRepository
 from app.schemas.padron import (
@@ -101,12 +101,14 @@ async def activar_padron(
     La versión anterior (si existe) queda inactiva automáticamente (D2).
     Emite auditoría PADRON_CARGAR.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     version = await svc.activar(
         rows=body.rows,
         materia_id=body.materia_id,
         cohorte_id=body.cohorte_id,
         current_user=current_user,
+        domain_user_id=domain_user_id,
     )
 
     return VersionPadronRead(

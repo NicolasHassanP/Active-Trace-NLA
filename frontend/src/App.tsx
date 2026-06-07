@@ -78,7 +78,7 @@ const PageFallback = () => (
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Toaster richColors position="top-right" />
+      <Toaster richColors position="top-right" closeButton duration={6000} />
       <BrowserRouter>
         <AuthProvider>
           <Suspense fallback={<PageFallback />}>

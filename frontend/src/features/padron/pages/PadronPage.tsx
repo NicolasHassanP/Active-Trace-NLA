@@ -1,60 +1,74 @@
 /**
  * PadronPage — composes materia/cohorte selector + import + sync + empty.
- * Materia/cohorte are stored in local state (catalog is out of scope for C-22).
+ * Materia/cohorte se cargan desde GET /perfil/mis-asignaciones (C-25 fix).
  */
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import PadronImportForm from '../components/PadronImportForm'
 import SyncMoodlePanel from '../components/SyncMoodlePanel'
 import VaciarPadronButton from '../components/VaciarPadronButton'
 import { PageHeader } from '@/shared/components/ui'
+import { getMisAsignaciones } from '../services/misAsignacionesService'
 
 export default function PadronPage() {
-  const [materiaId, setMateriaId] = useState('')
-  const [cohorteId, setCohorteId] = useState('')
+  const [selectedKey, setSelectedKey] = useState('')
   const [courseId, setCourseId] = useState('')
 
-  const hasContext = materiaId.trim() !== '' && cohorteId.trim() !== ''
+  const { data: asignaciones = [], isLoading } = useQuery({
+    queryKey: ['mis-asignaciones'],
+    queryFn: getMisAsignaciones,
+    select: (rows) => rows.filter((a) => a.materia_id && a.cohorte_id),
+  })
+
+  const selected = asignaciones.find(
+    (a) => `${a.materia_id}__${a.cohorte_id}` === selectedKey,
+  )
+  const materiaId = selected?.materia_id ?? ''
+  const cohorteId = selected?.cohorte_id ?? ''
+  const hasContext = Boolean(materiaId && cohorteId)
 
   return (
     <div className="space-y-8">
       <PageHeader title="Importación de Padrón" />
 
-      {/* Selector de contexto */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-gray-700">Materia y Cohorte</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+        {isLoading ? (
+          <p className="text-sm text-gray-500">Cargando materias…</p>
+        ) : asignaciones.length === 0 ? (
+          <p className="text-sm text-red-600">
+            No tenés materias asignadas con cohorte. Contactá al coordinador.
+          </p>
+        ) : (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              ID de Materia
+              Seleccionar materia y cohorte
             </label>
-            <input
-              type="text"
-              value={materiaId}
-              onChange={(e) => setMateriaId(e.target.value)}
-              placeholder="ej. m-001"
-              className="w-full border rounded px-3 py-2 text-sm"
-              data-testid="materia-id-input"
-            />
+            <select
+              value={selectedKey}
+              onChange={(e) => setSelectedKey(e.target.value)}
+              className="w-full max-w-lg border rounded px-3 py-2 text-sm bg-white"
+              data-testid="materia-cohorte-select"
+            >
+              <option value="">— Seleccioná una materia —</option>
+              {asignaciones.map((a) => {
+                const key = `${a.materia_id}__${a.cohorte_id}`
+                const label = `${a.materia_nombre ?? a.materia_id} · ${a.cohorte_nombre ?? a.cohorte_id}`
+                return (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                )
+              })}
+            </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              ID de Cohorte
-            </label>
-            <input
-              type="text"
-              value={cohorteId}
-              onChange={(e) => setCohorteId(e.target.value)}
-              placeholder="ej. c-2026"
-              className="w-full border rounded px-3 py-2 text-sm"
-              data-testid="cohorte-id-input"
-            />
-          </div>
-        </div>
+        )}
       </section>
 
-      {!hasContext && (
+      {!hasContext && !isLoading && asignaciones.length > 0 && (
         <p className="text-sm text-gray-500 italic">
-          Ingresá la materia y la cohorte para continuar.
+          Seleccioná una materia y cohorte para continuar.
         </p>
       )}
 

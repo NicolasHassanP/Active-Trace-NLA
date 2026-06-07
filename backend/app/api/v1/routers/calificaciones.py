@@ -23,7 +23,7 @@ from typing import List
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.calificacion_repository import CalificacionRepository
 from app.repositories.padron_repository import PadronRepository
@@ -116,8 +116,9 @@ async def importar_calificaciones(
     Retorna la lista de CalificacionRead creadas/actualizadas.
     La identidad del actor viene del JWT — nunca del body.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_cal_service(db, current_user.tenant_id)
-    cals = await svc.importar(req=body, current_user=current_user)
+    cals = await svc.importar(req=body, current_user=current_user, domain_user_id=domain_user_id)
     return cals
 
 

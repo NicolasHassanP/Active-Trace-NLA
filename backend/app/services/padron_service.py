@@ -96,6 +96,7 @@ class PadronService:
         materia_id: uuid.UUID,
         cohorte_id: uuid.UUID,
         current_user: CurrentUser,
+        domain_user_id: Optional[uuid.UUID] = None,
     ) -> VersionPadron:
         """
         Crea VersionPadron + EntradaPadron y activa la nueva versión.
@@ -103,13 +104,14 @@ class PadronService:
         La versión anterior (si existe) queda inactiva (D2).
         Emite auditoría PADRON_CARGAR (C-05).
         Identidad del actor desde current_user.user_id (regla dura #8).
+        domain_user_id: usuario.id resuelto desde auth_identity_id (FK de dominio).
         """
         version_data = {
             "tenant_id": current_user.tenant_id,
             "materia_id": materia_id,
             "cohorte_id": cohorte_id,
             "activa": True,
-            "cargado_por": current_user.user_id,
+            "cargado_por": domain_user_id or current_user.user_id,
         }
 
         entries_data = [

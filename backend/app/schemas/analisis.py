@@ -38,6 +38,7 @@ class AlumnoAtrasado(BaseModel):
 
     entrada_padron_id: uuid.UUID
     nombre: Optional[str] = None
+    apellidos: Optional[str] = None
     email: Optional[str] = None
     actividades_faltantes: List[str]
     actividades_no_aprobadas: List[str]
