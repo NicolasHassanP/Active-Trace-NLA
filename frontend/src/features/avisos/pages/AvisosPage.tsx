@@ -24,7 +24,7 @@ export default function AvisosPage() {
 
   const feedQuery = useAvisosFeed()
   const pendientesQuery = useAvisosPendientes()
-  const gestionQuery = useAvisosGestion()
+  const gestionQuery = useAvisosGestion(isManager)
   const eliminarMutation = useEliminarAviso()
 
   const [editingAviso, setEditingAviso] = useState<AvisoRead | null>(null)

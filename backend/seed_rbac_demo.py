@@ -38,6 +38,8 @@ PERMISOS = [
     ('facturas:gestionar',               'facturas',       'gestionar'),
     ('tenant:configurar',                'tenant',         'configurar'),
     ('impersonacion:usar',               'impersonacion',  'usar'),
+    ('inbox:usar',                       'inbox',          'usar'),
+    ('perfil:editar',                    'perfil',         'editar'),
 ]
 
 MATRIZ = [
@@ -47,6 +49,8 @@ MATRIZ = [
     ('ALUMNO', 'avisos:confirmar',     'global'),
     ('ALUMNO', 'coloquios:reservar',   'global'),
     # TUTOR
+    ('TUTOR', 'inbox:usar',               'global'),
+    ('TUTOR', 'perfil:editar',            'propio'),
     ('TUTOR', 'avisos:confirmar',          'global'),
     ('TUTOR', 'atrasados:ver',             'global'),
     ('TUTOR', 'entregas:ver_sin_corregir', 'global'),
@@ -56,6 +60,8 @@ MATRIZ = [
     ('TUTOR', 'padron:cargar',             'global'),
     ('TUTOR', 'tareas:gestionar',          'global'),
     # PROFESOR
+    ('PROFESOR', 'inbox:usar',                   'global'),
+    ('PROFESOR', 'perfil:editar',                'propio'),
     ('PROFESOR', 'avisos:confirmar',             'global'),
     ('PROFESOR', 'calificaciones:importar',      'propio'),
     ('PROFESOR', 'calificaciones:configurar-umbral', 'propio'),
@@ -69,6 +75,8 @@ MATRIZ = [
     ('PROFESOR', 'padron:cargar',                'global'),
     ('PROFESOR', 'coloquios:gestionar',          'global'),
     # COORDINADOR
+    ('COORDINADOR', 'inbox:usar',                   'global'),
+    ('COORDINADOR', 'perfil:editar',                'propio'),
     ('COORDINADOR', 'avisos:confirmar',             'global'),
     ('COORDINADOR', 'calificaciones:importar',      'global'),
     ('COORDINADOR', 'calificaciones:configurar-umbral', 'global'),
@@ -90,6 +98,8 @@ MATRIZ = [
     ('NEXO', 'avisos:confirmar', 'global'),
     ('NEXO', 'equipos:ver',      'propio'),
     # ADMIN
+    ('ADMIN', 'inbox:usar',                   'global'),
+    ('ADMIN', 'perfil:editar',                'propio'),
     ('ADMIN', 'avisos:confirmar',             'global'),
     ('ADMIN', 'calificaciones:importar',      'global'),
     ('ADMIN', 'calificaciones:configurar-umbral', 'global'),
