@@ -126,8 +126,12 @@ class AnalisisService:
         if not atrasados:
             return []
 
-        # Enriquecer con nombre/apellidos/email desde EntradaPadron
-        entradas = await self._repo.entradas_padron_activas(materia_id, cohorte_id)
+        # Enriquecer con nombre/apellidos/email desde EntradaPadron.
+        # Se busca por los IDs concretos de los atrasados (no por versión activa)
+        # para que re-importaciones del padrón no rompan el lookup: las
+        # calificaciones siguen apuntando a los UUIDs de la versión anterior.
+        ids_a_buscar = [a.entrada_padron_id for a in atrasados]
+        entradas = await self._repo.get_entradas_by_ids(ids_a_buscar)
         entradas_map = {e.id: e for e in entradas}
 
         resultado: List[AlumnoAtrasado] = []

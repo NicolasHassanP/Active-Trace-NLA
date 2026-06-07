@@ -63,10 +63,13 @@ class AnalisisRepository(TenantScopedRepository[Calificacion]):
         """
         stmt = (
             select(Calificacion)
+            .join(EntradaPadron, Calificacion.entrada_padron_id == EntradaPadron.id)
+            .join(VersionPadron, EntradaPadron.version_id == VersionPadron.id)
             .where(
                 Calificacion.tenant_id == self._tenant_id,
                 Calificacion.materia_id == materia_id,
                 Calificacion.deleted_at.is_(None),
+                VersionPadron.activa.is_(True),
             )
         )
 
@@ -147,6 +150,41 @@ class AnalisisRepository(TenantScopedRepository[Calificacion]):
             )
 
         stmt = stmt.order_by(EntradaPadron.apellidos, EntradaPadron.nombre)
+
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    # -----------------------------------------------------------------------
+    # get_entradas_by_ids — lookup directo por UUID sin filtrar por versión activa
+    # -----------------------------------------------------------------------
+
+    async def get_entradas_by_ids(
+        self,
+        ids: List[uuid.UUID],
+    ) -> List[EntradaPadron]:
+        """
+        Retorna las EntradaPadron cuyos IDs estén en la lista dada.
+
+        Usado por analisis_service.atrasados para enriquecer con nombre/email
+        cuando las calificaciones apuntan a UUIDs de versiones anteriores del
+        padrón (pre-reimportación). Consultar por versión activa provocaría
+        que entradas_map.get() devuelva None para esas calificaciones.
+
+        Filtra por tenant_id y deleted_at IS NULL (reglas duras).
+        No filtra por versión activa — los IDs ya identifican unívocamente
+        cada fila.
+        """
+        if not ids:
+            return []
+
+        stmt = (
+            select(EntradaPadron)
+            .where(
+                EntradaPadron.tenant_id == self._tenant_id,
+                EntradaPadron.id.in_(ids),
+                EntradaPadron.deleted_at.is_(None),
+            )
+        )
 
         result = await self._session.execute(stmt)
         return list(result.scalars().all())

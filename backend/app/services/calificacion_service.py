@@ -165,7 +165,7 @@ class CalificacionService:
         # 3. Get effective umbral for current user's asignacion
         umbral_svc = UmbralService(repo=self._repo)
         asignacion_id = await self._resolve_asignacion(
-            user_id=domain_user_id or current_user.user_id,
+            domain_user_id=domain_user_id,
             materia_id=req.materia_id,
             tenant_id=current_user.tenant_id,
         )
@@ -422,11 +422,11 @@ class CalificacionService:
 
     async def _resolve_asignacion(
         self,
-        user_id: uuid.UUID,
+        domain_user_id: uuid.UUID,
         materia_id: uuid.UUID,
         tenant_id: uuid.UUID,
     ) -> Optional[uuid.UUID]:
-        """Resolve asignacion_id for user+materia, or None if not found."""
+        """Resolve asignacion_id for usuario.id (domain_user_id) + materia, or None if not found."""
         from sqlalchemy import select
         from app.models.usuario import Asignacion
 
@@ -434,7 +434,7 @@ class CalificacionService:
             select(Asignacion)
             .where(
                 Asignacion.tenant_id == tenant_id,
-                Asignacion.usuario_id == user_id,
+                Asignacion.usuario_id == domain_user_id,
                 Asignacion.materia_id == materia_id,
                 Asignacion.deleted_at.is_(None),
             )

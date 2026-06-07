@@ -201,14 +201,16 @@ async def get_umbral(
     Identidad del actor desde el JWT — nunca del query param.
     """
     from sqlalchemy import select
-    from app.models.usuario import Asignacion
+    from app.models.usuario import Asignacion, Usuario
 
-    # Resolve asignacion_id from current_user + materia_id
+    # current_user.user_id = auth_identities.id (JWT sub).
+    # Asignacion.usuario_id references usuario.id — resolve via Usuario join.
     stmt = (
         select(Asignacion)
+        .join(Usuario, (Usuario.id == Asignacion.usuario_id) & (Usuario.deleted_at.is_(None)))
         .where(
             Asignacion.tenant_id == current_user.tenant_id,
-            Asignacion.usuario_id == current_user.user_id,
+            Usuario.auth_identity_id == current_user.user_id,
             Asignacion.materia_id == materia_id,
             Asignacion.deleted_at.is_(None),
         )
