@@ -40,14 +40,29 @@ export default function AtrasadosPage() {
   const materiaId = hasUrlParams ? paramMateriaId : (selectedAsignacion?.materia_id ?? '')
   const cohorteId = hasUrlParams ? paramCohorteId : (selectedAsignacion?.cohorte_id ?? '')
 
+  // Always fetch the full unfiltered list from the backend.
+  // The paramsSerializer fix (api.ts) makes actividades[] reach FastAPI correctly;
+  // the local filter below applies immediately without a second network round-trip.
   const atrasadosQuery = useAtrasados({
     materia_id: materiaId,
     cohorte_id: cohorteId,
-    actividades: selectedActividades.length > 0 ? selectedActividades : undefined,
   })
 
   const reporteQuery = useReporteMateria(materiaId, cohorteId)
   const alumnos = atrasadosQuery.data ?? []
+
+  // Local filter: show only alumnos that have at least one selected activity
+  // in their faltantes or no_aprobadas lists.
+  const alumnosFiltrados =
+    selectedActividades.length > 0
+      ? alumnos.filter((a) =>
+          selectedActividades.some(
+            (act) =>
+              a.actividades_faltantes.includes(act) ||
+              a.actividades_no_aprobadas.includes(act),
+          ),
+        )
+      : alumnos
 
   function toggleSelect(email: string) {
     setSelectedEmails((prev) => {
@@ -148,7 +163,7 @@ export default function AtrasadosPage() {
               </div>
 
               <AtrasadosTable
-                alumnos={alumnos}
+                alumnos={alumnosFiltrados}
                 selectedEmails={selectedEmails}
                 onToggleSelect={toggleSelect}
               />
