@@ -12,8 +12,9 @@ import {
   cancelarLote,
   aprobarIndividual,
   cancelarIndividual,
+  getMisEnvios,
 } from '../services/comunicacionService'
-import type { EstadoComunicacion, PreviewRequest, EncolarRequest } from '../types'
+import type { EstadoComunicacion, MisEnviosParams, PreviewRequest, EncolarRequest } from '../types'
 
 const TERMINAL_STATES: EstadoComunicacion[] = ['Enviado', 'Fallido', 'Cancelado']
 const POLLING_INTERVAL_MS = 4000
@@ -102,4 +103,17 @@ export function useLoteStatus(loteId: string) {
     : false
 
   return { ...query, isTerminal }
+}
+
+// ---- Query: historial de envíos propios (C-27) ----
+
+/**
+ * useMisEnvios — queries GET /comunicaciones/mis-envios with optional filters.
+ * queryKey includes all params so any change triggers a refetch (D5 from design.md).
+ */
+export function useMisEnvios(params: MisEnviosParams = {}) {
+  return useQuery({
+    queryKey: ['mis-envios', params],
+    queryFn: () => getMisEnvios(params),
+  })
 }

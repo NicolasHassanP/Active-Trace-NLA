@@ -13,8 +13,9 @@ import {
   cancelarLote,
   aprobarIndividual,
   cancelarIndividual,
+  getMisEnvios,
 } from '../comunicacionService'
-import type { ComunicacionRead, LoteStatusResponse } from '../../types'
+import type { ComunicacionRead, LoteStatusResponse, MisEnviosResponse } from '../../types'
 
 let mock: MockAdapter
 
@@ -132,5 +133,43 @@ describe('aprobarIndividual / cancelarIndividual', () => {
   it('cancelarIndividual throws DomainError on 404', async () => {
     mock.onPost('/comunicaciones/cancelar-individual').reply(404, { detail: 'mensaje no encontrado' })
     await expect(cancelarIndividual('msg1')).rejects.toMatchObject({ status: 404 })
+  })
+})
+
+// C-27 — getMisEnvios
+describe('getMisEnvios', () => {
+  const sampleMisEnvios: MisEnviosResponse = {
+    total: 2,
+    offset: 0,
+    limit: 20,
+    items: [sampleMsg, { ...sampleMsg, id: 'msg2' }],
+  }
+
+  it('returns MisEnviosResponse on 200 without params', async () => {
+    mock.onGet('/comunicaciones/mis-envios').reply(200, sampleMisEnvios)
+    const result = await getMisEnvios()
+    expect(result.total).toBe(2)
+    expect(result.items).toHaveLength(2)
+  })
+
+  it('serializes estado filter as query param', async () => {
+    mock.onGet('/comunicaciones/mis-envios').reply(200, { ...sampleMisEnvios, total: 1, items: [sampleMsg] })
+    const result = await getMisEnvios({ estado: 'Enviado', offset: 0, limit: 20 })
+    expect(result.total).toBe(1)
+    // Verify the params were sent
+    const request = mock.history.get[0]
+    expect(request.params).toMatchObject({ estado: 'Enviado', offset: 0, limit: 20 })
+  })
+
+  it('returns empty list when no envíos', async () => {
+    mock.onGet('/comunicaciones/mis-envios').reply(200, { total: 0, offset: 0, limit: 20, items: [] })
+    const result = await getMisEnvios()
+    expect(result.total).toBe(0)
+    expect(result.items).toEqual([])
+  })
+
+  it('throws DomainError on 403', async () => {
+    mock.onGet('/comunicaciones/mis-envios').reply(403, { detail: 'forbidden' })
+    await expect(getMisEnvios()).rejects.toMatchObject({ status: 403 })
   })
 })

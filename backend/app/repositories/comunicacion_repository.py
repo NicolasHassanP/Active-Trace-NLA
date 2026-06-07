@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.comunicacion import Comunicacion, ComunicacionEstado
@@ -135,6 +135,59 @@ class ComunicacionRepository(TenantScopedRepository[Comunicacion]):
         )
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
+
+    # -----------------------------------------------------------------------
+    # list_by_sender — historial paginado de un remitente (C-27)
+    # -----------------------------------------------------------------------
+
+    async def list_by_sender(
+        self,
+        sender_id: uuid.UUID,
+        estado: Optional[ComunicacionEstado] = None,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> tuple[List[Comunicacion], int]:
+        """
+        Retorna las comunicaciones enviadas por sender_id en este tenant,
+        con paginación offset/limit.
+
+        Filtra:
+            - tenant_id == self._tenant_id  (multi-tenancy automático)
+            - enviado_por == sender_id
+            - deleted_at IS NULL            (soft delete)
+            - estado == estado              (opcional)
+
+        Returns:
+            (items, total) donde total es el conteo sin paginar.
+
+        C-27 D2 — filtrado por enviado_por es responsabilidad del repositorio.
+        C-27 D3 — sender_id se resuelve desde el JWT en el router; nunca de query params.
+        """
+        base_filters = [
+            Comunicacion.tenant_id == self._tenant_id,
+            Comunicacion.enviado_por == sender_id,
+            Comunicacion.deleted_at.is_(None),
+        ]
+        if estado is not None:
+            base_filters.append(Comunicacion.estado == estado)
+
+        # Conteo total (sin paginar)
+        count_stmt = select(func.count()).select_from(Comunicacion).where(*base_filters)
+        total_result = await self._session.execute(count_stmt)
+        total = total_result.scalar_one()
+
+        # Items paginados, orden created_at DESC (más reciente primero)
+        items_stmt = (
+            select(Comunicacion)
+            .where(*base_filters)
+            .order_by(Comunicacion.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        items_result = await self._session.execute(items_stmt)
+        items = list(items_result.scalars().all())
+
+        return items, total
 
     # -----------------------------------------------------------------------
     # actualizar_estado — transición atómica de estado

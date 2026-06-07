@@ -20,9 +20,9 @@ Endpoints:
 snake_case; ≤500 LOC.
 """
 import uuid
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
@@ -36,6 +36,7 @@ from app.schemas.comunicacion import (
     IndividualRequest,
     LoteRequest,
     LoteStatusResponse,
+    MisEnviosResponse,
     PreviewRequest,
     PreviewResponse,
 )
@@ -286,4 +287,63 @@ async def get_lote(
         fallidos=sum(1 for m in mensajes if m.estado == ModelEstado.Error),
         cancelados=sum(1 for m in mensajes if m.estado == ModelEstado.Cancelado),
         mensajes=[_to_read(m) for m in mensajes],
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /comunicaciones/mis-envios — historial del remitente (C-27)
+# ---------------------------------------------------------------------------
+
+@router.get("/mis-envios", response_model=MisEnviosResponse)
+async def get_mis_envios(
+    estado: Optional[str] = Query(default=None, description="Filtro opcional por estado"),
+    offset: int = Query(default=0, ge=0, description="Paginación: inicio"),
+    limit: int = Query(default=20, ge=1, le=100, description="Paginación: cantidad máxima"),
+    _grant=Depends(require_permission("comunicacion:enviar")),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MisEnviosResponse:
+    """
+    Retorna el historial de comunicaciones enviadas por el usuario autenticado.
+
+    Identidad del remitente SIEMPRE desde el JWT (resolve_domain_user_id).
+    Nunca acepta un sender_id como query param.
+
+    Requiere permiso: comunicacion:enviar (D6 — reutiliza el mismo permiso que encolar).
+    Scoped al tenant del JWT (multi-tenancy automático en el repositorio).
+
+    Query params opcionales:
+        estado: uno de Pendiente|Enviando|Enviado|Error|Cancelado
+        offset: default 0
+        limit: default 20, max 100
+    """
+    from app.models.comunicacion import ComunicacionEstado as ModelEstado
+
+    # D3 — identidad del remitente SIEMPRE desde el JWT
+    domain_user_id = await resolve_domain_user_id(current_user, db)
+
+    # Parsear estado si se proveyó
+    estado_enum: Optional[ModelEstado] = None
+    if estado is not None:
+        try:
+            estado_enum = ModelEstado(estado)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Estado inválido: '{estado}'. Valores permitidos: Pendiente, Enviando, Enviado, Error, Cancelado.",
+            )
+
+    repo = ComunicacionRepository(session=db, tenant_id=current_user.tenant_id)
+    items, total = await repo.list_by_sender(
+        sender_id=domain_user_id,
+        estado=estado_enum,
+        offset=offset,
+        limit=limit,
+    )
+
+    return MisEnviosResponse(
+        total=total,
+        offset=offset,
+        limit=limit,
+        items=[_to_read(m) for m in items],
     )

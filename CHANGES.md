@@ -554,7 +554,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/07_flujos_principales.md` FL-08, FL-11, FL-12
 
 ### [C-27] `historial-comunicaciones`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado (2026-06-07)
 - **Scope**:
   - Backend: `GET /comunicaciones/mis-envios` — lista comunicaciones enviadas por el usuario autenticado con filtro de estado y paginación. Nuevo método `list_by_sender` en `ComunicacionRepository`. Índice compuesto `(tenant_id, enviado_por, created_at DESC)` vía migración Alembic.
   - Frontend: componente `ComunicacionesHistorial` con tabla de envíos y filtro de estado. Actualizar `ComunicacionesPage` con tabs "Componer" | "Historial".

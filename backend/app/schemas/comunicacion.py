@@ -136,3 +136,26 @@ class LoteStatusResponse(BaseModel):
     fallidos: int
     cancelados: int
     mensajes: List[ComunicacionRead]
+
+
+# ---------------------------------------------------------------------------
+# MisEnviosResponse — respuesta paginada del historial del remitente (C-27)
+# ---------------------------------------------------------------------------
+
+class MisEnviosResponse(BaseModel):
+    """
+    Respuesta paginada del endpoint GET /comunicaciones/mis-envios.
+
+    Incluye metadata de paginación: total (sin paginar), offset, limit
+    e items (lista de ComunicacionRead del remitente autenticado).
+
+    D4 — siempre devolver metadata de paginación para que el frontend
+    pueda calcular si hay más páginas (total > offset + limit).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    total: int
+    offset: int
+    limit: int
+    items: List[ComunicacionRead]

@@ -12,9 +12,10 @@ import {
   useAprobarLote,
   useCancelarLote,
   useLoteStatus,
+  useMisEnvios,
 } from '../comunicacionHooks'
 import * as service from '../../services/comunicacionService'
-import type { LoteStatusResponse } from '../../types'
+import type { LoteStatusResponse, MisEnviosResponse } from '../../types'
 
 vi.mock('../../services/comunicacionService')
 
@@ -107,5 +108,44 @@ describe('useLoteStatus', () => {
     const { result } = renderHook(() => useLoteStatus('lote1'), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.isTerminal).toBe(false)
+  })
+})
+
+// C-27 — useMisEnvios
+describe('useMisEnvios', () => {
+  const mockMisEnvios: MisEnviosResponse = {
+    total: 3,
+    offset: 0,
+    limit: 20,
+    items: [
+      { id: 'm1', lote_id: 'lote1', destinatario_email: 'a@t.com', asunto: 'Test', cuerpo: 'Body', estado: 'Enviado', creado_en: '', actualizado_en: '' },
+    ],
+  }
+
+  it('returns data when API responds 200', async () => {
+    vi.mocked(service.getMisEnvios).mockResolvedValue(mockMisEnvios)
+    const { result } = renderHook(() => useMisEnvios({ offset: 0, limit: 20 }), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.total).toBe(3)
+    expect(result.current.data?.items).toHaveLength(1)
+  })
+
+  it('sets isError=true on 403', async () => {
+    vi.mocked(service.getMisEnvios).mockRejectedValue({ status: 403, detail: 'forbidden' })
+    const { result } = renderHook(() => useMisEnvios(), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+  })
+
+  it('re-fetches when params change', async () => {
+    vi.mocked(service.getMisEnvios).mockResolvedValue({ ...mockMisEnvios, total: 1 })
+    const { result, rerender } = renderHook(
+      ({ estado }) => useMisEnvios({ estado }),
+      { wrapper: createWrapper(), initialProps: { estado: undefined as any } },
+    )
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    vi.mocked(service.getMisEnvios).mockResolvedValue({ ...mockMisEnvios, total: 5 })
+    rerender({ estado: 'Enviado' as any })
+    await waitFor(() => expect(result.current.data?.total).toBe(5))
   })
 })

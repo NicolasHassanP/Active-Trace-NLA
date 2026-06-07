@@ -74,3 +74,20 @@ export interface LoteRequest {
 export interface IndividualRequest {
   comunicacion_id: string
 }
+
+// ---- Mis Envíos (C-27) ----
+
+/** Query params for GET /comunicaciones/mis-envios */
+export interface MisEnviosParams {
+  estado?: EstadoComunicacion
+  offset?: number
+  limit?: number
+}
+
+/** Paginated response from GET /comunicaciones/mis-envios */
+export interface MisEnviosResponse {
+  total: number
+  offset: number
+  limit: number
+  items: ComunicacionRead[]
+}
