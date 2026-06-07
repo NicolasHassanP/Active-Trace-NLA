@@ -12,11 +12,12 @@ const KEYS = {
 }
 
 /** Task 3.1 — GET /inbox: lista de hilos del usuario autenticado. Polls every 30s. */
-export function useHilos() {
+export function useHilos({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: KEYS.hilos,
     queryFn: listarHilos,
-    refetchInterval: 30_000,
+    refetchInterval: enabled ? 30_000 : false,
+    enabled,
   })
 }
 

@@ -19,18 +19,20 @@ import { toast } from 'sonner'
 import { Button, PageHeader } from '@/shared/components/ui'
 
 const MANAGEMENT_ROLES: Role[] = ['COORDINADOR', 'ADMIN']
+const MESSAGING_ROLES: Role[] = ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']
 
 export default function AvisosPage() {
   const navigate = useNavigate()
   const { roles } = useAuth()
   const isManager = roles.some((r) => MANAGEMENT_ROLES.includes(r))
+  const hasMessaging = roles.some((r) => MESSAGING_ROLES.includes(r))
 
   const feedQuery = useAvisosFeed()
   const pendientesQuery = useAvisosPendientes()
   const gestionQuery = useAvisosGestion(isManager)
   const eliminarMutation = useEliminarAviso()
 
-  const { data: hilos = [] } = useHilos()
+  const { data: hilos = [] } = useHilos({ enabled: hasMessaging })
   const hilosNoLeidos = hilos.filter((h) => h.no_leidos > 0)
 
   const [editingAviso, setEditingAviso] = useState<AvisoRead | null>(null)
@@ -92,8 +94,8 @@ export default function AvisosPage() {
         </section>
       )}
 
-      {/* Mensajes sin leer — hilos con no_leidos > 0 */}
-      {hilosNoLeidos.length > 0 && (
+      {/* Mensajes sin leer — solo roles con acceso a mensajería */}
+      {hasMessaging && hilosNoLeidos.length > 0 && (
         <section data-testid="mensajes-notificaciones" className="space-y-2">
           <h2 className="text-lg font-semibold text-gray-700">Mensajes sin leer</h2>
           <div className="space-y-2">
