@@ -5,6 +5,9 @@ C-14 Design:
     D6  — dos permisos: 'coloquios:gestionar' (COORD/ADMIN/PROF) y
           'coloquios:reservar' (ALUMNO). RBAC fail-closed.
     Regla #8 — identidad del alumno SIEMPRE desde el JWT, nunca del body.
+    HU-47 — resolve_domain_user_id traduce auth_identity_id → usuario.id antes de
+             llamar al servicio (necesario en crear_reserva, cancelar_reserva y
+             mis-convocatorias).
 
 Endpoints de gestión (coloquios:gestionar):
     POST   /coloquios/convocatorias          — crear convocatoria + turnos
@@ -17,6 +20,7 @@ Endpoints de gestión (coloquios:gestionar):
     POST   /coloquios/convocatorias/{id}/resultados — registrar nota final
 
 Endpoints de reserva (coloquios:reservar):
+    GET    /coloquios/mis-convocatorias      — convocatorias del alumno con turnos y cupos
     POST   /coloquios/reservas               — reservar turno (alumno)
     DELETE /coloquios/reservas/{reserva_id}  — cancelar reserva (alumno)
     GET    /coloquios/convocatorias/{id}/mi-resultado — resultado propio
@@ -30,7 +34,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.evaluacion_repository import (
     CandidatoEvaluacionRepository,
@@ -43,6 +47,7 @@ from app.schemas.evaluacion import (
     AgendaItemRead,
     ConvocatoriaConTurnosRead,
     ConvocatoriaMetricasRead,
+    ConvocatoriasAlumnoRead,
     CrearConvocatoriaRequest,
     ImportarCandidatosRequest,
     MetricasRead,
@@ -272,6 +277,31 @@ async def registrar_resultado(
 
 
 # ---------------------------------------------------------------------------
+# Reserva: GET /coloquios/mis-convocatorias  (HU-47)
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/mis-convocatorias",
+    response_model=List[ConvocatoriasAlumnoRead],
+)
+async def mis_convocatorias(
+    _grant=Depends(require_permission("coloquios:reservar")),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> List[ConvocatoriasAlumnoRead]:
+    """
+    Devuelve las convocatorias donde el alumno autenticado es candidato.
+
+    Solo convocatorias abiertas. Incluye turnos con cupos_disponibles derivados.
+    Identidad SIEMPRE del JWT — domain_user_id resuelto aquí.
+    Requiere permiso coloquios:reservar.
+    """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
+    svc = _make_evaluacion_service(db, current_user.tenant_id)
+    return await svc.listar_mis_convocatorias(domain_user_id)
+
+
+# ---------------------------------------------------------------------------
 # Reserva: POST /coloquios/reservas
 # ---------------------------------------------------------------------------
 
@@ -289,11 +319,12 @@ async def reservar_turno(
     """
     Reserva un turno para el ALUMNO autenticado.
 
-    Identidad del alumno SIEMPRE del JWT — nunca del body.
+    Identidad del alumno SIEMPRE del JWT — domain_user_id resuelto aquí.
     Requiere permiso coloquios:reservar.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_evaluacion_service(db, current_user.tenant_id)
-    return await svc.crear_reserva(body, current_user)
+    return await svc.crear_reserva(body, current_user, domain_user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -314,10 +345,12 @@ async def cancelar_reserva(
     """
     Cancela la propia reserva del ALUMNO autenticado.
 
-    Solo el dueño puede cancelar. Requiere coloquios:reservar.
+    Solo el dueño puede cancelar. domain_user_id resuelto aquí.
+    Requiere coloquios:reservar.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_evaluacion_service(db, current_user.tenant_id)
-    return await svc.cancelar_reserva(reserva_id, current_user)
+    return await svc.cancelar_reserva(reserva_id, current_user, domain_user_id)
 
 
 # ---------------------------------------------------------------------------

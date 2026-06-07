@@ -44,6 +44,9 @@ const InboxPage = lazy(() => import('@/features/mensajeria/pages/InboxPage'))
 // C-25 lazy pages
 const MiCursadaPage = lazy(() => import('@/features/mi-cursada/pages/MiCursadaPage'))
 
+// HU-47 lazy pages
+const MisColoquiosPage = lazy(() => import('@/features/mis-coloquios/pages/MisColoquiosPage'))
+
 // C-23 lazy pages
 const EquiposPage = lazy(() => import('@/features/equipos/pages/EquiposPage'))
 const MateriasPage = lazy(() => import('@/features/materias/pages/MateriasPage'))
@@ -230,6 +233,15 @@ export default function App() {
                     element={
                       <ProtectedRoute requiredRoles={['ALUMNO']}>
                         <MiCursadaPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* === HU-47 routes === */}
+                  <Route
+                    path="/mis-coloquios"
+                    element={
+                      <ProtectedRoute requiredRoles={['ALUMNO']}>
+                        <MisColoquiosPage />
                       </ProtectedRoute>
                     }
                   />
