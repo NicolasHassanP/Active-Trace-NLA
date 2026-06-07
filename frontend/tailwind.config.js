@@ -38,6 +38,20 @@ export default {
         'card-hover': '0 8px 26px rgba(16,24,40,.09)',
         modal:        '0 30px 80px rgba(16,24,40,.32)',
       },
+      keyframes: {
+        'bell-ring': {
+          '0%, 100%': { transform: 'rotate(0deg)' },
+          '15%':      { transform: 'rotate(16deg)' },
+          '30%':      { transform: 'rotate(-13deg)' },
+          '45%':      { transform: 'rotate(10deg)' },
+          '60%':      { transform: 'rotate(-7deg)' },
+          '75%':      { transform: 'rotate(5deg)' },
+          '90%':      { transform: 'rotate(-3deg)' },
+        },
+      },
+      animation: {
+        'bell-ring': 'bell-ring 0.65s ease-in-out',
+      },
     },
   },
   plugins: [],

@@ -1,11 +1,34 @@
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NavIcon } from '@/shared/components/ui/NavIcon'
 import { useAvisosPendientes } from '@/features/avisos/hooks/avisosHooks'
+import { useNoLeidosInbox } from '@/features/mensajeria/hooks/mensajeriaHooks'
 
 export default function Topbar() {
   const navigate = useNavigate()
+
   const pendientesQuery = useAvisosPendientes()
-  const pendingCount = pendientesQuery.data?.length ?? 0
+  const avisosPending = pendientesQuery.data?.length ?? 0
+  const mensajesNoLeidos = useNoLeidosInbox()
+  const totalCount = avisosPending + mensajesNoLeidos
+
+  const [ringing, setRinging] = useState(false)
+  const prevCountRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    // Skip initial render — only animate on real increases after first data load
+    if (prevCountRef.current === null) {
+      prevCountRef.current = totalCount
+      return
+    }
+    if (totalCount > prevCountRef.current) {
+      setRinging(true)
+      const t = setTimeout(() => setRinging(false), 700)
+      prevCountRef.current = totalCount
+      return () => clearTimeout(t)
+    }
+    prevCountRef.current = totalCount
+  }, [totalCount])
 
   return (
     <header
@@ -22,15 +45,18 @@ export default function Topbar() {
         type="button"
         onClick={() => navigate('/avisos')}
         className="relative w-[36px] h-[36px] rounded-[10px] border border-line bg-white flex items-center justify-center text-mut hover:bg-[#f6f7fb] transition-colors"
-        aria-label={pendingCount > 0 ? `${pendingCount} avisos pendientes` : 'Notificaciones'}
+        aria-label={totalCount > 0 ? `${totalCount} notificaciones pendientes` : 'Notificaciones'}
       >
-        <NavIcon name="bell" className="w-[16px] h-[16px]" />
-        {pendingCount > 0 && (
+        <NavIcon
+          name="bell"
+          className={`w-[16px] h-[16px] origin-top ${ringing ? 'animate-bell-ring' : ''}`}
+        />
+        {totalCount > 0 && (
           <span
             className="absolute -top-[4px] -right-[4px] min-w-[16px] h-[16px] rounded-full bg-warn text-white text-[10px] font-bold flex items-center justify-center px-[3px] leading-none"
             aria-hidden="true"
           >
-            {pendingCount > 99 ? '99+' : pendingCount}
+            {totalCount > 99 ? '99+' : totalCount}
           </span>
         )}
       </button>

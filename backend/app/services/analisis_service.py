@@ -408,6 +408,8 @@ class AnalisisService:
                 estado=estado,
                 aprobadas=aprobadas,
                 faltantes=faltantes,
+                nombre=getattr(entrada, "nombre", None),
+                apellidos=getattr(entrada, "apellidos", None),
             ))
 
         return filas

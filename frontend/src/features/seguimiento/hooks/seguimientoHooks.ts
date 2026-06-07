@@ -13,6 +13,8 @@ import type { SeguimientoParams } from '../types'
 function seguimientoKey(params: SeguimientoParams) {
   return [
     'seguimiento',
+    params.materia_id ?? null,
+    params.cohorte_id ?? null,
     params.busqueda ?? null,
     params.comision ?? null,
     params.regional ?? null,
@@ -27,5 +29,6 @@ export function useSeguimiento(params: SeguimientoParams) {
   return useQuery({
     queryKey: seguimientoKey(params),
     queryFn: () => listarSeguimiento(params),
+    enabled: !!(params.materia_id && params.cohorte_id),
   })
 }

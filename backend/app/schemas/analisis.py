@@ -112,6 +112,7 @@ class MonitorFila(BaseModel):
     estado: 'atrasado' | 'al_dia' | 'sin_datos'
     aprobadas: cantidad de actividades aprobadas en el período filtrado.
     faltantes: cantidad de actividades seleccionadas sin calificación.
+    nombre / apellidos: datos del alumno desde EntradaPadron.
     """
     model_config = ConfigDict(extra="forbid")
 
@@ -119,6 +120,8 @@ class MonitorFila(BaseModel):
     estado: Literal["atrasado", "al_dia", "sin_datos"]
     aprobadas: int
     faltantes: int
+    nombre: Optional[str] = None
+    apellidos: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
