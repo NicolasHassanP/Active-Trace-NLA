@@ -256,6 +256,14 @@
       "sessions": 0,
       "memories": 1,
       "prompts": 0
+    },
+    {
+      "id": "b6d25bb2",
+      "created_by": "Nico",
+      "created_at": "2026-06-07T00:59:46Z",
+      "sessions": 1,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }
