@@ -3,8 +3,10 @@ import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
 
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 TENANT_ID = '8531f634-3f1f-45da-9549-2f801d85c39b'
-DB = 'postgresql+asyncpg://postgres:280502@localhost:5432/activia_trace'
 
 ROLES = ['ALUMNO', 'TUTOR', 'PROFESOR', 'COORDINADOR', 'NEXO', 'ADMIN', 'FINANZAS']
 
@@ -122,7 +124,8 @@ MATRIZ = [
 ]
 
 async def seed():
-    engine = create_async_engine(DB)
+    from app.core.config import Settings
+    engine = create_async_engine(Settings().DATABASE_URL)
     tid = TENANT_ID
     async with engine.begin() as conn:
         for nombre in ROLES:
