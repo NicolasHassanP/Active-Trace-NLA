@@ -43,10 +43,10 @@ export default function PadronImportForm({ materia_id, cohorte_id, onSuccess }: 
       { materia_id, cohorte_id, rows: previewRows },
       {
         onSuccess: (version) => {
-          toast.success(`Padrón activado: ${version.total_filas} filas importadas`)
+          toast.success(`Padrón activado: ${version.filas_total} filas importadas`)
           setPreviewRows(null)
           if (fileRef.current) fileRef.current.value = ''
-          onSuccess?.(version.total_filas)
+          onSuccess?.(version.filas_total)
         },
         onError: (err) => {
           const de = err as DomainError

@@ -24,7 +24,7 @@ export interface VersionPadronRead {
   id: string
   materia_id: string
   cohorte_id: string
-  total_filas: number
+  filas_total: number
   activa: boolean
   creado_en: string
 }

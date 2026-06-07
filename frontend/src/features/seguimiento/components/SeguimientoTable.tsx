@@ -40,6 +40,8 @@ export default function SeguimientoTable({ filas }: Props) {
         <thead className="bg-gray-50">
           <tr>
             <th className="px-4 py-3 text-left font-medium text-gray-700">Alumno</th>
+            <th className="px-4 py-3 text-left font-medium text-gray-700">Comisión</th>
+            <th className="px-4 py-3 text-left font-medium text-gray-700">Regional</th>
             <th className="px-4 py-3 text-left font-medium text-gray-700">Estado</th>
             <th className="px-4 py-3 text-left font-medium text-gray-700">Aprobadas</th>
             <th className="px-4 py-3 text-left font-medium text-gray-700">Faltantes</th>
@@ -51,6 +53,8 @@ export default function SeguimientoTable({ filas }: Props) {
               <td className="px-4 py-3 text-gray-900">
                 {nombreCompleto(fila)}
               </td>
+              <td className="px-4 py-3 text-gray-600">{fila.comision ?? '—'}</td>
+              <td className="px-4 py-3 text-gray-600">{fila.regional ?? '—'}</td>
               <td className="px-4 py-3">
                 <StatusBadge
                   status={fila.estado}

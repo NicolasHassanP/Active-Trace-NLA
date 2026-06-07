@@ -20,6 +20,8 @@ export interface SeguimientoFila {
   faltantes: number
   nombre: string | null
   apellidos: string | null
+  comision: string | null
+  regional: string | null
 }
 
 // ---------------------------------------------------------------------------
