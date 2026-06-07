@@ -13,11 +13,23 @@
  * Mirrors MonitorFila from backend/app/schemas/analisis.py.
  * One row per alumno in the monitor view.
  */
+export interface ActividadResumen {
+  actividad: string
+  aprobado: boolean
+  nota: string | null
+}
+
 export interface MonitorFila {
   entrada_padron_id: string
   estado: 'atrasado' | 'al_dia' | 'sin_datos'
   aprobadas: number
   faltantes: number
+  nombre: string | null
+  apellidos: string | null
+  email: string | null
+  comision: string | null
+  regional: string | null
+  actividades_detalle: ActividadResumen[]
 }
 
 // ---------------------------------------------------------------------------

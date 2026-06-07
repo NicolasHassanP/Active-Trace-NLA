@@ -24,9 +24,6 @@ export default function MonitorToolbar({ filas, onClear, exporting = false }: Pr
 
   return (
     <div data-testid="monitor-toolbar" className="flex items-center gap-3">
-      <Button variant="secondary" size="sm" onClick={onClear}>
-        Limpiar filtros
-      </Button>
       <Button
         size="sm"
         onClick={handleExport}
