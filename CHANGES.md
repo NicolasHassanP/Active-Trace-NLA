@@ -553,13 +553,27 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/06_funcionalidades.md` Épicas 9, 10, 5
   - `knowledge-base/07_flujos_principales.md` FL-08, FL-11, FL-12
 
+### [C-27] `historial-comunicaciones`
+- **Estado**: `[ ]` pendiente
+- **Scope**:
+  - Backend: `GET /comunicaciones/mis-envios` — lista comunicaciones enviadas por el usuario autenticado con filtro de estado y paginación. Nuevo método `list_by_sender` en `ComunicacionRepository`. Índice compuesto `(tenant_id, enviado_por, created_at DESC)` vía migración Alembic.
+  - Frontend: componente `ComunicacionesHistorial` con tabla de envíos y filtro de estado. Actualizar `ComunicacionesPage` con tabs "Componer" | "Historial".
+  - Tests: TDD completo backend + frontend.
+- **Dependencias**: `C-12` (archivado), `C-22` (archivado)
+- **Governance**: BAJO (lectura de datos propios)
+- **Artefactos**: `openspec/changes/c-27-historial-comunicaciones/`
+- **Leer antes**:
+  - `backend/app/repositories/comunicacion_repository.py`
+  - `backend/app/schemas/comunicacion.py`
+  - `frontend/src/features/comunicaciones/pages/ComunicacionesPage.tsx`
+
 ---
 
 ## Resumen
 
 | Métrica | Valor |
 |---------|-------|
-| Total de changes | 24 |
+| Total de changes | 27 |
 | Fases | 6 (FASE 0 a FASE 5) |
 | Camino crítico | 10 changes (`C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 → C-12`) |
 | Gates de paralelismo | 11 (GATE 0 a GATE 10) |
