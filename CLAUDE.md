@@ -159,6 +159,55 @@ Aplicá TODAS las reglas duras en cada paso. Ante conflicto entre la KB y este a
 
 ---
 
+## Delegación a Sub-agentes (Regla de Contexto)
+
+El orquestador (contexto principal) debe mantenerse delgado. La regla es simple: **¿esto infla mi contexto sin necesidad? → delegar**.
+
+| Acción | Inline | Delegar |
+|--------|--------|---------|
+| Leer 1–3 archivos para decidir/verificar | ✅ | — |
+| Leer 4+ archivos para explorar/entender | — | ✅ Agent(Explore) |
+| Leer archivos como prep para editar | — | ✅ juntos con el edit |
+| Escribir un archivo mecánico pequeño | ✅ | — |
+| Fix con análisis + 2+ archivos | — | ✅ Agent(general-purpose) |
+| Correr tests, builds, scripts Playwright | — | ✅ Agent(general-purpose) |
+| Estado git, `openspec status` | ✅ | — |
+
+### Flujo de Testing / Debugging (sin change formal)
+
+Cuando la tarea es "testear un flujo y corregir lo que falle" (no hay C-NN previo):
+
+```
+1. Describir qué flujo/rol se va a testear
+2. Investigación inicial (si hay que leer 4+ archivos):
+      Agent(Explore) — "¿Cómo funciona X? ¿Qué archivos tocan Y?"
+3. Ejecutar verificación UI:
+      Agent(general-purpose) — "Corré Playwright en este flujo, reportá errores visibles"
+4. Por cada bug encontrado, delegar el fix:
+      Agent(general-purpose) — "Fix en [archivo A] y [archivo B]: [descripción precisa del problema y la solución]"
+      Incluir: ruta de archivos, la causa raíz (si se conoce), el patrón correcto a aplicar
+5. Re-verificar con otro Agent(general-purpose) post-fix
+6. Llamar mem_session_summary al cerrar la sesión
+```
+
+**Anti-patterns a evitar:**
+- Leer 5+ archivos inline para "entender el bug" → siempre Explore primero
+- Editar 3+ archivos inline → siempre delegar el fix completo
+- Correr Playwright inline y analizar el output en el contexto principal → delegar
+
+### Cómo briefar un sub-agente de fix
+
+El sub-agente arranca sin contexto. El brief debe incluir:
+```
+Problema: [qué falla y por qué — causa raíz si se conoce]
+Archivos a modificar: [rutas exactas]
+Patrón correcto: [cómo debe quedar el código]
+Reglas duras del proyecto: [las relevantes — ej. identidad desde JWT, JOIN correcto]
+No hacer: [qué no romper, qué no tocar]
+```
+
+---
+
 ## Engram Memory Protocol (Automático)
 
 La memoria de Engram se sincroniza **automáticamente**:
