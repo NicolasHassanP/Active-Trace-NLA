@@ -35,9 +35,9 @@ export default function MisEquiposTable({ items }: Props) {
         <tbody className="divide-y divide-gray-100 bg-white">
           {items.map((item) => (
             <tr key={item.asignacion_id} className="hover:bg-gray-50">
-              <td className="px-4 py-3 text-gray-800">{item.materia_id ?? '—'}</td>
-              <td className="px-4 py-3 text-gray-800">{item.carrera_id ?? '—'}</td>
-              <td className="px-4 py-3 text-gray-800">{item.cohorte_id ?? '—'}</td>
+              <td className="px-4 py-3 text-gray-800">{item.materia_nombre ?? item.materia_id ?? '—'}</td>
+              <td className="px-4 py-3 text-gray-800">{item.carrera_nombre ?? item.carrera_id ?? '—'}</td>
+              <td className="px-4 py-3 text-gray-800">{item.cohorte_nombre ?? item.cohorte_id ?? '—'}</td>
               <td className="px-4 py-3 text-gray-800">{item.rol}</td>
               <td className="px-4 py-3 text-gray-600">{item.desde}</td>
               <td className="px-4 py-3 text-gray-600">{item.hasta ?? '—'}</td>

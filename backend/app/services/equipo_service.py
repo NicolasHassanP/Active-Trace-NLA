@@ -79,13 +79,15 @@ class EquipoService:
         if not asignaciones:
             return []
 
-        # Resolver nombres de materia/carrera/cohorte en un solo round-trip
+        # Resolver nombres de materia/carrera/cohorte/usuario en un solo round-trip
         from sqlalchemy import select
         from app.models.estructura import Materia, Carrera, Cohorte
+        from app.models.usuario import Usuario
 
         materia_ids = {a.materia_id for a in asignaciones if a.materia_id}
         carrera_ids = {a.carrera_id for a in asignaciones if a.carrera_id}
         cohorte_ids = {a.cohorte_id for a in asignaciones if a.cohorte_id}
+        usuario_ids = {a.usuario_id for a in asignaciones if a.usuario_id}
 
         db = self._asig_repo._session
 
@@ -110,8 +112,16 @@ class EquipoService:
             )).all()
             cohortes_map = {r.id: r.nombre for r in rows}
 
+        usuarios_map: dict = {}
+        if usuario_ids:
+            rows = (await db.execute(
+                select(Usuario.id, Usuario.nombre, Usuario.apellidos)
+                .where(Usuario.id.in_(usuario_ids))
+            )).all()
+            usuarios_map = {r.id: (r.nombre, r.apellidos) for r in rows}
+
         return [
-            self._to_mis_equipos_item(a, materias_map, carreras_map, cohortes_map)
+            self._to_mis_equipos_item(a, materias_map, carreras_map, cohortes_map, usuarios_map)
             for a in asignaciones
         ]
 
@@ -121,11 +131,16 @@ class EquipoService:
         materias_map: dict = {},
         carreras_map: dict = {},
         cohortes_map: dict = {},
+        usuarios_map: dict = {},
     ) -> MisEquiposItem:
         """Mapea una Asignacion a MisEquiposItem con estado_vigencia derivado."""
         ev = estado_vigencia(asig.desde, asig.hasta)
+        usr = usuarios_map.get(asig.usuario_id, (None, None))
         return MisEquiposItem(
             asignacion_id=asig.id,
+            usuario_id=asig.usuario_id,
+            usuario_nombre=usr[0],
+            usuario_apellidos=usr[1],
             materia_id=asig.materia_id,
             carrera_id=asig.carrera_id,
             cohorte_id=asig.cohorte_id,
@@ -155,7 +170,23 @@ class EquipoService:
             rol=query.rol,
             responsable_id=query.responsable_id,
         )
-        return [self._to_mis_equipos_item(a) for a in asignaciones]
+        if not asignaciones:
+            return []
+
+        from sqlalchemy import select
+        from app.models.usuario import Usuario
+
+        usuario_ids = {a.usuario_id for a in asignaciones if a.usuario_id}
+        db = self._asig_repo._session
+        usuarios_map: dict = {}
+        if usuario_ids:
+            rows = (await db.execute(
+                select(Usuario.id, Usuario.nombre, Usuario.apellidos)
+                .where(Usuario.id.in_(usuario_ids))
+            )).all()
+            usuarios_map = {r.id: (r.nombre, r.apellidos) for r in rows}
+
+        return [self._to_mis_equipos_item(a, usuarios_map=usuarios_map) for a in asignaciones]
 
     # -----------------------------------------------------------------------
     # asignacion_masiva — POST /asignacion-masiva
