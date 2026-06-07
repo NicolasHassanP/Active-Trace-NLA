@@ -63,7 +63,7 @@ describe('useEncolarLote', () => {
   it('calls encolarLote and returns lote_id', async () => {
     vi.mocked(service.encolarLote).mockResolvedValue({ lote_id: 'lote1', total_encolados: 3 })
     const { result } = renderHook(() => useEncolarLote(), { wrapper: createWrapper() })
-    result.current.mutate({ asunto_plantilla: 'X', cuerpo_plantilla: 'X', variables_por_destinatario: [] })
+    result.current.mutate({ destinatarios: [], asunto_plantilla: 'X', cuerpo_plantilla: 'X', variables_por_destinatario: {} })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.data?.lote_id).toBe('lote1')
   })

@@ -39,16 +39,13 @@ export interface PreviewResponse {
 
 // ---- Encolar ----
 
-export interface VariablesPorDestinatario {
-  email: string
-  variables: Record<string, string>
-}
-
 /** Request for POST /comunicaciones/encolar */
 export interface EncolarRequest {
+  destinatarios: string[]
   asunto_plantilla: string
   cuerpo_plantilla: string
-  variables_por_destinatario: VariablesPorDestinatario[]
+  /** Dict keyed by email → { variable: valor } — mirrors backend Dict[str, Dict[str, Any]] */
+  variables_por_destinatario: Record<string, Record<string, string>>
 }
 
 /** Response from POST /comunicaciones/encolar (201) */

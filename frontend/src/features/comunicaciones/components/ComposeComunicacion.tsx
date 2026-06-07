@@ -79,12 +79,12 @@ export default function ComposeComunicacion({ destinatarios, onEncolado }: Props
     if (previewError) return
     encolar.mutate(
       {
+        destinatarios: destinatarios.map((a) => a.email),
         asunto_plantilla: values.asunto_plantilla,
         cuerpo_plantilla: values.cuerpo_plantilla,
-        variables_por_destinatario: destinatarios.map((a) => ({
-          email: a.email,
-          variables: buildVariables(a),
-        })),
+        variables_por_destinatario: Object.fromEntries(
+          destinatarios.map((a) => [a.email, buildVariables(a)]),
+        ),
       },
       {
         onSuccess: (res) => { onEncolado?.(res.lote_id) },

@@ -58,9 +58,10 @@ describe('encolarLote', () => {
   it('returns lote_id and total_encolados on 201', async () => {
     mock.onPost('/comunicaciones/encolar').reply(201, { lote_id: 'lote1', total_encolados: 2 })
     const result = await encolarLote({
+      destinatarios: ['a@t.com'],
       asunto_plantilla: 'Hola',
       cuerpo_plantilla: 'Texto',
-      variables_por_destinatario: [{ email: 'a@t.com', variables: {} }],
+      variables_por_destinatario: { 'a@t.com': {} },
     })
     expect(result.lote_id).toBe('lote1')
     expect(result.total_encolados).toBe(2)
@@ -69,25 +70,27 @@ describe('encolarLote', () => {
   it('does NOT include identity or tenant in the request body', async () => {
     mock.onPost('/comunicaciones/encolar').reply(201, { lote_id: 'lote1', total_encolados: 1 })
     await encolarLote({
+      destinatarios: ['a@t.com'],
       asunto_plantilla: 'Hola',
       cuerpo_plantilla: 'Texto',
-      variables_por_destinatario: [{ email: 'a@t.com', variables: {} }],
+      variables_por_destinatario: { 'a@t.com': {} },
     })
     const sentBody = JSON.parse(mock.history.post[0].data as string)
     expect(sentBody).not.toHaveProperty('user_id')
     expect(sentBody).not.toHaveProperty('tenant_id')
     expect(sentBody).not.toHaveProperty('remitente_id')
     expect(Object.keys(sentBody)).toEqual(
-      expect.arrayContaining(['asunto_plantilla', 'cuerpo_plantilla', 'variables_por_destinatario']),
+      expect.arrayContaining(['destinatarios', 'asunto_plantilla', 'cuerpo_plantilla', 'variables_por_destinatario']),
     )
   })
 
   it('throws DomainError on 422', async () => {
     mock.onPost('/comunicaciones/encolar').reply(422, { detail: 'sin destinatarios' })
     await expect(encolarLote({
+      destinatarios: [],
       asunto_plantilla: 'Hola',
       cuerpo_plantilla: 'Texto',
-      variables_por_destinatario: [],
+      variables_por_destinatario: {},
     })).rejects.toMatchObject({ status: 422 })
   })
 })
