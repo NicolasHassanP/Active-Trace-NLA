@@ -15,6 +15,14 @@ import type { NavItem } from '../types'
  * ALUMNO and NEXO have no items until their modules exist (C-22+).
  */
 export const NAV_CATALOG: NavItem[] = [
+  // ── MI CURSADA (ALUMNO) ──────────────────────────────────
+  {
+    label: 'Mi cursada',
+    path: '/mi-cursada',
+    roles: ['ALUMNO'],
+    icon: 'book',
+    group: 'MI CURSADA',
+  },
   // ── MI CÁTEDRA ──────────────────────────────────────────
   {
     label: 'Mis materias',
@@ -86,6 +94,13 @@ export const NAV_CATALOG: NavItem[] = [
     path: '/tareas',
     roles: ['TUTOR', 'PROFESOR', 'COORDINADOR', 'ADMIN'],
     icon: 'check-square',
+    group: 'TRABAJO',
+  },
+  {
+    label: 'Mensajes',
+    path: '/mensajes',
+    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
+    icon: 'mail',
     group: 'TRABAJO',
   },
   {

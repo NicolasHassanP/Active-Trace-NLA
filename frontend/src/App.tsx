@@ -38,6 +38,12 @@ const CalificacionesPage = lazy(() => import('@/features/calificaciones/pages/Ca
 // Seguimiento lazy page (F2.8 — Monitor de seguimiento TUTOR/PROFESOR)
 const SeguimientoPage = lazy(() => import('@/features/seguimiento/pages/SeguimientoPage'))
 
+// C-26 lazy pages
+const InboxPage = lazy(() => import('@/features/mensajeria/pages/InboxPage'))
+
+// C-25 lazy pages
+const MiCursadaPage = lazy(() => import('@/features/mi-cursada/pages/MiCursadaPage'))
+
 // C-23 lazy pages
 const EquiposPage = lazy(() => import('@/features/equipos/pages/EquiposPage'))
 const MateriasPage = lazy(() => import('@/features/materias/pages/MateriasPage'))
@@ -206,6 +212,24 @@ export default function App() {
                     element={
                       <ProtectedRoute requiredRoles={['TUTOR', 'PROFESOR', 'COORDINADOR', 'ADMIN']}>
                         <SeguimientoPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* === C-26 routes === */}
+                  <Route
+                    path="/mensajes"
+                    element={
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}>
+                        <InboxPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* === C-25 routes === */}
+                  <Route
+                    path="/mi-cursada"
+                    element={
+                      <ProtectedRoute requiredRoles={['ALUMNO']}>
+                        <MiCursadaPage />
                       </ProtectedRoute>
                     }
                   />

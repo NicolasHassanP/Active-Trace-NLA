@@ -516,6 +516,31 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/07_flujos_principales.md` FL-03, FL-05, FL-06, FL-09
 - **⚠️ Follow-up backend de C-15 incluido en este change (OQ-1 resuelta)**: C-15 solo exponía el feed de avisos filtrado por audiencia (`GET /avisos`), sin forma de listar todos los avisos del tenant para el panel de gestión del COORDINADOR. Se agregó el endpoint **`GET /avisos/gestion`** (gateado por `avisos:publicar`, fail-closed, tenant row-level, excluye soft-deleted, devuelve `ack_count`). Cambio aditivo y read-only: sin migración Alembic y sin tocar contratos existentes. Tests: `backend/tests/test_avisos_gestion.py` (9 nuevos, 22 totales en avisos verdes). Delta spec: `specs/avisos-publicacion/` (MODIFIED). La OQ-3 (export del monitor) se resuelve client-side en el apply del frontend, sin tocar backend.
 
+### [C-26] `mensajeria-frontend`
+- **Estado**: `[x]` archivado (2026-06-06)
+- **Scope**:
+  - Feature frontend `features/mensajeria/` completa: types, service, hooks TanStack Query, componentes (`HilosList`, `HiloView`, `NuevoHiloForm`, `ResponderForm`) y página `InboxPage` con layout master-detail.
+  - Consume los 4 endpoints del backend C-20 (`GET /inbox`, `POST /inbox`, `GET /inbox/{hilo_id}`, `POST /inbox/{hilo_id}/responder`).
+  - Ítem "Mensajes" en nav catalog (grupo TRABAJO, roles PROFESOR/TUTOR/COORDINADOR/ADMIN).
+  - Ruta protegida `/mensajes` registrada en App.tsx.
+  - Tests: 35 nuevos tests verdes (service, Zod schemas, buildNav, página con errores de dominio 404/409).
+- **Dependencias**: `C-20` (backend mensajería), `C-21` (shell + auth)
+- **Governance**: BAJO
+- **Spec**: `openspec/specs/mensajeria-frontend/spec.md`
+
+### [C-25] `alumno-portal`
+- **Estado**: `[x]` archivado (2026-06-06)
+- **Scope**:
+  - Backend: endpoint `GET /api/v1/alumno/estado-academico` con `require_permission("academico:ver_propio")`, `AlumnoRepository` dedicado (joins multi-tabla: padrón activo → materia, calificaciones, reservas activas → turno → evaluacion → materia), `AlumnoService` con funciones puras `clasificar_estado_entrega` y `calcular_avance`.
+  - Schemas Pydantic v2: `EstadoEntregaAlumno` enum (aprobada/con_nota/sin_entrega), `CalificacionAlumnoRead`, `MateriaCursadaRead`, `ColoquioReservadoRead`, `EstadoAcademicoRead`.
+  - Frontend: feature `features/mi-cursada/` completa (types, service, hooks TanStack Query, componentes `AvanceKpis`, `MateriasCursadasTable`, `ColoquiosReservadosPanel`, página `MiCursadaPage`).
+  - Ítem "Mi cursada" en nav catalog (grupo MI CURSADA, exclusivo para rol ALUMNO).
+  - Ruta protegida `/mi-cursada` registrada en App.tsx.
+  - Tests: 27 unit backend + 7 repository integration + 5 router integration + 11 frontend verdes.
+- **Dependencias**: `C-10` (calificaciones), `C-14` (evaluaciones/coloquios), `C-21` (shell + auth)
+- **Governance**: BAJO (read-only, sin escritura de datos)
+- **Spec**: `openspec/specs/alumno-portal/spec.md`
+
 ### [C-24] `frontend-finanzas-y-admin`
 - **Estado**: `[ ]` pendiente
 - **Scope**:

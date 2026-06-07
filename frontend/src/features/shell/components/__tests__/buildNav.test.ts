@@ -33,10 +33,12 @@ describe('buildNav — pure function', () => {
     })
   })
 
-  it('returns empty list for role with no nav destinations (ALUMNO — no items defined yet)', () => {
-    // ALUMNO has no nav items in the initial catalog
+  it('returns items for ALUMNO role (/mi-cursada)', () => {
+    // ALUMNO now has /mi-cursada from C-25
     const items = buildNav(['ALUMNO'])
-    expect(items).toEqual([])
+    expect(items.length).toBeGreaterThan(0)
+    const paths = items.map((i) => i.path)
+    expect(paths).toContain('/mi-cursada')
   })
 
   it('ADMIN sees all items', () => {
@@ -117,5 +119,72 @@ describe('buildNav — C-23 coordination items', () => {
     expect(paths).toContain('/tareas')
     expect(paths).not.toContain('/monitor')
     expect(paths).not.toContain('/setup-cuatrimestre')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// C-26 mensajería nav item (task 7.3)
+// ---------------------------------------------------------------------------
+
+describe('buildNav — C-26 mensajería item', () => {
+  it('COORDINADOR sees /mensajes', () => {
+    const paths = buildNav(['COORDINADOR']).map((i) => i.path)
+    expect(paths).toContain('/mensajes')
+  })
+
+  it('PROFESOR sees /mensajes', () => {
+    const paths = buildNav(['PROFESOR']).map((i) => i.path)
+    expect(paths).toContain('/mensajes')
+  })
+
+  it('TUTOR sees /mensajes', () => {
+    const paths = buildNav(['TUTOR']).map((i) => i.path)
+    expect(paths).toContain('/mensajes')
+  })
+
+  it('ADMIN sees /mensajes', () => {
+    const paths = buildNav(['ADMIN']).map((i) => i.path)
+    expect(paths).toContain('/mensajes')
+  })
+
+  it('ALUMNO does NOT see /mensajes', () => {
+    const paths = buildNav(['ALUMNO']).map((i) => i.path)
+    expect(paths).not.toContain('/mensajes')
+  })
+
+  it('/mensajes item is in group TRABAJO', () => {
+    const item = buildNav(['COORDINADOR']).find((i) => i.path === '/mensajes')
+    expect(item?.group).toBe('TRABAJO')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// C-25 mi-cursada nav item (task 7.2)
+// ---------------------------------------------------------------------------
+
+describe('buildNav — C-25 mi-cursada item', () => {
+  it('ALUMNO sees /mi-cursada', () => {
+    const paths = buildNav(['ALUMNO']).map((i) => i.path)
+    expect(paths).toContain('/mi-cursada')
+  })
+
+  it('/mi-cursada item is in group MI CURSADA', () => {
+    const item = buildNav(['ALUMNO']).find((i) => i.path === '/mi-cursada')
+    expect(item?.group).toBe('MI CURSADA')
+  })
+
+  it('PROFESOR does NOT see /mi-cursada', () => {
+    const paths = buildNav(['PROFESOR']).map((i) => i.path)
+    expect(paths).not.toContain('/mi-cursada')
+  })
+
+  it('COORDINADOR does NOT see /mi-cursada', () => {
+    const paths = buildNav(['COORDINADOR']).map((i) => i.path)
+    expect(paths).not.toContain('/mi-cursada')
+  })
+
+  it('ADMIN does NOT see /mi-cursada (exclusive to ALUMNO)', () => {
+    const paths = buildNav(['ADMIN']).map((i) => i.path)
+    expect(paths).not.toContain('/mi-cursada')
   })
 })
