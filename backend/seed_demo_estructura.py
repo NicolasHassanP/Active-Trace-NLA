@@ -23,6 +23,7 @@ Prerequisito: seed_demo_users.py ya debe haber corrido (necesita los usuarios).
 import asyncio
 import os
 import sys
+from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -100,7 +101,7 @@ async def seed() -> None:
                 'carrera_id': CARRERA_ID,
                 'cohorte_id': COHORTE_ID,
                 'comisiones': '["1A"]',
-                'desde':      '2026-03-01',
+                'desde':      date(2026, 3, 1),
             },
             {
                 'email':      'coordinador@demo.com',
@@ -109,7 +110,7 @@ async def seed() -> None:
                 'carrera_id': CARRERA_ID,
                 'cohorte_id': COHORTE_ID,
                 'comisiones': '[]',
-                'desde':      '2026-03-01',
+                'desde':      date(2026, 3, 1),
             },
         ]
 
