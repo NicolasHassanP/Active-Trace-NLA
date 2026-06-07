@@ -45,7 +45,7 @@ export default function PasoClonarEquipo({ onSuccess, onError }: Props) {
         destino_carrera_id: data.destino_carrera_id,
         destino_cohorte_id: data.destino_cohorte_id,
         desde: data.desde,
-        hasta: data.hasta ?? null,
+        hasta: data.hasta || null,
       })
       onSuccess()
     } catch (err) {
