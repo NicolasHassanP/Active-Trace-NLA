@@ -20,7 +20,7 @@ import uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.repositories.alumno_repository import AlumnoRepository
 from app.schemas.alumno import EstadoAcademicoRead
 from app.services.alumno_service import AlumnoService
@@ -52,5 +52,6 @@ async def get_estado_academico(
     db: AsyncSession = Depends(get_db),
 ) -> EstadoAcademicoRead:
     """Retorna el estado académico agregado del alumno: avance, materias y coloquios."""
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     service = _make_service(db, current_user.tenant_id)
-    return await service.get_estado_academico(current_user)
+    return await service.get_estado_academico(current_user, domain_user_id)
