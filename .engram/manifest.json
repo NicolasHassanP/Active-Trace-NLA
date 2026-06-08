@@ -304,6 +304,14 @@
       "sessions": 0,
       "memories": 1,
       "prompts": 0
+    },
+    {
+      "id": "b6a69687",
+      "created_by": "Nico",
+      "created_at": "2026-06-08T10:02:25Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }
