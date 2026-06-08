@@ -63,16 +63,17 @@ describe('buildNav — pure function', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildNav — C-23 coordination items', () => {
-  it('COORDINADOR sees all coordination-exclusive items (/avisos, /tareas, /monitor, /setup-cuatrimestre, /equipos, /encuentros, /coloquios)', () => {
+  it('COORDINADOR sees coordination items (/avisos, /tareas, /monitor, /equipos, /encuentros, /coloquios) but NOT /setup-cuatrimestre', () => {
     const items = buildNav(['COORDINADOR'])
     const paths = items.map((i) => i.path)
     expect(paths).toContain('/avisos')
     expect(paths).toContain('/tareas')
     expect(paths).toContain('/monitor')
-    expect(paths).toContain('/setup-cuatrimestre')
     expect(paths).toContain('/equipos')
     expect(paths).toContain('/encuentros')
     expect(paths).toContain('/coloquios')
+    // Setup cuatrimestre requiere estructura:gestionar → solo ADMIN (03_actores_y_roles.md:79)
+    expect(paths).not.toContain('/setup-cuatrimestre')
   })
 
   it('ADMIN sees all coordination items', () => {
@@ -87,24 +88,27 @@ describe('buildNav — C-23 coordination items', () => {
     expect(paths).toContain('/coloquios')
   })
 
-  it('PROFESOR sees /avisos and /tareas but NOT /monitor, /setup-cuatrimestre, /equipos (coordination-exclusive)', () => {
+  it('PROFESOR sees /avisos, /tareas, /encuentros but NOT /monitor, /setup-cuatrimestre, /equipos, /coloquios', () => {
     const items = buildNav(['PROFESOR'])
     const paths = items.map((i) => i.path)
-    // Bandeja de avisos (broad) and tareas (own) are visible to PROFESOR
+    // Bandeja de avisos (broad), tareas (propias) y encuentros (propios) son visibles a PROFESOR
+    // (matriz 03_actores_y_roles.md: "Gestionar encuentros" → PROFESOR propio)
     expect(paths).toContain('/avisos')
     expect(paths).toContain('/tareas')
+    expect(paths).toContain('/encuentros')
     // Coordination-exclusive items must NOT appear
     expect(paths).not.toContain('/monitor')
     expect(paths).not.toContain('/setup-cuatrimestre')
     expect(paths).not.toContain('/equipos')
-    expect(paths).not.toContain('/encuentros')
     expect(paths).not.toContain('/coloquios')
   })
 
-  it('FINANZAS does NOT see any coordination items', () => {
+  it('FINANZAS sees /avisos and /liquidaciones but NOT coordination items', () => {
     const items = buildNav(['FINANZAS'])
     const paths = items.map((i) => i.path)
-    expect(paths).not.toContain('/avisos')
+    // FINANZAS tiene avisos:confirmar (matriz) → ve la bandeja de avisos
+    expect(paths).toContain('/avisos')
+    expect(paths).toContain('/liquidaciones')
     expect(paths).not.toContain('/tareas')
     expect(paths).not.toContain('/monitor')
     expect(paths).not.toContain('/setup-cuatrimestre')

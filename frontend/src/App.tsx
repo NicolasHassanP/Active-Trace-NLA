@@ -200,11 +200,11 @@ export default function App() {
                       </ProtectedRoute>
                     }
                   />
-                  {/* /setup-cuatrimestre — COORDINADOR/ADMIN only */}
+                  {/* /setup-cuatrimestre — ADMIN only: requiere estructura:gestionar (03_actores_y_roles.md:79) */}
                   <Route
                     path="/setup-cuatrimestre"
                     element={
-                      <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN']}>
+                      <ProtectedRoute requiredRoles={['ADMIN']}>
                         <SetupCuatrimestrePage />
                       </ProtectedRoute>
                     }

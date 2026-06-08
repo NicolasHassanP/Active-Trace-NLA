@@ -127,7 +127,7 @@ export const NAV_CATALOG: NavItem[] = [
   {
     label: 'Setup cuatrimestre',
     path: '/setup-cuatrimestre',
-    roles: ['COORDINADOR', 'ADMIN'],
+    roles: ['ADMIN'],
     icon: 'settings',
     group: 'TRABAJO',
   },
