@@ -36,7 +36,10 @@ C-01 foundation-setup (infra, Docker, FastAPI skel, DB inicial, OTel)
             │   │   ├── C-15 avisos-y-acknowledgment (Aviso, ack, scope, vigencia)
             │   │   ├── C-16 tareas-internas (Tarea, ComentarioTarea, workflow)
             │   │   ├── C-17 programas-y-fechas-academicas (ProgramaMateria, FechaAcademica)
-            │   │   └── C-18 liquidaciones-y-honorarios (SalarioBase/Plus, Liquidacion, Factura)
+            │   │   ├── C-18 liquidaciones-y-honorarios (SalarioBase/Plus, Liquidacion, Factura)
+            │   │   └── C-28 fix-domain-user-id-transversal ──────────────────────────────────────
+            │   │       [FIX TRANSVERSAL: corrige auth_identity_id ≠ usuario.id en C-08..C-20]
+            │   │       (avisos, encuentros, guardias, padrón, análisis, coloquios; 21 tests)
             │   ├── C-19 panel-auditoria-metricas (dashboards de uso, F9.1)
             │   ├── C-20 perfil-y-mensajeria-interna (perfil propio, inbox interno)
             │   └── C-21 frontend-shell-y-auth (SPA shell, login, guard, cliente HTTP)
@@ -101,6 +104,11 @@ GATE 11: C-22 ✓ + backends C-10, C-14, C-20 ✓    ← extensiones frontend po
   → C-25 alumno-portal                             [Agente C — si C-10, C-14 ✓]
   → C-26 mensajeria-frontend                       [Agente C — si C-20 ✓]
   → C-27 historial-comunicaciones                  [Agente C — si C-22, C-12 ✓]
+
+FIX TRANSVERSAL (aplicar sobre cualquier GATE ≥ 6, una vez que C-07 ✓):
+  → C-28 fix-domain-user-id-transversal            [Agente B — independiente de frontend]
+     Cubre routers y services de C-08..C-20 que usen FKs de dominio.
+     No bloquea ni es bloqueado por ningún change de GATE 11.
 ```
 
 ### Camino crítico (10 changes — mínimo irreducible)
@@ -129,8 +137,9 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
 | 10 | C-19 panel-auditoria-metricas | C-12 comunicaciones-cola-worker | C-22 frontend-academico-docente |
 | 11 | — | C-23 frontend-coordinacion | C-24 frontend-finanzas-y-admin |
 | 12 | — | — | C-25 alumno-portal, C-26 mensajeria-frontend, C-27 historial-comunicaciones |
+| 13 *(fix)* | — | C-28 fix-domain-user-id-transversal | — |
 
-> Los 3 agentes convergen alrededor del paso 10-11. El Agente A queda libre antes y puede tomar `C-19` o adelantar refactors. Los changes C-25/26/27 (GATE 11) son extensiones paralelas independientes entre sí.
+> Los 3 agentes convergen alrededor del paso 10-11. El Agente A queda libre antes y puede tomar `C-19` o adelantar refactors. Los changes C-25/26/27 (GATE 11) son extensiones paralelas independientes entre sí. C-28 es un fix transversal que puede aplicarse desde GATE 6 en adelante, paralelo a cualquier feature.
 
 ---
 
