@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { downloadFile } from '@/shared/services/downloadFile'
 import { getMisAsignaciones } from '@/features/padron/services/misAsignacionesService'
-import { useInstancias, useGuardias } from '../hooks/encuentrosCoordHooks'
+import { useInstancias, useGuardias, useBloqueHtml } from '../hooks/encuentrosCoordHooks'
 import { exportarGuardias } from '../services/encuentrosCoordService'
 import InstanciasEncuentroTable from '../components/InstanciasEncuentroTable'
 import GuardiasTable from '../components/GuardiasTable'
@@ -18,8 +18,9 @@ import CrearSlotDialog from '../components/CrearSlotDialog'
 import type { GuardiaParams } from '../types'
 import type { Role } from '@/features/auth/types'
 import { Button, PageHeader } from '@/shared/components/ui'
+import { toast } from 'sonner'
 
-const ALLOWED_ROLES: Role[] = ['COORDINADOR', 'ADMIN']
+const ALLOWED_ROLES: Role[] = ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']
 
 const EMPTY_GUARDIA_PARAMS: GuardiaParams = {}
 
@@ -48,6 +49,18 @@ export default function EncuentrosPage() {
 
   const [showCrearSlot, setShowCrearSlot] = useState(false)
 
+  const bloqueHtmlMutation = useBloqueHtml()
+
+  async function handleCopiarCronograma() {
+    try {
+      const res = await bloqueHtmlMutation.mutateAsync(selectedMateriaId || null)
+      await navigator.clipboard.writeText(res.html)
+      toast.success('Cronograma copiado al portapapeles')
+    } catch {
+      toast.error('Error al generar el cronograma')
+    }
+  }
+
   async function handleExportarGuardias() {
     try {
       const blob = await exportarGuardias(guardiaParams)
@@ -61,7 +74,7 @@ export default function EncuentrosPage() {
     return (
       <div data-testid="encuentros-access-denied">
         <div role="alert" className="rounded bg-red-50 p-4 text-sm text-red-700">
-          Acceso denegado. Esta sección es exclusiva para Coordinadores y Administradores.
+          No tienes permiso para acceder a esta sección.
         </div>
       </div>
     )
@@ -127,13 +140,24 @@ export default function EncuentrosPage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-800">Registro de guardias</h2>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => void handleExportarGuardias()}
-          >
-            Exportar guardias
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void handleCopiarCronograma()}
+              disabled={!instanciasQuery.data?.length || bloqueHtmlMutation.isPending}
+              title={!instanciasQuery.data?.length ? 'No hay instancias para copiar' : undefined}
+            >
+              {bloqueHtmlMutation.isPending ? 'Copiando…' : 'Copiar cronograma'}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => void handleExportarGuardias()}
+            >
+              Exportar guardias
+            </Button>
+          </div>
         </div>
 
         <GuardiasFilters

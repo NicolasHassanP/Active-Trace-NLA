@@ -4,7 +4,7 @@
  * Task 5.5.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { crearSlot, listarInstancias, listarGuardias } from '../services/encuentrosCoordService'
+import { crearSlot, listarInstancias, listarGuardias, getBloqueHtml } from '../services/encuentrosCoordService'
 import type { CrearSlotRequest, InstanciasParams, GuardiaParams } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -67,5 +67,20 @@ export function useGuardias(params: GuardiaParams) {
   return useQuery({
     queryKey: guardiasKey(params),
     queryFn: () => listarGuardias(params),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// useBloqueHtml — GET /api/v1/encuentros/bloque-html (user-triggered)
+// ---------------------------------------------------------------------------
+
+/**
+ * Mutation hook for GET /api/v1/encuentros/bloque-html.
+ * Implemented as a mutation (not a query) because it is user-triggered,
+ * not a background fetch. The returned HTML is ready to paste into Moodle.
+ */
+export function useBloqueHtml() {
+  return useMutation({
+    mutationFn: (materia_id?: string | null) => getBloqueHtml(materia_id),
   })
 }

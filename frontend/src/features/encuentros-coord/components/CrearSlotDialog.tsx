@@ -4,6 +4,7 @@
  * < 200 LOC.
  */
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useCrearSlot } from '../hooks/encuentrosCoordHooks'
 import type { SlotModo } from '../types'
 
@@ -76,7 +77,7 @@ export default function CrearSlotDialog({ materiaId, materiaNombre, onClose }: P
     try {
       const res = await mutation.mutateAsync(payload)
       // success — close and let the query invalidation refresh the table
-      alert(`Slot creado con ${res.instancias_creadas} instancia(s).`)
+      toast.success(`Encuentro creado: ${res.instancias.length} instancia(s) generadas`)
       onClose()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al crear el slot.'

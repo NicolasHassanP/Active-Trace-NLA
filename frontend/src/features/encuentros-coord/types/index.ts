@@ -69,8 +69,8 @@ export interface CrearSlotRequest {
 
 /** POST /api/v1/encuentros/slots — mirrors CrearSlotResponse */
 export interface CrearSlotResponse {
-  slot_id: string
-  instancias_creadas: number
+  slot: { id: string; [key: string]: unknown }
+  instancias: InstanciaEncuentroRead[]
 }
 
 // ---------------------------------------------------------------------------

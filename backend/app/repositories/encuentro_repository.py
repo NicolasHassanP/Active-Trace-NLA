@@ -81,31 +81,23 @@ class InstanciaEncuentroRepository(TenantScopedRepository[InstanciaEncuentro]):
     async def list_by_materia(
         self,
         materia_id: Optional[uuid.UUID] = None,
-        asignacion_ids: Optional[List[uuid.UUID]] = None,
+        scope_materia_ids: Optional[List[uuid.UUID]] = None,
     ) -> List[InstanciaEncuentro]:
         """
-        List instances filtered by materia and/or slot asignacion scope.
+        List instances filtered by materia and/or materia scope.
 
-        For COORDINADOR/ADMIN: pass materia_id only (no asignacion restriction).
-        For PROFESOR: pass asignacion_ids to scope to their own slots.
+        For COORDINADOR/ADMIN: pass materia_id only (no scope restriction).
+        For PROFESOR: pass scope_materia_ids to restrict to materias where
+        they have an asignacion — filters directly on InstanciaEncuentro.materia_id.
         """
         stmt = self._base_query()
 
         if materia_id is not None:
             stmt = stmt.where(InstanciaEncuentro.materia_id == materia_id)
 
-        if asignacion_ids is not None:
-            # Join through slot to filter by asignacion
-            slot_ids_subq = (
-                select(SlotEncuentro.id)
-                .where(
-                    SlotEncuentro.asignacion_id.in_(asignacion_ids),
-                    SlotEncuentro.tenant_id == self._tenant_id,
-                    SlotEncuentro.deleted_at.is_(None),
-                )
-            )
+        if scope_materia_ids is not None:
             stmt = stmt.where(
-                InstanciaEncuentro.slot_id.in_(slot_ids_subq)
+                InstanciaEncuentro.materia_id.in_(scope_materia_ids)
             )
 
         result = await self._session.execute(stmt)

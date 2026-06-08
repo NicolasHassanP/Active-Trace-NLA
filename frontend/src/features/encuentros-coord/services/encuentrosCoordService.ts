@@ -108,3 +108,18 @@ export async function exportarGuardias(params: GuardiaParams): Promise<Blob> {
     throw parseDomainError(err)
   }
 }
+
+// ---------------------------------------------------------------------------
+// getBloqueHtml — GET /api/v1/encuentros/bloque-html
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/v1/encuentros/bloque-html?materia_id=<uuid>
+ * Returns pre-formatted HTML ready to paste into Moodle.
+ * materia_id is optional; omitting it returns the HTML for all materias.
+ */
+export async function getBloqueHtml(materia_id?: string | null): Promise<{ html: string }> {
+  const params = materia_id ? `?materia_id=${materia_id}` : ''
+  const res = await apiClient.get<{ html: string }>(`/encuentros/bloque-html${params}`)
+  return res.data
+}

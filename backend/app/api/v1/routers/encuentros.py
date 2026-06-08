@@ -166,10 +166,8 @@ async def bloque_html(
 
     if slot_id is not None:
         instancias = await inst_repo.list_by_slot(slot_id)
-    elif materia_id is not None:
-        instancias = await inst_repo.list_by_materia(materia_id=materia_id)
     else:
-        instancias = []
+        instancias = await inst_repo.list_by_materia(materia_id=materia_id)
 
     html_content = generar_bloque_html(instancias)
     return BloqueHtmlResponse(html=html_content)

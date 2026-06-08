@@ -132,21 +132,41 @@ class GuardiaService:
         domain_user_id: uuid.UUID,
     ) -> str:
         """
-        Exporta guardias filtradas como CSV.
+        Exporta guardias filtradas como CSV con nombres legibles.
 
-        Columnas: guardia_id, asignacion_id, materia_id, carrera_id,
-                  cohorte_id, dia, horario, estado, comentarios, creada_at.
+        Columnas: guardia_id, materia, carrera, cohorte, docente,
+                  dia, horario, estado, comentarios, creada_at.
         domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
-        guardias = await self.consultar(filtros, current_user, domain_user_id)
+        es_global = any(r in self._ROLES_GLOBALES for r in current_user.roles)
+
+        if es_global:
+            filas = await self._grd_repo.list_filtered_enriquecido(
+                materia_id=filtros.materia_id,
+                carrera_id=filtros.carrera_id,
+                cohorte_id=filtros.cohorte_id,
+                dia=filtros.dia,
+                estado=filtros.estado,
+            )
+        else:
+            mis_asigs = await self._asig_repo.list(usuario_id=domain_user_id)
+            asig_ids = [a.id for a in mis_asigs]
+            filas = await self._grd_repo.list_filtered_enriquecido(
+                materia_id=filtros.materia_id,
+                carrera_id=filtros.carrera_id,
+                cohorte_id=filtros.cohorte_id,
+                dia=filtros.dia,
+                estado=filtros.estado,
+                asignacion_ids=asig_ids,
+            )
 
         output = io.StringIO()
         fieldnames = [
             "guardia_id",
-            "asignacion_id",
-            "materia_id",
-            "carrera_id",
-            "cohorte_id",
+            "materia",
+            "carrera",
+            "cohorte",
+            "docente",
             "dia",
             "horario",
             "estado",
@@ -156,13 +176,14 @@ class GuardiaService:
         writer = csv.DictWriter(output, fieldnames=fieldnames)
         writer.writeheader()
 
-        for g in guardias:
+        for fila in filas:
+            g = fila.guardia
             writer.writerow({
                 "guardia_id": str(g.id),
-                "asignacion_id": str(g.asignacion_id),
-                "materia_id": str(g.materia_id),
-                "carrera_id": str(g.carrera_id),
-                "cohorte_id": str(g.cohorte_id),
+                "materia": fila.materia_nombre or str(g.materia_id),
+                "carrera": fila.carrera_nombre or str(g.carrera_id),
+                "cohorte": fila.cohorte_nombre or str(g.cohorte_id),
+                "docente": fila.docente_nombre or str(g.asignacion_id),
                 "dia": g.dia.value,
                 "horario": g.horario,
                 "estado": g.estado.value,

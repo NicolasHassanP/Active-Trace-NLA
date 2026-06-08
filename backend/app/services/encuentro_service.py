@@ -220,9 +220,9 @@ class EncuentroService:
         """
         Lista instancias de encuentro filtradas por rol del actor (D11).
 
-        COORDINADOR/ADMIN: ven todas las instancias del tenant (asignacion_ids=None).
-        PROFESOR/TUTOR:    ven solo las instancias de sus propios slots
-                           (asignacion_ids = IDs de sus asignaciones).
+        COORDINADOR/ADMIN: ven todas las instancias del tenant (sin restricción de materia).
+        PROFESOR/TUTOR:    ven todas las instancias de las materias donde tienen asignación
+                           (scope_materia_ids = materia_ids de sus asignaciones).
 
         domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         Siempre filtra por tenant (base repo scope).
@@ -232,12 +232,12 @@ class EncuentroService:
         if es_global:
             instancias = await self._inst_repo.list_by_materia(materia_id=materia_id)
         else:
-            # Get current user's asignaciones using domain_user_id (FK correcto)
+            # Get materias where the current user has an asignacion
             mis_asigs = await self._asig_repo.list(usuario_id=domain_user_id)
-            asig_ids = [a.id for a in mis_asigs]
+            mis_materia_ids = [a.materia_id for a in mis_asigs]
             instancias = await self._inst_repo.list_by_materia(
                 materia_id=materia_id,
-                asignacion_ids=asig_ids,
+                scope_materia_ids=mis_materia_ids,
             )
 
         return [InstanciaEncuentroRead.model_validate(inst) for inst in instancias]
