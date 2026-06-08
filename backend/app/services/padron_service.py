@@ -17,6 +17,7 @@ Lógica de negocio SOLO aquí. Queries SOLO en repositories (regla dura #11).
 snake_case; ≤500 LOC.
 """
 import uuid
+from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
