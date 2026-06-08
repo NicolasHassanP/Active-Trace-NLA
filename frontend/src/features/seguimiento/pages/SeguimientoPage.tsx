@@ -1,44 +1,44 @@
-/**
- * SeguimientoPage — F2.8 Monitor de seguimiento (TUTOR / PROFESOR view).
- *
- * RBAC: TUTOR, PROFESOR, COORDINADOR, ADMIN.
- * Identity always from JWT (useAuth) — never from URL params or body.
- * Backend auto-scopes: PROFESOR/TUTOR → only their students; COORD/ADMIN → all.
- *
- * Requires a materia+cohorte selection before loading data (same pattern as
- * AtrasadosPage). Shows a dropdown loaded from GET /perfil/mis-asignaciones.
- * When no selection, shows a prompt instead of an empty table.
- *
- * Header counters: total alumnos + Y atrasados.
- * Filters: búsqueda (debounce 300ms), comisión, regional, min_cumplidas (immediate).
- *
- * < 200 LOC. No `any`. Only Tailwind.
- */
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useTodasMaterias, useTodosCohortes } from '@/features/monitores/hooks/monitoresHooks'
 import { useSeguimiento } from '../hooks/seguimientoHooks'
 import SeguimientoFiltros from '../components/SeguimientoFiltros'
 import SeguimientoTable from '../components/SeguimientoTable'
 import type { SeguimientoParams } from '../types'
 import { PageHeader, Card, CardContent, StatusBadge } from '@/shared/components/ui'
 import { getMisAsignaciones } from '@/features/padron/services/misAsignacionesService'
+import type { Role } from '@/features/auth/types'
+
+const GLOBAL_ROLES: Role[] = ['ADMIN']
 
 export default function SeguimientoPage() {
+  const { roles } = useAuth()
+  const isGlobalScope = roles.some((r) => GLOBAL_ROLES.includes(r))
+
   const [selectedKey, setSelectedKey] = useState('')
+  const [selectedMateriaId, setSelectedMateriaId] = useState('')
+  const [selectedCohorteId, setSelectedCohorteId] = useState('')
   const [filterParams, setFilterParams] = useState<Omit<SeguimientoParams, 'materia_id' | 'cohorte_id'>>({})
 
   const { data: asignaciones = [], isLoading: loadingAsignaciones } = useQuery({
     queryKey: ['mis-asignaciones'],
     queryFn: getMisAsignaciones,
     select: (rows) => rows.filter((a) => a.materia_id && a.cohorte_id),
+    enabled: !isGlobalScope,
   })
+
+  const { data: todasMaterias = [], isLoading: loadingMaterias } = useTodasMaterias(isGlobalScope)
+  const { data: todosCohortes = [], isLoading: loadingCohortes } = useTodosCohortes(isGlobalScope)
+
+  const loadingSelector = isGlobalScope ? loadingMaterias || loadingCohortes : loadingAsignaciones
 
   const selectedAsignacion = asignaciones.find(
     (a) => `${a.materia_id}__${a.cohorte_id}` === selectedKey,
   )
 
-  const materiaId = selectedAsignacion?.materia_id ?? ''
-  const cohorteId = selectedAsignacion?.cohorte_id ?? ''
+  const materiaId = isGlobalScope ? selectedMateriaId : (selectedAsignacion?.materia_id ?? '')
+  const cohorteId = isGlobalScope ? selectedCohorteId : (selectedAsignacion?.cohorte_id ?? '')
 
   const params: SeguimientoParams = {
     materia_id: materiaId || null,
@@ -63,15 +63,60 @@ export default function SeguimientoPage() {
 
   return (
     <div data-testid="seguimiento-panel" className="space-y-6">
-      {/* Header */}
       <PageHeader title="Seguimiento de alumnos" />
 
-      {/* Materia y Cohorte selector */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-gray-700">Materia y Cohorte</h2>
 
-        {loadingAsignaciones ? (
+        {loadingSelector ? (
           <p className="text-sm text-gray-500">Cargando materias…</p>
+        ) : isGlobalScope ? (
+          <div className="space-y-3">
+            {todasMaterias.length === 0 ? (
+              <p className="text-sm text-red-600">No hay materias registradas en el tenant.</p>
+            ) : (
+              <select
+                value={selectedMateriaId}
+                onChange={(e) => {
+                  setSelectedMateriaId(e.target.value)
+                  setSelectedCohorteId('')
+                  setFilterParams({})
+                }}
+                className="w-full max-w-lg border rounded px-3 py-2 text-sm bg-white"
+                data-testid="selector-materia"
+              >
+                <option value="">— Seleccioná una materia —</option>
+                {todasMaterias.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nombre}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {selectedMateriaId && (
+              todosCohortes.length === 0 ? (
+                <p className="text-sm text-red-600">No hay cohortes registradas en el tenant.</p>
+              ) : (
+                <select
+                  value={selectedCohorteId}
+                  onChange={(e) => {
+                    setSelectedCohorteId(e.target.value)
+                    setFilterParams({})
+                  }}
+                  className="w-full max-w-lg border rounded px-3 py-2 text-sm bg-white"
+                  data-testid="selector-cohorte"
+                >
+                  <option value="">— Seleccioná una cohorte —</option>
+                  {todosCohortes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre} ({c.anio})
+                    </option>
+                  ))}
+                </select>
+              )
+            )}
+          </div>
         ) : asignaciones.length === 0 ? (
           <p className="text-sm text-red-600">
             No tenés materias asignadas con cohorte. Contactá al coordinador.
@@ -99,17 +144,14 @@ export default function SeguimientoPage() {
         )}
       </section>
 
-      {/* No selection prompt */}
-      {!materiaId && !loadingAsignaciones && (
+      {!materiaId && !loadingSelector && (
         <p className="text-sm text-gray-500 italic">
           Seleccioná una materia y cohorte para ver el seguimiento.
         </p>
       )}
 
-      {/* Content — only shown when materia+cohorte are selected */}
       {materiaId && cohorteId && (
         <>
-          {/* Counter card — shown once data is ready */}
           {!query.isLoading && !query.isError && (
             <Card>
               <CardContent>
@@ -132,22 +174,18 @@ export default function SeguimientoPage() {
             </Card>
           )}
 
-          {/* Filters */}
           <SeguimientoFiltros onFilter={handleFilter} onClear={handleClear} />
 
-          {/* Loading state */}
           {query.isLoading && (
             <p className="text-sm text-gray-500">Cargando seguimiento…</p>
           )}
 
-          {/* Error state */}
           {query.isError && (
             <div role="alert" className="rounded bg-red-50 p-3 text-sm text-red-700">
               Error al cargar el seguimiento. Intentá de nuevo.
             </div>
           )}
 
-          {/* Results */}
           {!query.isLoading && !query.isError && (
             <SeguimientoTable filas={filas} />
           )}

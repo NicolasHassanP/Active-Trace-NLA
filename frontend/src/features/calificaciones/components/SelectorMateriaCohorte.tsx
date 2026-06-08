@@ -1,9 +1,10 @@
-/**
- * SelectorMateriaCohorte — dropdown cargado desde /perfil/mis-asignaciones.
- * Reemplaza inputs de texto libre para evitar errores de UUID.
- */
 import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useTodasMaterias, useTodosCohortes } from '@/features/monitores/hooks/monitoresHooks'
 import { getMisAsignaciones } from '@/features/padron/services/misAsignacionesService'
+import type { Role } from '@/features/auth/types'
+
+const GLOBAL_ROLES: Role[] = ['ADMIN']
 
 interface Props {
   materiaId: string
@@ -18,14 +19,23 @@ export default function SelectorMateriaCohorte({
   onMateriaChange,
   onCohorteChange,
 }: Props) {
-  const { data: asignaciones, isLoading, isError } = useQuery({
+  const { roles } = useAuth()
+  const isGlobalScope = roles.some((r) => GLOBAL_ROLES.includes(r))
+
+  const { data: asignaciones, isLoading: loadingAsignaciones, isError } = useQuery({
     queryKey: ['mis-asignaciones'],
     queryFn: getMisAsignaciones,
+    enabled: !isGlobalScope,
   })
+
+  const { data: todasMaterias = [], isLoading: loadingMaterias } = useTodasMaterias(isGlobalScope)
+  const { data: todosCohortes = [], isLoading: loadingCohortes } = useTodosCohortes(isGlobalScope)
+
+  const isLoading = isGlobalScope ? loadingMaterias || loadingCohortes : loadingAsignaciones
 
   const selectedKey = materiaId && cohorteId ? `${materiaId}|${cohorteId}` : ''
 
-  function handleChange(value: string) {
+  function handleAsignacionChange(value: string) {
     if (!value) {
       onMateriaChange('')
       onCohorteChange('')
@@ -38,6 +48,65 @@ export default function SelectorMateriaCohorte({
 
   if (isLoading) {
     return <p className="text-sm text-gray-500 italic">Cargando asignaciones…</p>
+  }
+
+  if (isGlobalScope) {
+    return (
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold text-gray-700">Materia y Cohorte</h2>
+
+        {todasMaterias.length === 0 ? (
+          <p className="text-sm text-red-600">No hay materias registradas en el tenant.</p>
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Seleccioná una materia
+            </label>
+            <select
+              value={materiaId}
+              onChange={(e) => {
+                onMateriaChange(e.target.value)
+                onCohorteChange('')
+              }}
+              className="w-full border rounded px-3 py-2 text-sm bg-white"
+              data-testid="selector-materia"
+            >
+              <option value="">— Seleccioná una materia —</option>
+              {todasMaterias.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {materiaId && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Seleccioná una cohorte
+            </label>
+            {todosCohortes.length === 0 ? (
+              <p className="text-sm text-red-600">No hay cohortes registradas en el tenant.</p>
+            ) : (
+              <select
+                value={cohorteId}
+                onChange={(e) => onCohorteChange(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm bg-white"
+                data-testid="selector-cohorte"
+              >
+                <option value="">— Seleccioná una cohorte —</option>
+                {todosCohortes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre} ({c.anio})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+      </section>
+    )
   }
 
   if (isError || !asignaciones) {
@@ -63,7 +132,7 @@ export default function SelectorMateriaCohorte({
         </label>
         <select
           value={selectedKey}
-          onChange={(e) => handleChange(e.target.value)}
+          onChange={(e) => handleAsignacionChange(e.target.value)}
           className="w-full border rounded px-3 py-2 text-sm"
           data-testid="selector-asignacion"
         >
