@@ -17,7 +17,16 @@ export default function PadronPage() {
   const { data: asignaciones = [], isLoading } = useQuery({
     queryKey: ['mis-asignaciones'],
     queryFn: getMisAsignaciones,
-    select: (rows) => rows.filter((a) => a.materia_id && a.cohorte_id),
+    select: (rows) => {
+      const seen = new Set<string>()
+      return rows.filter((a) => {
+        if (!a.materia_id || !a.cohorte_id) return false
+        const key = `${a.materia_id}__${a.cohorte_id}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+    },
   })
 
   const selected = asignaciones.find(

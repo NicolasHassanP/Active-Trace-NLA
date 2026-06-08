@@ -37,6 +37,8 @@ from app.schemas.comunicacion import (
     LoteRequest,
     LoteStatusResponse,
     MisEnviosResponse,
+    PendienteAprobacionItem,
+    PendientesAprobacionResponse,
     PreviewRequest,
     PreviewResponse,
 )
@@ -287,6 +289,42 @@ async def get_lote(
         fallidos=sum(1 for m in mensajes if m.estado == ModelEstado.Error),
         cancelados=sum(1 for m in mensajes if m.estado == ModelEstado.Cancelado),
         mensajes=[_to_read(m) for m in mensajes],
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /comunicaciones/pendientes-aprobacion — lista paginada para aprobador
+# ---------------------------------------------------------------------------
+
+@router.get("/pendientes-aprobacion", response_model=PendientesAprobacionResponse)
+async def get_pendientes_aprobacion(
+    offset: int = Query(default=0, ge=0, description="Paginación: inicio"),
+    limit: int = Query(default=50, ge=1, le=200, description="Paginación: cantidad máxima"),
+    _grant=Depends(require_permission("comunicacion:aprobar")),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> PendientesAprobacionResponse:
+    """
+    Retorna todos los mensajes en estado Pendiente del tenant, paginados.
+
+    Destinado al aprobador para revisar y actuar sobre las comunicaciones
+    que aguardan aprobación antes de ser despachadas.
+
+    La identidad y tenant_id SIEMPRE vienen del JWT — nunca de body ni URL.
+    Requiere permiso: comunicacion:aprobar (D2).
+    Scoped al tenant del JWT (multi-tenancy automático en el repositorio).
+
+    Query params:
+        offset: default 0
+        limit: default 50, max 200
+    """
+    svc = _make_service(db, current_user.tenant_id)
+    items, total = await svc.listar_pendientes_aprobacion(offset=offset, limit=limit)
+    return PendientesAprobacionResponse(
+        items=items,
+        total=total,
+        offset=offset,
+        limit=limit,
     )
 
 

@@ -21,8 +21,9 @@ from app.core.dependencies import CurrentUser
 from app.models.audit import AuditAction, AuditResultado
 from app.models.comunicacion import Comunicacion, ComunicacionEstado as ModelEstado
 from app.repositories.audit_repository import AuditRepository
-from app.repositories.comunicacion_repository import ComunicacionRepository
+from app.repositories.comunicacion_repository import ComunicacionRepository, ComunicacionPendienteRow
 from app.repositories.tenant_config_repository import TenantConfigRepository
+from app.schemas.comunicacion import PendienteAprobacionItem
 from app.services.audit_service import AuditService
 from app.services.comunicacion_estados import (
     ComunicacionEstado,
@@ -298,3 +299,49 @@ class ComunicacionService:
             nuevo_estado=ModelEstado.Pendiente,
             aprobado_por=domain_user_id,
         )
+
+    # -----------------------------------------------------------------------
+    # listar_pendientes_aprobacion — lista paginada para el aprobador
+    # -----------------------------------------------------------------------
+
+    async def listar_pendientes_aprobacion(
+        self,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> Tuple[List[PendienteAprobacionItem], int]:
+        """
+        Retorna todos los mensajes en estado Pendiente del tenant, paginados.
+
+        Mapea las filas enriquecidas (ComunicacionPendienteRow) del repositorio
+        a PendienteAprobacionItem, incluyendo el nombre del remitente y un
+        preview del asunto (primeros 60 caracteres).
+
+        Returns:
+            (items, total) donde items es List[PendienteAprobacionItem]
+            y total es el conteo sin paginar.
+        """
+        rows, total = await self._repo.list_pendientes_tenant(offset=offset, limit=limit)
+        items: List[PendienteAprobacionItem] = []
+        for row in rows:
+            com = row.comunicacion
+            asunto_preview = com.asunto[:60] if com.asunto else None
+            items.append(
+                PendienteAprobacionItem(
+                    id=com.id,
+                    tenant_id=com.tenant_id,
+                    estado=com.estado.value if hasattr(com.estado, "value") else str(com.estado),
+                    lote_id=com.lote_id,
+                    asunto=com.asunto,
+                    cuerpo=com.cuerpo,
+                    destinatario_email=com.destinatario,
+                    enviado_at=com.enviado_at,
+                    error_detalle=com.error_detalle,
+                    enviado_por=com.enviado_por,
+                    aprobado_por=com.aprobado_por,
+                    creado_en=com.created_at,
+                    actualizado_en=com.updated_at,
+                    enviado_por_nombre=row.enviado_por_nombre,
+                    asunto_preview=asunto_preview,
+                )
+            )
+        return items, total

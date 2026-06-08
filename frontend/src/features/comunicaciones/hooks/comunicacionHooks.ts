@@ -13,8 +13,15 @@ import {
   aprobarIndividual,
   cancelarIndividual,
   getMisEnvios,
+  getPendientesAprobacion,
 } from '../services/comunicacionService'
-import type { EstadoComunicacion, MisEnviosParams, PreviewRequest, EncolarRequest } from '../types'
+import type {
+  EstadoComunicacion,
+  MisEnviosParams,
+  PendientesAprobacionParams,
+  PreviewRequest,
+  EncolarRequest,
+} from '../types'
 
 const TERMINAL_STATES: EstadoComunicacion[] = ['Enviado', 'Fallido', 'Cancelado']
 const POLLING_INTERVAL_MS = 4000
@@ -32,8 +39,12 @@ export function usePreviewComunicacion() {
 }
 
 export function useEncolarLote() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: (req: EncolarRequest) => encolarLote(req),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mis-envios'] })
+    },
   })
 }
 
@@ -43,6 +54,8 @@ export function useAprobarLote() {
     mutationFn: (loteId: string) => aprobarLote(loteId),
     onSuccess: (_data, loteId) => {
       void qc.invalidateQueries({ queryKey: ['lote', loteId] })
+      void qc.invalidateQueries({ queryKey: ['mis-envios'] })
+      void qc.invalidateQueries({ queryKey: ['pendientes-aprobacion'] })
     },
   })
 }
@@ -53,6 +66,8 @@ export function useCancelarLote() {
     mutationFn: (loteId: string) => cancelarLote(loteId),
     onSuccess: (_data, loteId) => {
       void qc.invalidateQueries({ queryKey: ['lote', loteId] })
+      void qc.invalidateQueries({ queryKey: ['mis-envios'] })
+      void qc.invalidateQueries({ queryKey: ['pendientes-aprobacion'] })
     },
   })
 }
@@ -63,6 +78,8 @@ export function useAprobarIndividual() {
     mutationFn: (comunicacionId: string) => aprobarIndividual(comunicacionId),
     onSuccess: (data) => {
       void qc.invalidateQueries({ queryKey: ['lote', data.lote_id] })
+      void qc.invalidateQueries({ queryKey: ['mis-envios'] })
+      void qc.invalidateQueries({ queryKey: ['pendientes-aprobacion'] })
     },
   })
 }
@@ -73,6 +90,8 @@ export function useCancelarIndividual() {
     mutationFn: (comunicacionId: string) => cancelarIndividual(comunicacionId),
     onSuccess: (data) => {
       void qc.invalidateQueries({ queryKey: ['lote', data.lote_id] })
+      void qc.invalidateQueries({ queryKey: ['mis-envios'] })
+      void qc.invalidateQueries({ queryKey: ['pendientes-aprobacion'] })
     },
   })
 }
@@ -115,5 +134,30 @@ export function useMisEnvios(params: MisEnviosParams = {}) {
   return useQuery({
     queryKey: ['mis-envios', params],
     queryFn: () => getMisEnvios(params),
+    refetchInterval: (query) => {
+      const items = query.state.data?.items
+      if (!items?.length) return false
+      const hasActive = items.some((m) => !isTerminalState(m.estado as EstadoComunicacion))
+      return hasActive ? POLLING_INTERVAL_MS : false
+    },
+  })
+}
+
+// ---- Query: pendientes de aprobación (COORDINADOR / ADMIN) ----
+
+/**
+ * usePendientesAprobacion — queries GET /comunicaciones/pendientes-aprobacion.
+ * Returns all Pendiente messages across the tenant (no sender filter).
+ * Only users with comunicacion:aprobar permission (COORDINADOR, ADMIN) can call this.
+ * Controlled via the `enabled` param so non-managers skip the request entirely.
+ */
+export function usePendientesAprobacion(
+  params: PendientesAprobacionParams = {},
+  options: { enabled?: boolean } = {},
+) {
+  return useQuery({
+    queryKey: ['pendientes-aprobacion', params],
+    queryFn: () => getPendientesAprobacion(params),
+    enabled: options.enabled !== false,
   })
 }

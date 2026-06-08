@@ -14,11 +14,15 @@ import ComposeComunicacion from '../components/ComposeComunicacion'
 import LoteStatusBandeja from '../components/LoteStatusBandeja'
 import AprobacionPanel from '../components/AprobacionPanel'
 import ComunicacionesHistorial from '../components/ComunicacionesHistorial'
+import PendientesAprobacionPanel from '../components/PendientesAprobacionPanel'
 import { useLoteStatus } from '../hooks/comunicacionHooks'
 import type { AlumnoAtrasado } from '@/features/atrasados/types'
 import { PageHeader } from '@/shared/components/ui'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 
-type ActiveTab = 'componer' | 'historial'
+type ActiveTab = 'componer' | 'historial' | 'pendientes'
+
+const APPROVAL_ROLES = ['COORDINADOR', 'ADMIN']
 
 /** Build minimal AlumnoAtrasado stubs from email list for the compose form */
 function buildDestinatariosFromEmails(emails: string[]): AlumnoAtrasado[] {
@@ -44,8 +48,10 @@ export default function ComunicacionesPage() {
   const emails = emailsParam ? emailsParam.split(',').filter(Boolean) : []
   const destinatarios = buildDestinatariosFromEmails(emails)
 
+  const { roles } = useAuth()
+  const canApprove = roles.some((r) => APPROVAL_ROLES.includes(r))
+
   const [loteId, setLoteId] = useState<string | null>(null)
-  // C-27 — Tab state: default "componer" (preserves existing behavior)
   const [activeTab, setActiveTab] = useState<ActiveTab>('componer')
 
   return (
@@ -84,6 +90,19 @@ export default function ComunicacionesPage() {
           >
             Historial
           </button>
+          {canApprove && (
+            <button
+              data-testid="tab-pendientes"
+              onClick={() => setActiveTab('pendientes')}
+              className={`pb-3 text-sm font-medium transition-colors ${
+                activeTab === 'pendientes'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Pendientes de aprobación
+            </button>
+          )}
         </nav>
       </div>
 
@@ -119,6 +138,14 @@ export default function ComunicacionesPage() {
         <section className="space-y-4">
           <h2 className="text-lg font-semibold text-gray-700">Mis envíos</h2>
           <ComunicacionesHistorial />
+        </section>
+      )}
+
+      {/* Tab: Pendientes de aprobación (COORDINADOR / ADMIN) */}
+      {activeTab === 'pendientes' && canApprove && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-700">Pendientes de aprobación</h2>
+          <PendientesAprobacionPanel />
         </section>
       )}
     </div>

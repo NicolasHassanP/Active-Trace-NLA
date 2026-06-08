@@ -13,6 +13,8 @@ import type {
   ComunicacionRead,
   MisEnviosParams,
   MisEnviosResponse,
+  PendientesAprobacionParams,
+  PendientesAprobacionResponse,
 } from '../types'
 
 /** POST /comunicaciones/preview — renders the template for a sample destinatario */
@@ -89,6 +91,21 @@ export async function cancelarIndividual(comunicacionId: string): Promise<Comuni
 export async function getMisEnvios(params: MisEnviosParams = {}): Promise<MisEnviosResponse> {
   try {
     const response = await apiClient.get<MisEnviosResponse>('/comunicaciones/mis-envios', { params })
+    return response.data
+  } catch (err) {
+    throw parseDomainError(err)
+  }
+}
+
+/** GET /comunicaciones/pendientes-aprobacion — all Pendiente messages across the tenant (COORDINADOR/ADMIN) */
+export async function getPendientesAprobacion(
+  params: PendientesAprobacionParams = {},
+): Promise<PendientesAprobacionResponse> {
+  try {
+    const response = await apiClient.get<PendientesAprobacionResponse>(
+      '/comunicaciones/pendientes-aprobacion',
+      { params },
+    )
     return response.data
   } catch (err) {
     throw parseDomainError(err)

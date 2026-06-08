@@ -52,7 +52,7 @@ export default function TareasAdminTable({ tareas, onCambiarEstado, onDelegar }:
               </td>
               <td className="px-4 py-3">
                 <div className="flex gap-2">
-                  {tarea.estado !== 'Cancelada' && (
+                  {tarea.estado !== 'Cancelada' && tarea.estado !== 'Resuelta' && (
                     <Button
                       variant="secondary"
                       size="sm"
@@ -61,13 +61,6 @@ export default function TareasAdminTable({ tareas, onCambiarEstado, onDelegar }:
                       Avanzar
                     </Button>
                   )}
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => onDelegar(tarea.id)}
-                  >
-                    Delegar
-                  </Button>
                 </div>
               </td>
             </tr>

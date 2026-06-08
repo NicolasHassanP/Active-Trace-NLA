@@ -14,11 +14,16 @@ export type EstadoComunicacion =
 /** A single communication message record */
 export interface ComunicacionRead {
   id: string
+  tenant_id: string
   lote_id: string
   destinatario_email: string
   asunto: string
   cuerpo: string
   estado: EstadoComunicacion
+  enviado_por: string | null
+  aprobado_por: string | null
+  enviado_at: string | null
+  error_detalle: string | null
   creado_en: string
   actualizado_en: string
 }
@@ -90,4 +95,31 @@ export interface MisEnviosResponse {
   offset: number
   limit: number
   items: ComunicacionRead[]
+}
+
+// ---- Pendientes Aprobación ----
+
+/** Query params for GET /comunicaciones/pendientes-aprobacion */
+export interface PendientesAprobacionParams {
+  offset?: number
+  limit?: number
+}
+
+/**
+ * Enriched item returned by GET /comunicaciones/pendientes-aprobacion.
+ * Extends ComunicacionRead with sender name and asunto preview.
+ */
+export interface PendienteAprobacionItem extends ComunicacionRead {
+  /** Full name of the sender (nombre + apellidos), null if user was deleted */
+  enviado_por_nombre: string | null
+  /** First 60 chars of the asunto field — always present since asunto is NOT NULL */
+  asunto_preview: string | null
+}
+
+/** Paginated response from GET /comunicaciones/pendientes-aprobacion */
+export interface PendientesAprobacionResponse {
+  total: number
+  offset: number
+  limit: number
+  items: PendienteAprobacionItem[]
 }
