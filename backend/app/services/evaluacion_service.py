@@ -519,9 +519,13 @@ class EvaluacionService:
         self,
         evaluacion_id: uuid.UUID,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> ResultadoRead:
-        """Return own result (alumno reads only their own nota_final)."""
-        resultado = await self._result_repo.get_by_alumno(evaluacion_id, current_user.user_id)
+        """Return own result (alumno reads only their own nota_final).
+
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
+        """
+        resultado = await self._result_repo.get_by_alumno(evaluacion_id, domain_user_id)
         if resultado is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resultado no encontrado")
         return ResultadoRead.model_validate(resultado)

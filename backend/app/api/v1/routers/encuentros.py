@@ -19,7 +19,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.encuentro_repository import (
     InstanciaEncuentroRepository,
@@ -73,9 +73,10 @@ async def crear_slot(
     Identidad del actor desde el JWT — nunca del body.
     Requiere permiso encuentros:gestionar.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_encuentro_service(db, current_user.tenant_id)
     try:
-        return await svc.crear_slot(body, current_user)
+        return await svc.crear_slot(body, current_user, domain_user_id)
     except EncuentroValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -133,8 +134,9 @@ async def listar_instancias(
     Identidad desde el JWT.
     Requiere permiso encuentros:gestionar.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_encuentro_service(db, current_user.tenant_id)
-    return await svc.listar_instancias(actor=current_user, materia_id=materia_id)
+    return await svc.listar_instancias(actor=current_user, domain_user_id=domain_user_id, materia_id=materia_id)
 
 
 # ---------------------------------------------------------------------------

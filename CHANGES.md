@@ -576,14 +576,29 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `backend/app/schemas/comunicacion.py`
   - `frontend/src/features/comunicaciones/pages/ComunicacionesPage.tsx`
 
+### [C-28] `fix-domain-user-id-transversal`
+- **Estado**: `[x]` archivado (2026-06-08)
+- **Scope**:
+  - Corrección sistemática del invariante `CurrentUser.user_id = auth_identities.id` ≠ `usuario.id` en todos los routers y services del backend.
+  - **Bugs corregidos**: `avisos.py`, `encuentros.py`, `guardias.py`, `padron.py`, `coloquios.py`, `analisis.py` — cada endpoint ahora llama `resolve_domain_user_id(current_user, db)`.
+  - **Services endurecidos**: `guardia_service.py`, `encuentro_service.py`, `padron_service.py`, `calificacion_service.py`, `equipo_service.py`, `alumno_service.py`, `analisis_service.py`, `evaluacion_service.py` — parámetro `domain_user_id` requerido, fallbacks eliminados.
+  - Tests: `test_c28_domain_user_id.py` — 21 tests, todos pasando.
+  - **Excluido por diseño**: `auth.py` y `audit.actor_user_id` (usan `auth_identities.id` correctamente, RN-41).
+- **Dependencias**: `C-07`, todos los changes con routers de escritura
+- **Governance**: ALTO — identidad en múltiples módulos
+- **Artefactos**: `openspec/changes/c-28-fix-domain-user-id-transversal/`
+- **Leer antes**:
+  - `backend/app/core/dependencies.py` — `resolve_domain_user_id`
+  - `backend/app/api/v1/routers/tareas.py` — patrón de referencia
+
 ---
 
 ## Resumen
 
 | Métrica | Valor |
 |---------|-------|
-| Total de changes | 27 |
-| Fases | 6 (FASE 0 a FASE 5) |
+| Total de changes | 28 |
+| Fases | 6 (FASE 0 a FASE 5) + fixes transversales |
 | Camino crítico | 10 changes (`C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 → C-12`) |
 | Gates de paralelismo | 12 (GATE 0 a GATE 11) |
 | Changes CRITICO (governance) | 6 (C-02, C-03, C-04, C-05, C-07, C-18) |

@@ -154,12 +154,14 @@ async def vaciar_padron(
     grants = await auth_svc.resolve_effective_permissions(current_user)
     has_gestionar = any(g.codigo == "padron:gestionar" for g in grants)
 
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     await svc.vaciar(
         materia_id=materia_id,
         cohorte_id=cohorte_id,
         current_user=current_user,
         has_gestionar=has_gestionar,
+        domain_user_id=domain_user_id,
     )
 
 
@@ -199,6 +201,7 @@ async def sync_moodle_padron(
         token=settings.MOODLE_TOKEN,
     )
 
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     version = await svc.sync_from_moodle(
         course_id=body.course_id,
@@ -206,6 +209,7 @@ async def sync_moodle_padron(
         cohorte_id=body.cohorte_id,
         current_user=current_user,
         moodle_client=moodle_client,
+        domain_user_id=domain_user_id,
     )
 
     # Count entries created

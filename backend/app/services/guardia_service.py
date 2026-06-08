@@ -53,15 +53,17 @@ class GuardiaService:
         self,
         req: RegistrarGuardiaRequest,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> GuardiaRead:
         """
         Registra una guardia de atención.
 
-        asignacion_id resuelto desde current_user + materia (regla dura #8/#14).
+        asignacion_id resuelto desde domain_user_id + materia (regla dura #8/#14).
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         tenant_id forzado desde el repo scope.
         """
         asig_id = await self._resolver_asignacion(
-            current_user, req.materia_id, req.carrera_id, req.cohorte_id
+            domain_user_id, req.materia_id, req.carrera_id, req.cohorte_id
         )
 
         guardia = Guardia(
@@ -86,12 +88,14 @@ class GuardiaService:
         self,
         filtros: GuardiaFiltros,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> List[GuardiaRead]:
         """
         Lista guardias con filtros opcionales.
 
         COORDINADOR/ADMIN: ven todas las guardias del tenant.
         TUTOR/PROFESOR: ven solo sus propias guardias (filtradas por asignacion_ids).
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
         es_global = any(r in self._ROLES_GLOBALES for r in current_user.roles)
 
@@ -104,7 +108,7 @@ class GuardiaService:
                 estado=filtros.estado,
             )
         else:
-            mis_asigs = await self._asig_repo.list(usuario_id=current_user.user_id)
+            mis_asigs = await self._asig_repo.list(usuario_id=domain_user_id)
             asig_ids = [a.id for a in mis_asigs]
             guardias = await self._grd_repo.list_filtered(
                 materia_id=filtros.materia_id,
@@ -125,14 +129,16 @@ class GuardiaService:
         self,
         filtros: GuardiaFiltros,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> str:
         """
         Exporta guardias filtradas como CSV.
 
         Columnas: guardia_id, asignacion_id, materia_id, carrera_id,
                   cohorte_id, dia, horario, estado, comentarios, creada_at.
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
-        guardias = await self.consultar(filtros, current_user)
+        guardias = await self.consultar(filtros, current_user, domain_user_id)
 
         output = io.StringIO()
         fieldnames = [
@@ -172,18 +178,20 @@ class GuardiaService:
 
     async def _resolver_asignacion(
         self,
-        current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
         materia_id: uuid.UUID,
         carrera_id: uuid.UUID,
         cohorte_id: uuid.UUID,
     ) -> uuid.UUID:
         """
-        Resolve asignacion_id from current_user + materia/carrera/cohorte.
+        Resolve asignacion_id from domain_user_id + materia/carrera/cohorte.
 
+        domain_user_id: usuario.id (resolved from auth_identity_id in router).
         Looks for an active asignacion matching user + materia/carrera/cohorte.
         Falls back to any asignacion of the user if no exact match.
+        Raises ValueError if no asignacion found (never falls back to user_id).
         """
-        mis_asigs = await self._asig_repo.list(usuario_id=current_user.user_id)
+        mis_asigs = await self._asig_repo.list(usuario_id=domain_user_id)
         for asig in mis_asigs:
             if (
                 asig.materia_id == materia_id
@@ -191,8 +199,10 @@ class GuardiaService:
                 and asig.cohorte_id == cohorte_id
             ):
                 return asig.id
-        # Fallback to any asignacion
+        # Fallback to any asignacion of this user
         if mis_asigs:
             return mis_asigs[0].id
-        # No asignacion found: use user_id as fallback
-        return current_user.user_id
+        # No asignacion found: raise, never fall back to domain_user_id
+        raise ValueError(
+            f"El usuario {domain_user_id} no tiene ninguna asignación activa."
+        )

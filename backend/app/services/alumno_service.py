@@ -79,14 +79,15 @@ class AlumnoService:
     # Task 3.1 / 3.4 — get_estado_academico
     # -----------------------------------------------------------------------
 
-    async def get_estado_academico(self, current_user: CurrentUser, domain_user_id: uuid.UUID | None = None) -> EstadoAcademicoRead:
+    async def get_estado_academico(self, current_user: CurrentUser, domain_user_id: uuid.UUID) -> EstadoAcademicoRead:
         """
         Agrega el estado académico completo del alumno autenticado.
 
         domain_user_id: usuario.id resuelto desde auth_identities.id (JWT sub).
+        Es obligatorio — nunca cae al auth_identity_id como fallback.
         Identidad SIEMPRE desde current_user (nunca body/params).
         """
-        usuario_id: uuid.UUID = domain_user_id or current_user.user_id
+        usuario_id: uuid.UUID = domain_user_id
 
         # -- Padrón activo --
         entradas_con_materia = await self._repo.get_entradas_padron_activas(usuario_id)

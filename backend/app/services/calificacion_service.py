@@ -97,7 +97,7 @@ class CalificacionService:
         self,
         req: ImportarCalificacionesRequest,
         current_user: CurrentUser,
-        domain_user_id: Optional[uuid.UUID] = None,
+        domain_user_id: uuid.UUID,
     ) -> List[CalificacionRead]:
         """
         Persist Calificacion records for selected activities.
@@ -105,6 +105,7 @@ class CalificacionService:
         Returns list of CalificacionRead for all persisted records.
         Records not in the active padron are silently skipped (not reported in this method).
         Use importar_with_report to get the list of unmatched emails.
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
         cals, _ = await self.importar_with_report(req=req, current_user=current_user, domain_user_id=domain_user_id)
         return cals
@@ -113,7 +114,7 @@ class CalificacionService:
         self,
         req: ImportarCalificacionesRequest,
         current_user: CurrentUser,
-        domain_user_id: Optional[uuid.UUID] = None,
+        domain_user_id: uuid.UUID,
     ) -> Tuple[List[CalificacionRead], List[str]]:
         """
         Persist Calificacion records for selected activities, also returning unmatched emails.
@@ -221,7 +222,7 @@ class CalificacionService:
                     entrada_padron_id=entry.id,
                     materia_id=req.materia_id,
                     actividad=actividad,
-                    importado_por=domain_user_id or current_user.user_id,
+                    importado_por=domain_user_id,
                     nota_numerica=nota_numerica,
                     nota_textual=nota_textual,
                     aprobado=aprobado,

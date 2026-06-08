@@ -150,9 +150,10 @@ async def listar_feed(
     Cualquier rol autenticado. Audiencia enforced por audience query en repo.
     Retorna avisos ordenados por orden ASC, severidad DESC.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_aviso_service(db, current_user.tenant_id)
     return await svc.listar_feed(
-        usuario_id=current_user.user_id,
+        usuario_id=domain_user_id,
         roles=current_user.roles,
         cohorte_id=cohorte_id,
         actor=current_user,
@@ -177,9 +178,10 @@ async def listar_pendientes(
 
     Cualquier rol autenticado. Solo avisos en ventana activa y sin ack propio.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_aviso_service(db, current_user.tenant_id)
     return await svc.listar_pendientes(
-        usuario_id=current_user.user_id,
+        usuario_id=domain_user_id,
         roles=current_user.roles,
         cohorte_id=cohorte_id,
         actor=current_user,

@@ -67,14 +67,15 @@ class EquipoService:
     async def listar_mis_equipos(
         self,
         current_user: CurrentUser,
-        domain_user_id=None,
+        domain_user_id: uuid.UUID,
     ) -> List[MisEquiposItem]:
         """
         Devuelve las asignaciones del usuario autenticado con estado_vigencia derivado.
         Identidad SIEMPRE desde el JWT — nunca del body.
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
         asignaciones = await self._asig_repo.list(
-            usuario_id=domain_user_id or current_user.user_id
+            usuario_id=domain_user_id
         )
         if not asignaciones:
             return []

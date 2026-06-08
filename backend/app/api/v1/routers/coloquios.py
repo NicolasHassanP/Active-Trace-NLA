@@ -373,5 +373,6 @@ async def mi_resultado(
     Solo devuelve el resultado del alumno autenticado.
     Requiere permiso coloquios:reservar.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_evaluacion_service(db, current_user.tenant_id)
-    return await svc.get_resultado_alumno(evaluacion_id, current_user)
+    return await svc.get_resultado_alumno(evaluacion_id, current_user, domain_user_id)

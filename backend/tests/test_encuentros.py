@@ -86,7 +86,7 @@ def _make_current_user(tid: uuid.UUID, uid: uuid.UUID, roles: list | None = None
     return CurrentUser(user_id=uid, tenant_id=tid, roles=roles or ["TESTROL"])
 
 
-def _make_usuario(tid: uuid.UUID, suffix: str) -> Usuario:
+def _make_usuario(tid: uuid.UUID, suffix: str, auth_identity_id: uuid.UUID | None = None) -> Usuario:
     from app.core.security.passwords import email_lookup_hash as _hash
     email = f"enc_{suffix}_{uuid.uuid4().hex[:6]}@test.com"
     return Usuario(
@@ -96,6 +96,7 @@ def _make_usuario(tid: uuid.UUID, suffix: str) -> Usuario:
         nombre="Test",
         apellidos=suffix,
         estado=UsuarioEstado.activo,
+        auth_identity_id=auth_identity_id,
     )
 
 
@@ -159,12 +160,15 @@ async def enc_setup(test_engine, create_tables):
 
     # Create users + asignaciones for tenant A
     usr_repo_a = UsuarioRepository(session=session, tenant_id=tid_a)
-    user_a_id = uuid.uuid4()
-    user_coord_id = uuid.uuid4()
     user_a = _make_usuario(tid_a, "enc_a")
     user_coord = _make_usuario(tid_a, "enc_coord")
     await usr_repo_a.add(user_a)
     await usr_repo_a.add(user_coord)
+    # C-28: set auth_identity_id so resolve_domain_user_id works in HTTP tests
+    # JWT sub = user.id → auth_identity_id must match
+    user_a.auth_identity_id = user_a.id
+    user_coord.auth_identity_id = user_coord.id
+    await session.flush()
 
     # Asignacion for user_a (PROFESOR) on materia_a
     asig_repo_a = AsignacionRepository(session=session, tenant_id=tid_a)
@@ -256,7 +260,7 @@ async def test_crear_slot_recurrente_genera_n_instancias(db_session, create_tabl
     actor = _make_current_user(tid, user_id)
 
     svc = _make_enc_service(db_session, tid)
-    result = await svc.crear_slot(req, actor)
+    result = await svc.crear_slot(req, actor, domain_user_id=user_id)
 
     assert result.slot.titulo == "Clase Recurrente"
     assert len(result.instancias) == 4
@@ -306,7 +310,7 @@ async def test_crear_encuentro_unico_genera_una_instancia(db_session, create_tab
     actor = _make_current_user(tid, user_id)
 
     svc = _make_enc_service(db_session, tid)
-    result = await svc.crear_slot(req, actor)
+    result = await svc.crear_slot(req, actor, domain_user_id=user_id)
 
     assert len(result.instancias) == 1
     assert result.instancias[0].fecha == fecha_unica
@@ -349,7 +353,7 @@ async def test_crear_slot_ambos_modos_raises_422(db_session, create_tables, enc_
     svc = _make_enc_service(db_session, tid)
 
     with pytest.raises(EncuentroValidationError):
-        await svc.crear_slot(req, actor)
+        await svc.crear_slot(req, actor, domain_user_id=user_id)
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -372,7 +376,7 @@ async def test_crear_slot_ningun_modo_raises_422(db_session, create_tables, enc_
     svc = _make_enc_service(db_session, tid)
 
     with pytest.raises(EncuentroValidationError):
-        await svc.crear_slot(req, actor)
+        await svc.crear_slot(req, actor, domain_user_id=user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -399,7 +403,7 @@ async def test_editar_instancia_actualiza_estado_y_video(db_session, create_tabl
     )
     actor = _make_current_user(tid, user_id)
     svc = _make_enc_service(db_session, tid)
-    created = await svc.crear_slot(req, actor)
+    created = await svc.crear_slot(req, actor, domain_user_id=user_id)
 
     target_id = created.instancias[0].id
     patch = EditarInstanciaRequest(
@@ -454,7 +458,7 @@ async def test_editar_instancia_no_afecta_hermanas(db_session, create_tables, en
     )
     actor = _make_current_user(tid, user_id)
     svc = _make_enc_service(db_session, tid)
-    created = await svc.crear_slot(req, actor)
+    created = await svc.crear_slot(req, actor, domain_user_id=user_id)
 
     instancias = created.instancias
     assert len(instancias) == 3
@@ -514,11 +518,11 @@ async def test_listar_encuentros_coordinador_ve_todos(db_session, create_tables,
     )
     actor_profesor = _make_current_user(tid, user_id, roles=["PROFESOR"])
     svc = _make_enc_service(db_session, tid)
-    created = await svc.crear_slot(req, actor_profesor)
+    created = await svc.crear_slot(req, actor_profesor, domain_user_id=user_id)
 
     # COORDINADOR should see all instances (no materia filter, no asignacion filter)
     actor_coord = _make_current_user(tid, user_coord, roles=["COORDINADOR"])
-    instancias = await svc.listar_instancias(actor=actor_coord, materia_id=None)
+    instancias = await svc.listar_instancias(actor=actor_coord, domain_user_id=user_coord, materia_id=None)
 
     ids = {inst.id for inst in instancias}
     for inst in created.instancias:
@@ -576,7 +580,7 @@ async def test_listar_encuentros_profesor_ve_solo_propios(db_session, create_tab
         fecha_inicio=date(2026, 10, 5),
         cant_semanas=2,
     )
-    created1 = await svc.crear_slot(req1, actor1)
+    created1 = await svc.crear_slot(req1, actor1, domain_user_id=user_id)
 
     # Create slot for user2
     req2 = CrearSlotRequest(
@@ -587,10 +591,10 @@ async def test_listar_encuentros_profesor_ve_solo_propios(db_session, create_tab
         fecha_inicio=date(2026, 10, 6),
         cant_semanas=2,
     )
-    created2 = await svc.crear_slot(req2, actor2)
+    created2 = await svc.crear_slot(req2, actor2, domain_user_id=user2.id)
 
     # PROFESOR 1 should only see their own instances
-    instancias1 = await svc.listar_instancias(actor=actor1, materia_id=None)
+    instancias1 = await svc.listar_instancias(actor=actor1, domain_user_id=user_id, materia_id=None)
     ids1 = {inst.id for inst in instancias1}
 
     for inst in created1.instancias:
@@ -636,7 +640,7 @@ async def test_crear_slot_records_audit_encuentro_gestionar(db_session, create_t
     )
     actor = _make_current_user(tid, actor_id)
     svc = _make_enc_service(db_session, tid)
-    result = await svc.crear_slot(req, actor)
+    result = await svc.crear_slot(req, actor, domain_user_id=actor_id)
 
     from sqlalchemy import select
     stmt = (
@@ -719,12 +723,12 @@ async def test_encuentros_tenant_isolation(db_session, create_tables, enc_setup,
         hora=time(13, 0),
         fecha_unica=date(2026, 12, 2),
     )
-    created_a = await svc_a.crear_slot(req_a, actor_a)
-    created_b = await svc_b.crear_slot(req_b, actor_b)
+    created_a = await svc_a.crear_slot(req_a, actor_a, domain_user_id=user_a)
+    created_b = await svc_b.crear_slot(req_b, actor_b, domain_user_id=user_b.id)
 
     # Tenant A actor (with PROFESOR role = scoped to own slots) sees only tenant A instances
     # Both actors have PROFESOR role so listing is scoped to their own asignaciones
-    instancias_a = await svc_a.listar_instancias(actor=actor_a, materia_id=None)
+    instancias_a = await svc_a.listar_instancias(actor=actor_a, domain_user_id=user_a, materia_id=None)
     ids_a = {inst.id for inst in instancias_a}
     for inst in created_b.instancias:
         assert inst.id not in ids_a, "Tenant B instances must not appear in Tenant A listing"

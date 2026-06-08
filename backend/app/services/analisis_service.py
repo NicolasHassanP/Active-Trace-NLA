@@ -80,7 +80,7 @@ class AnalisisService:
         actividades: List[str],
         current_user: CurrentUser,
         grant,
-        domain_user_id: Optional[uuid.UUID] = None,
+        domain_user_id: uuid.UUID,
     ) -> List[AlumnoAtrasado]:
         """
         Lista de alumnos atrasados para materia×cohorte×actividades.
@@ -89,12 +89,13 @@ class AnalisisService:
         Scope global: todas las importaciones del tenant.
         Sin actividades: usa todas las actividades importadas para la materia.
 
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         Identidad/tenant SIEMPRE desde current_user.
         """
         importado_por = (
             None
             if self._es_scope_global(grant)
-            else (domain_user_id or current_user.user_id)
+            else domain_user_id
         )
 
         # Fetch todas las cals (sin filtro de actividades si no se especificaron)
@@ -160,12 +161,14 @@ class AnalisisService:
         actividades: List[str],
         current_user: CurrentUser,
         grant,
+        domain_user_id: uuid.UUID,
     ) -> List[RankingFila]:
         """
         Ranking de alumnos por actividades aprobadas (RN-09).
 
         Solo alumnos con al menos 1 aprobada en las actividades seleccionadas.
         Ordenado descendente.
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
         if not actividades:
             return []
@@ -173,7 +176,7 @@ class AnalisisService:
         importado_por = (
             None
             if self._es_scope_global(grant)
-            else current_user.user_id
+            else domain_user_id
         )
 
         calificaciones = await self._repo.calificaciones_por_materia(
@@ -205,18 +208,19 @@ class AnalisisService:
         actividades: List[str],
         current_user: CurrentUser,
         grant,
-        domain_user_id: Optional[uuid.UUID] = None,
+        domain_user_id: uuid.UUID,
     ) -> ReporteMateria:
         """
         Métricas consolidadas de una materia×cohorte (F2.4).
 
         sin_datos=True si no hay calificaciones.
         Sin actividades: usa todas las importadas para la materia.
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
         importado_por = (
             None
             if self._es_scope_global(grant)
-            else (domain_user_id or current_user.user_id)
+            else domain_user_id
         )
 
         calificaciones = await self._repo.calificaciones_por_materia(
@@ -275,11 +279,13 @@ class AnalisisService:
         actividades: List[str],
         current_user: CurrentUser,
         grant,
+        domain_user_id: uuid.UUID,
     ) -> List[NotaFinalAlumno]:
         """
         Notas finales por alumno (promedio simple, D7, OQ-C11-1).
 
         Incluye alumnos sin calificaciones (nota_final=None).
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
         if not actividades:
             return []
@@ -287,7 +293,7 @@ class AnalisisService:
         importado_por = (
             None
             if self._es_scope_global(grant)
-            else current_user.user_id
+            else domain_user_id
         )
 
         calificaciones = await self._repo.calificaciones_por_materia(
@@ -318,6 +324,7 @@ class AnalisisService:
         actividades: List[str],
         current_user: CurrentUser,
         grant,
+        domain_user_id: uuid.UUID,
     ) -> List[MonitorFila]:
         """
         Monitor de seguimiento (F2.7/F2.8/F2.9).
@@ -326,6 +333,7 @@ class AnalisisService:
         Scope propio: solo alumnos de materias asignadas al docente (D4).
 
         Filtros: comision, regional, busqueda, rango de fechas (OQ-C11-3).
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
         if filtros.materia_id is None:
             return []
@@ -333,7 +341,7 @@ class AnalisisService:
         importado_por = (
             None
             if self._es_scope_global(grant)
-            else current_user.user_id
+            else domain_user_id
         )
 
         # Obtener entradas del padrón activo (con filtros de comisión/regional/búsqueda)

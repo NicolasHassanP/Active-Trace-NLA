@@ -102,12 +102,14 @@ async def listar_ranking(
     Ranking de alumnos por cantidad de actividades aprobadas (RN-09).
     Solo alumnos con al menos 1 aprobada. Ordenado descendente.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     return await svc.ranking(
         materia_id=materia_id,
         actividades=actividades,
         current_user=current_user,
         grant=grant,
+        domain_user_id=domain_user_id,
     )
 
 
@@ -156,12 +158,14 @@ async def listar_notas_finales(
     Notas finales por alumno (promedio simple de nota_numerica, D7).
     Incluye alumnos sin calificaciones (nota_final=None).
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     return await svc.notas_finales(
         materia_id=materia_id,
         actividades=actividades,
         current_user=current_user,
         grant=grant,
+        domain_user_id=domain_user_id,
     )
 
 
@@ -207,12 +211,14 @@ async def listar_monitor(
         fecha_hasta=fecha_hasta,
     )
 
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     return await svc.monitor(
         filtros=filtros,
         actividades=actividades,
         current_user=current_user,
         grant=grant,
+        domain_user_id=domain_user_id,
     )
 
 
