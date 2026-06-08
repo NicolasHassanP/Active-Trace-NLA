@@ -52,7 +52,7 @@ export default function ComunicacionesPage() {
   const canApprove = roles.some((r) => APPROVAL_ROLES.includes(r))
 
   const [loteId, setLoteId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<ActiveTab>('componer')
+  const [activeTab, setActiveTab] = useState<ActiveTab>(emails.length > 0 ? 'componer' : 'historial')
 
   return (
     <div className="space-y-8">
