@@ -320,6 +320,14 @@
       "sessions": 0,
       "memories": 1,
       "prompts": 0
+    },
+    {
+      "id": "c890a389",
+      "created_by": "Nico",
+      "created_at": "2026-06-08T21:20:06Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }
