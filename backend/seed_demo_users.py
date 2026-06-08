@@ -1,4 +1,4 @@
-"""Seed 4 usuarios demo en el tenant Demo. Idempotente.
+"""Seed 5 usuarios demo en el tenant Demo. Idempotente.
 
 Correr desde backend/:
     python seed_demo_users.py
@@ -8,6 +8,7 @@ Crea (o actualiza) los siguientes usuarios:
     profesor@demo.com     /  Demo1234!  →  PROFESOR      (Sofía Ledesma)
     alumno@demo.com       /  Demo1234!  →  ALUMNO        (Joaquín Sosa)
     admin@demo.com        /  Admin1234! →  ADMIN         (Lucia Ferrer)
+    tutor@demo.com        /  Demo1234!  →  TUTOR         (Carlos Méndez)
 """
 import asyncio
 import os
@@ -51,6 +52,13 @@ USERS = [
         'roles':    '["ADMIN"]',
         'nombre':   'Lucia',
         'apellidos':'Ferrer',
+    },
+    {
+        'email':    'tutor@demo.com',
+        'password': 'Demo1234!',
+        'roles':    '["TUTOR"]',
+        'nombre':   'Carlos',
+        'apellidos':'Méndez',
     },
 ]
 

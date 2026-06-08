@@ -45,6 +45,15 @@ const DEMO_USERS: DemoUser[] = [
     apellidos: 'Ferrer',
     gradient:  'linear-gradient(150deg, #f472b6, #be185d)',
   },
+  {
+    email:     'tutor@demo.com',
+    password:  'Demo1234!',
+    role:      'TUTOR',
+    roleLabel: 'Tutor',
+    nombre:    'Carlos',
+    apellidos: 'Mendez',
+    gradient:  'linear-gradient(150deg, #38bdf8, #0369a1)',
+  },
 ]
 
 interface DemoUserPickerProps {
