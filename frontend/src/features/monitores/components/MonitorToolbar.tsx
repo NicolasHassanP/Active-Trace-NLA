@@ -16,7 +16,7 @@ interface Props {
   exporting?: boolean
 }
 
-export default function MonitorToolbar({ filas, onClear, exporting = false }: Props) {
+export default function MonitorToolbar({ filas, onClear: _onClear, exporting = false }: Props) {
   function handleExport() {
     const blob = exportarMonitorCsv(filas)
     downloadFile(blob, 'monitor.csv')

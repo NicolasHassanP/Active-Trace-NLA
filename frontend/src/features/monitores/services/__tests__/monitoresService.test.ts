@@ -26,6 +26,12 @@ const sampleFila: MonitorFila = {
   estado: 'atrasado',
   aprobadas: 2,
   faltantes: 3,
+  nombre: null,
+  apellidos: null,
+  email: null,
+  comision: null,
+  regional: null,
+  actividades_detalle: [],
 }
 
 // ---------------------------------------------------------------------------
@@ -107,8 +113,8 @@ describe('listarMonitor', () => {
 describe('exportarMonitorCsv', () => {
   it('returns a CSV Blob from MonitorFila rows', () => {
     const filas: MonitorFila[] = [
-      { entrada_padron_id: 'alumno-1', estado: 'atrasado', aprobadas: 1, faltantes: 3 },
-      { entrada_padron_id: 'alumno-2', estado: 'al_dia', aprobadas: 4, faltantes: 0 },
+      { entrada_padron_id: 'alumno-1', estado: 'atrasado', aprobadas: 1, faltantes: 3, nombre: null, apellidos: null, email: null, comision: null, regional: null, actividades_detalle: [] },
+      { entrada_padron_id: 'alumno-2', estado: 'al_dia', aprobadas: 4, faltantes: 0, nombre: null, apellidos: null, email: null, comision: null, regional: null, actividades_detalle: [] },
     ]
     const blob = exportarMonitorCsv(filas)
     expect(blob).toBeInstanceOf(Blob)
@@ -117,7 +123,7 @@ describe('exportarMonitorCsv', () => {
 
   it('CSV contains header row with correct column names', async () => {
     const filas: MonitorFila[] = [
-      { entrada_padron_id: 'alumno-1', estado: 'atrasado', aprobadas: 1, faltantes: 3 },
+      { entrada_padron_id: 'alumno-1', estado: 'atrasado', aprobadas: 1, faltantes: 3, nombre: null, apellidos: null, email: null, comision: null, regional: null, actividades_detalle: [] },
     ]
     const blob = exportarMonitorCsv(filas)
     const text = await blob.text()
@@ -129,7 +135,7 @@ describe('exportarMonitorCsv', () => {
 
   it('CSV contains data rows for each MonitorFila', async () => {
     const filas: MonitorFila[] = [
-      { entrada_padron_id: 'alumno-uuid-1', estado: 'al_dia', aprobadas: 4, faltantes: 0 },
+      { entrada_padron_id: 'alumno-uuid-1', estado: 'al_dia', aprobadas: 4, faltantes: 0, nombre: null, apellidos: null, email: null, comision: null, regional: null, actividades_detalle: [] },
     ]
     const blob = exportarMonitorCsv(filas)
     const text = await blob.text()

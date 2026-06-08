@@ -29,7 +29,7 @@ const mockRows: PadronRowDTO[] = [
 
 const mockVersion: VersionPadronRead = {
   id: 'v1', materia_id: 'm1', cohorte_id: 'c1',
-  total_filas: 1, activa: true, creado_en: '2026-06-05',
+  filas_total: 1, activa: true, creado_en: '2026-06-05',
 }
 
 describe('usePreviewPadron', () => {

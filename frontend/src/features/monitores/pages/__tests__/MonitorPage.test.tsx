@@ -43,6 +43,12 @@ const sampleFila: MonitorFila = {
   estado: 'atrasado',
   aprobadas: 2,
   faltantes: 3,
+  nombre: null,
+  apellidos: null,
+  email: null,
+  comision: null,
+  regional: null,
+  actividades_detalle: [],
 }
 
 beforeEach(() => {

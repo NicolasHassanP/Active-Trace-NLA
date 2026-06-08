@@ -15,8 +15,8 @@ afterEach(() => { mock.reset() })
 
 const sampleAlumnos: AlumnoAtrasado[] = [
   {
-    alumno_id: 'a1', nombre: 'Luis', apellidos: 'Vera', email: 'luis@t.com',
-    actividades_faltantes: ['TP1'], actividades_no_aprobadas: [], estado: 'atrasado',
+    entrada_padron_id: 'a1', nombre: 'Luis', apellidos: 'Vera', email: 'luis@t.com',
+    actividades_faltantes: ['TP1'], actividades_no_aprobadas: [],
   },
 ]
 

@@ -4,7 +4,7 @@
  * Critical: queryKey MUST include ALL active filter params.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useMonitor } from '../monitoresHooks'
@@ -18,6 +18,12 @@ const sampleFila: MonitorFila = {
   estado: 'atrasado',
   aprobadas: 1,
   faltantes: 3,
+  nombre: null,
+  apellidos: null,
+  email: null,
+  comision: null,
+  regional: null,
+  actividades_detalle: [],
 }
 
 function makeWrapper() {

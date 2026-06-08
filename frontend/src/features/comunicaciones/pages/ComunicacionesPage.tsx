@@ -23,13 +23,12 @@ type ActiveTab = 'componer' | 'historial'
 /** Build minimal AlumnoAtrasado stubs from email list for the compose form */
 function buildDestinatariosFromEmails(emails: string[]): AlumnoAtrasado[] {
   return emails.map((email, i) => ({
-    alumno_id: `dest-${i}`,
+    entrada_padron_id: `dest-${i}`,
     nombre: email.split('@')[0],
     apellidos: '',
     email,
     actividades_faltantes: [],
     actividades_no_aprobadas: [],
-    estado: 'atrasado' as const,
   }))
 }
 

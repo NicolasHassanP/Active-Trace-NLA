@@ -46,7 +46,7 @@ const mockLoteDone: LoteStatusResponse = {
 beforeEach(() => {
   vi.clearAllMocks()
   mockUseAuth.mockReturnValue({
-    user: null, isAuthenticated: true, isInitializing: false, roles: ['COORDINADOR'],
+    user: null, tenantId: null, isAuthenticated: true, isInitializing: false, roles: ['COORDINADOR'],
     login: vi.fn(), logout: vi.fn(),
   })
 })

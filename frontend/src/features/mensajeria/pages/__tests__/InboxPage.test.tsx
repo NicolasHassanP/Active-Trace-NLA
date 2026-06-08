@@ -41,6 +41,7 @@ const sampleHilo: InboxHiloRead = {
   asunto: 'Consulta de notas',
   no_leidos: 2,
   ultimo_mensaje_at: '2024-03-10T15:00:00',
+  otro_participante_nombre: null,
 }
 
 const mensajePropio: MensajeRead = {

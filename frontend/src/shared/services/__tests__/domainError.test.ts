@@ -3,10 +3,10 @@
  * RED first: the function does not exist yet.
  */
 import { describe, it, expect } from 'vitest'
-import axios from 'axios'
+import axios, { type AxiosError } from 'axios'
 import { parseDomainError } from '../domainError'
 
-function makeAxiosError(status: number, detail: unknown): ReturnType<typeof axios.isAxiosError> {
+function makeAxiosError(status: number, detail: unknown): AxiosError {
   // Build a minimal AxiosError-shaped object
   const err = new axios.AxiosError('Request failed', String(status))
   ;(err as ReturnType<typeof Object.create>).response = {

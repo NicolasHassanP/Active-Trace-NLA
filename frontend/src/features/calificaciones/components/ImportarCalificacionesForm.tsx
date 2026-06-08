@@ -43,7 +43,7 @@ export default function ImportarCalificacionesForm({ materia_id, cohorte_id }: P
         setSeleccionadas(new Set(data.actividades.map((a) => a.actividad)))
       },
       onError: (err) => {
-        const de = err as DomainError
+        const de = err as unknown as DomainError
         setPreviewError(de.detail ?? 'Error al previsualizar el archivo')
       },
     })
@@ -80,7 +80,7 @@ export default function ImportarCalificacionesForm({ materia_id, cohorte_id }: P
           if (fileRef.current) fileRef.current.value = ''
         },
         onError: (err) => {
-          const de = err as DomainError
+          const de = err as unknown as DomainError
           toast.error(`Error al importar: ${de.detail}`)
         },
       },

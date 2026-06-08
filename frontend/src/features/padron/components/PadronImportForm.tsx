@@ -31,7 +31,7 @@ export default function PadronImportForm({ materia_id, cohorte_id, onSuccess }: 
     preview.mutate(file, {
       onSuccess: (rows) => setPreviewRows(rows),
       onError: (err) => {
-        const de = err as DomainError
+        const de = err as unknown as DomainError
         setPreviewError(de.detail ?? 'Error al previsualizar el archivo')
       },
     })
@@ -49,7 +49,7 @@ export default function PadronImportForm({ materia_id, cohorte_id, onSuccess }: 
           onSuccess?.(version.filas_total)
         },
         onError: (err) => {
-          const de = err as DomainError
+          const de = err as unknown as DomainError
           toast.error(`Error al activar: ${de.detail}`)
         },
       },
