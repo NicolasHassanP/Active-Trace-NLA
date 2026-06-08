@@ -251,6 +251,20 @@ class TareaService:
         """
         return await self._tarea_repo.listar_mias(domain_user_id)
 
+    async def listar_mias_enriquecidas(self, domain_user_id: uuid.UUID) -> list:
+        """
+        Return tareas assigned to the caller with materia_nombre and
+        asignado_por_nombre resolved via JOIN (D12).
+        """
+        return await self._tarea_repo.listar_mias_enriquecidas(domain_user_id)
+
+    async def enriquecer_tarea(self, tarea_id: uuid.UUID) -> Optional[dict]:
+        """
+        Return a single enriched dict for tarea_id (D12), or None if not found.
+        Used by mutation endpoints to build the response after a write operation.
+        """
+        return await self._tarea_repo.get_by_id_enriquecida(tarea_id)
+
     # -----------------------------------------------------------------------
     # listar_admin (D7, D10)
     # -----------------------------------------------------------------------
@@ -270,6 +284,27 @@ class TareaService:
         Requires tareas:gestionar (enforced by router).
         """
         return await self._tarea_repo.listar_admin(
+            asignado_a=asignado_a,
+            asignado_por=asignado_por,
+            materia_id=materia_id,
+            estado=estado,
+            q=q,
+        )
+
+    async def listar_admin_enriquecidas(
+        self,
+        current_user: CurrentUser,
+        asignado_a: Optional[uuid.UUID] = None,
+        asignado_por: Optional[uuid.UUID] = None,
+        materia_id: Optional[uuid.UUID] = None,
+        estado: Optional[TareaEstado] = None,
+        q: Optional[str] = None,
+    ) -> list:
+        """
+        Admin global listing with materia_nombre and asignado_por_nombre resolved
+        via JOIN (D12).  Requires tareas:gestionar (enforced by router).
+        """
+        return await self._tarea_repo.listar_admin_enriquecidas(
             asignado_a=asignado_a,
             asignado_por=asignado_por,
             materia_id=materia_id,
@@ -305,6 +340,28 @@ class TareaService:
         tarea = await self._get_tarea_or_404(tarea_id)
         self._enforce_ownership(tarea, domain_user_id, has_gestionar=has_gestionar)
         return tarea
+
+    async def detalle_enriquecido(
+        self,
+        tarea_id: uuid.UUID,
+        current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
+        has_gestionar: bool = False,
+    ) -> dict:
+        """
+        Get tarea detail with materia_nombre and asignado_por_nombre resolved (D12).
+
+        Raises HTTP 403 if caller lacks ownership and tareas:gestionar (D7).
+        """
+        tarea = await self._get_tarea_or_404(tarea_id)
+        self._enforce_ownership(tarea, domain_user_id, has_gestionar=has_gestionar)
+        result = await self._tarea_repo.get_by_id_enriquecida(tarea_id)
+        if result is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tarea no encontrada",
+            )
+        return result
 
     async def listar_comentarios(
         self,

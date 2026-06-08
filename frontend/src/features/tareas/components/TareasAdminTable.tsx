@@ -35,7 +35,7 @@ export default function TareasAdminTable({ tareas, onCambiarEstado, onDelegar }:
           {tareas.map((tarea) => (
             <tr key={tarea.id} className="hover:bg-gray-50">
               <td className="max-w-xs truncate px-4 py-3 text-gray-900">{tarea.descripcion}</td>
-              <td className="px-4 py-3 text-gray-600">{tarea.asignado_a}</td>
+              <td className="px-4 py-3 text-gray-600">{tarea.asignado_a_nombre ?? tarea.asignado_a}</td>
               <td className="px-4 py-3">
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${

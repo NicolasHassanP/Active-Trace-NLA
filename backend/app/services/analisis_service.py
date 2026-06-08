@@ -386,11 +386,22 @@ class AnalisisService:
                 "nota_textual": cal.nota_textual,
             })
 
+        # Derivar todas las actividades presentes en el dataset cuando no se
+        # especifica filtro. Calculado una vez antes del loop (O(n), no O(n²)).
+        todas_actividades_dataset: set[str] = (
+            {cal.actividad for cal in calificaciones if cal.actividad}
+            if not actividades
+            else set()
+        )
+
         # Construir filas del monitor
         filas: List[MonitorFila] = []
         for entrada in entradas:
             cals = cals_map.get(entrada.id, [])
-            actividades_set = set(actividades) if actividades else set()
+
+            # Si se pasaron actividades explícitas úsalas; si no, usar las del
+            # dataset (todas las actividades conocidas en las calificaciones).
+            actividades_set = set(actividades) if actividades else todas_actividades_dataset
 
             if not cals:
                 # Sin datos para este alumno
@@ -398,9 +409,17 @@ class AnalisisService:
                 faltantes = len(actividades_set)
                 estado = "sin_datos"
             else:
-                aprobadas = sum(1 for c in cals if c["aprobado"] and (not actividades or c["actividad"] in actividades_set))
-                faltantes_set = actividades_set - {c["actividad"] for c in cals if c["actividad"] in actividades_set}
-                no_aprobadas = [c for c in cals if not c["aprobado"] and c["actividad"] in (actividades_set or {c["actividad"]})]
+                aprobadas = sum(
+                    1 for c in cals
+                    if c["aprobado"] and (not actividades or c["actividad"] in actividades_set)
+                )
+                faltantes_set = actividades_set - {
+                    c["actividad"] for c in cals if c["actividad"] in actividades_set
+                }
+                no_aprobadas = [
+                    c for c in cals
+                    if not c["aprobado"] and c["actividad"] in actividades_set
+                ]
                 faltantes = len(faltantes_set)
 
                 if faltantes > 0 or no_aprobadas:

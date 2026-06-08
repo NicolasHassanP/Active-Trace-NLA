@@ -1,7 +1,7 @@
 /**
  * Calificaciones TanStack Query hooks — queries and mutations for all calificaciones endpoints.
  */
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   configurarUmbral,
   getNotasFinales,
@@ -26,8 +26,16 @@ export function usePreviewCalificaciones() {
 
 /** Mutation: confirm import with selected activities + filas from preview */
 export function useImportarCalificaciones() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: (request: ImportarCalificacionesRequest) => importarCalificaciones(request),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['ranking'] })
+      void qc.invalidateQueries({ queryKey: ['reporte-materia'] })
+      void qc.invalidateQueries({ queryKey: ['notas-finales'] })
+      void qc.invalidateQueries({ queryKey: ['atrasados'] })
+      void qc.invalidateQueries({ queryKey: ['seguimiento'] })
+    },
   })
 }
 

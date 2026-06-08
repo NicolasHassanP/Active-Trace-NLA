@@ -62,7 +62,7 @@ export const NAV_CATALOG: NavItem[] = [
   {
     label: 'Seguimiento',
     path: '/seguimiento',
-    roles: ['TUTOR', 'COORDINADOR', 'ADMIN'],
+    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
     icon: 'eye',
     group: 'MI CÁTEDRA',
   },

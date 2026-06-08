@@ -101,7 +101,8 @@ async def crear_tarea(
     domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_tarea_service(db, current_user.tenant_id)
     tarea = await svc.publicar(body, current_user, domain_user_id)
-    return TareaRead.model_validate(tarea)
+    enriched = await svc.enriquecer_tarea(tarea.id)
+    return TareaRead.model_validate(enriched if enriched is not None else tarea)
 
 
 # ---------------------------------------------------------------------------
@@ -127,7 +128,8 @@ async def delegar_tarea(
     domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_tarea_service(db, current_user.tenant_id)
     tarea = await svc.delegar(tarea_id, body.asignado_a, current_user, domain_user_id)
-    return TareaRead.model_validate(tarea)
+    enriched = await svc.enriquecer_tarea(tarea.id)
+    return TareaRead.model_validate(enriched if enriched is not None else tarea)
 
 
 # ---------------------------------------------------------------------------
@@ -154,7 +156,7 @@ async def listar_admin(
     Requiere tareas:gestionar.
     """
     svc = _make_tarea_service(db, current_user.tenant_id)
-    tareas = await svc.listar_admin(
+    tareas = await svc.listar_admin_enriquecidas(
         current_user=current_user,
         asignado_a=asignado_a,
         asignado_por=asignado_por,
@@ -205,7 +207,7 @@ async def listar_mias(
     """
     domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_tarea_service(db, current_user.tenant_id)
-    tareas = await svc.listar_mias(domain_user_id)
+    tareas = await svc.listar_mias_enriquecidas(domain_user_id)
     return [TareaRead.model_validate(t) for t in tareas]
 
 
@@ -229,8 +231,8 @@ async def detalle_tarea(
     """
     domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_tarea_service(db, current_user.tenant_id)
-    tarea = await svc.detalle(tarea_id, current_user, domain_user_id, has_gestionar=has_gestionar)
-    return TareaRead.model_validate(tarea)
+    enriched = await svc.detalle_enriquecido(tarea_id, current_user, domain_user_id, has_gestionar=has_gestionar)
+    return TareaRead.model_validate(enriched)
 
 
 # ---------------------------------------------------------------------------
@@ -256,7 +258,8 @@ async def cambiar_estado(
     domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_tarea_service(db, current_user.tenant_id)
     tarea = await svc.cambiar_estado(tarea_id, body.estado, current_user, domain_user_id, has_gestionar=has_gestionar)
-    return TareaRead.model_validate(tarea)
+    enriched = await svc.enriquecer_tarea(tarea.id)
+    return TareaRead.model_validate(enriched if enriched is not None else tarea)
 
 
 # ---------------------------------------------------------------------------

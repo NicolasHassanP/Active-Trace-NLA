@@ -24,11 +24,13 @@ export default function MisTareasList({ tareas }: Props) {
         <li key={tarea.id} className="flex items-start justify-between gap-4 p-4">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">{tarea.descripcion}</p>
-            {tarea.materia_id && (
-              <p className="mt-0.5 text-xs text-gray-500">Materia: {tarea.materia_id}</p>
+            {(tarea.materia_nombre ?? tarea.materia_id) && (
+              <p className="mt-0.5 text-xs text-gray-500">
+                Materia: {tarea.materia_nombre ?? tarea.materia_id}
+              </p>
             )}
             <p className="mt-0.5 text-xs text-gray-400">
-              Asignada por: {tarea.asignado_por}
+              Asignada por: {tarea.asignado_por_nombre ?? tarea.asignado_por}
             </p>
           </div>
           <span
