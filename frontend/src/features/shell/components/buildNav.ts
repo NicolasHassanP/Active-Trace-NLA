@@ -70,7 +70,7 @@ export const NAV_CATALOG: NavItem[] = [
   {
     label: 'Encuentros',
     path: '/encuentros',
-    roles: ['COORDINADOR', 'ADMIN'],
+    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
     icon: 'calendar',
     group: 'INSTANCIAS',
   },

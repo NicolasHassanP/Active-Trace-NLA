@@ -182,11 +182,11 @@ export default function App() {
                       </ProtectedRoute>
                     }
                   />
-                  {/* /encuentros — COORDINADOR/ADMIN only */}
+                  {/* /encuentros — PROFESOR/TUTOR/COORDINADOR/ADMIN */}
                   <Route
                     path="/encuentros"
                     element={
-                      <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN']}>
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}>
                         <EncuentrosPage />
                       </ProtectedRoute>
                     }
