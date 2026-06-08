@@ -15,6 +15,7 @@ import MetricasPanel from '../components/MetricasPanel'
 import ConvocatoriasTable from '../components/ConvocatoriasTable'
 import ConvocatoriaForm from '../components/ConvocatoriaForm'
 import ImportarCandidatosDialog from '../components/ImportarCandidatosDialog'
+import ResultadosPanel from '../components/ResultadosPanel'
 import type { Role } from '@/features/auth/types'
 import type { ConvocatoriaFormValues } from '../services/convocatoriaSchema'
 import { crearConvocatoria } from '../services/coloquiosService'
@@ -34,6 +35,7 @@ export default function ColoquiosPage() {
   const [showForm, setShowForm] = useState(false)
   const [importarId, setImportarId] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [selectedEvaluacionId, setSelectedEvaluacionId] = useState<string | null>(null)
 
   async function handleCrearConvocatoria(values: ConvocatoriaFormValues) {
     setIsCreating(true)
@@ -86,45 +88,52 @@ export default function ColoquiosPage() {
       )}
       {metricasQuery.data && <MetricasPanel metricas={metricasQuery.data} />}
 
-      {/* ---- Convocatorias ---- */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-800">Convocatorias</h2>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowForm((v) => !v)}
-          >
-            Nueva convocatoria
-          </Button>
-        </div>
+      {/* ---- Convocatorias / Resultados ---- */}
+      {selectedEvaluacionId ? (
+        <ResultadosPanel
+          evaluacionId={selectedEvaluacionId}
+          onVolver={() => setSelectedEvaluacionId(null)}
+        />
+      ) : (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-800">Convocatorias</h2>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowForm((v) => !v)}
+            >
+              Nueva convocatoria
+            </Button>
+          </div>
 
-        {showForm && (
-          <div className="rounded border border-gray-200 bg-gray-50 p-4">
-            <ConvocatoriaForm
-              onSubmit={(values) => void handleCrearConvocatoria(values)}
-              isLoading={isCreating}
+          {showForm && (
+            <div className="rounded border border-gray-200 bg-gray-50 p-4">
+              <ConvocatoriaForm
+                onSubmit={(values) => void handleCrearConvocatoria(values)}
+                isLoading={isCreating}
+              />
+            </div>
+          )}
+
+          {convocatoriasQuery.isLoading && (
+            <p className="text-sm text-gray-500">Cargando convocatorias…</p>
+          )}
+          {convocatoriasQuery.isError && (
+            <div role="alert" className="rounded bg-red-50 p-3 text-sm text-red-700">
+              Error al cargar las convocatorias.
+            </div>
+          )}
+          {!convocatoriasQuery.isLoading && !convocatoriasQuery.isError && (
+            <ConvocatoriasTable
+              convocatorias={convocatoriasQuery.data ?? []}
+              onImportar={(id) => setImportarId(id)}
+              onCerrar={handleCerrar}
+              onVerResultados={(id) => setSelectedEvaluacionId(id)}
             />
-          </div>
-        )}
-
-        {convocatoriasQuery.isLoading && (
-          <p className="text-sm text-gray-500">Cargando convocatorias…</p>
-        )}
-        {convocatoriasQuery.isError && (
-          <div role="alert" className="rounded bg-red-50 p-3 text-sm text-red-700">
-            Error al cargar las convocatorias.
-          </div>
-        )}
-        {!convocatoriasQuery.isLoading && !convocatoriasQuery.isError && (
-          <ConvocatoriasTable
-            convocatorias={convocatoriasQuery.data ?? []}
-            onImportar={(id) => setImportarId(id)}
-            onCerrar={handleCerrar}
-            onVerResultados={() => {/* navigate to results — batch 4 routing */}}
-          />
-        )}
-      </section>
+          )}
+        </section>
+      )}
 
       {/* ---- Importar candidatos dialog ---- */}
       {importarId && (

@@ -3,13 +3,19 @@ import { useNavigate } from 'react-router-dom'
 import { NavIcon } from '@/shared/components/ui/NavIcon'
 import { useAvisosPendientes } from '@/features/avisos/hooks/avisosHooks'
 import { useNoLeidosInbox } from '@/features/mensajeria/hooks/mensajeriaHooks'
+import { useAuth } from '@/features/auth/hooks/useAuth'
+import type { Role } from '@/features/auth/types'
+
+const MESSAGING_ROLES: Role[] = ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']
 
 export default function Topbar() {
   const navigate = useNavigate()
+  const { roles } = useAuth()
+  const hasMessaging = roles.some((r) => MESSAGING_ROLES.includes(r))
 
   const pendientesQuery = useAvisosPendientes()
   const avisosPending = pendientesQuery.data?.length ?? 0
-  const mensajesNoLeidos = useNoLeidosInbox()
+  const mensajesNoLeidos = useNoLeidosInbox(hasMessaging)
   const totalCount = avisosPending + mensajesNoLeidos
 
   const [ringing, setRinging] = useState(false)

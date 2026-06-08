@@ -945,3 +945,165 @@ async def test_sync_moodle_endpoint_503_when_not_configured(async_client, db_ses
         assert resp.status_code == 503
     finally:
         await _cleanup_padron(db_session, tenant.id)
+
+
+# ---------------------------------------------------------------------------
+# Task 13.x — usuario_id linking: EntradaPadron se linkea al Usuario existente
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_create_and_activate_links_usuario_id_by_email(db_session, monkeypatch):
+    """
+    Task 13.1 RED → 13.2 GREEN:
+    Si existe un Usuario en el tenant con el mismo email que una entrada del padrón,
+    create_and_activate debe setear EntradaPadron.usuario_id = usuario.id.
+    """
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    from app.repositories.padron_repository import PadronRepository
+    from app.models.usuario import Usuario, UsuarioEstado
+    from app.core.security.passwords import email_lookup_hash
+
+    tenant, _, cohorte, materia = await _create_padron_tenant(db_session)
+    try:
+        # Crear un usuario cuyo email coincide con una entrada del padrón
+        email_alumno = "alumno-con-cuenta@test.com"
+        usuario = Usuario(
+            tenant_id=tenant.id,
+            email_encrypted=email_alumno,
+            email_hash=email_lookup_hash(email_alumno),
+            nombre="Alumno",
+            apellidos="ConCuenta",
+            estado=UsuarioEstado.activo,
+        )
+        db_session.add(usuario)
+        await db_session.commit()
+        await db_session.refresh(usuario)
+
+        repo = PadronRepository(session=db_session, tenant_id=tenant.id)
+        version_data = {"tenant_id": tenant.id, "materia_id": materia.id, "cohorte_id": cohorte.id}
+        entries_data = [
+            # Esta entrada tiene email que matchea el usuario creado
+            {"nombre": "Alumno", "apellidos": "ConCuenta", "email_encrypted": email_alumno},
+            # Esta entrada no tiene usuario en el sistema
+            {"nombre": "Sin", "apellidos": "Cuenta", "email_encrypted": "sin-cuenta@test.com"},
+        ]
+        version = await repo.create_and_activate(version_data, entries_data)
+
+        # Verificar el resultado de las entradas
+        result = await db_session.execute(
+            select(EntradaPadron).where(
+                EntradaPadron.version_id == version.id,
+                EntradaPadron.deleted_at.is_(None),
+            )
+        )
+        entries = list(result.scalars().all())
+        assert len(entries) == 2
+
+        # Separar por nombre para verificar cada caso
+        by_nombre = {e.nombre: e for e in entries}
+
+        # La entrada con cuenta debe tener usuario_id seteado
+        assert by_nombre["Alumno"].usuario_id == usuario.id, (
+            "EntradaPadron.usuario_id debe ser linkeado al Usuario existente con el mismo email"
+        )
+
+        # La entrada sin cuenta debe tener usuario_id = None
+        assert by_nombre["Sin"].usuario_id is None, (
+            "EntradaPadron.usuario_id debe ser None cuando no hay Usuario con ese email"
+        )
+    finally:
+        await _cleanup_padron(db_session, tenant.id)
+
+
+@pytest.mark.asyncio
+async def test_create_and_activate_no_link_when_no_users_exist(db_session, monkeypatch):
+    """
+    Task 13.3 TRIANGULATE:
+    Si no hay ningún Usuario en el sistema, todas las entradas quedan con usuario_id = None.
+    """
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    from app.repositories.padron_repository import PadronRepository
+
+    tenant, _, cohorte, materia = await _create_padron_tenant(db_session)
+    try:
+        repo = PadronRepository(session=db_session, tenant_id=tenant.id)
+        version_data = {"tenant_id": tenant.id, "materia_id": materia.id, "cohorte_id": cohorte.id}
+        entries_data = [
+            {"nombre": "Nuevo", "apellidos": "Alumno", "email_encrypted": "nuevo@test.com"},
+        ]
+        version = await repo.create_and_activate(version_data, entries_data)
+
+        result = await db_session.execute(
+            select(EntradaPadron).where(EntradaPadron.version_id == version.id)
+        )
+        entries = list(result.scalars().all())
+        assert len(entries) == 1
+        assert entries[0].usuario_id is None
+    finally:
+        await _cleanup_padron(db_session, tenant.id)
+
+
+@pytest.mark.asyncio
+async def test_create_and_activate_tenant_isolation_no_cross_link(db_session, monkeypatch):
+    """
+    Task 13.4 TRIANGULATE — aislamiento multi-tenant:
+    Un Usuario en tenant B no debe linkearse a entradas del padrón de tenant A,
+    aunque el email sea idéntico.
+    """
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    from app.repositories.padron_repository import PadronRepository
+    from app.models.usuario import Usuario, UsuarioEstado
+    from app.models.tenant import Tenant, TenantEstado
+    from app.core.security.passwords import email_lookup_hash
+
+    tenant_a, _, cohorte, materia = await _create_padron_tenant(db_session)
+    tenant_b = Tenant(nombre="Tenant B Isolation", estado=TenantEstado.ACTIVO)
+    db_session.add(tenant_b)
+    await db_session.commit()
+    await db_session.refresh(tenant_b)
+
+    try:
+        email_compartido = "compartido@test.com"
+
+        # Crear usuario en tenant B con el mismo email
+        usuario_b = Usuario(
+            tenant_id=tenant_b.id,
+            email_encrypted=email_compartido,
+            email_hash=email_lookup_hash(email_compartido),
+            nombre="Usuario",
+            apellidos="TenantB",
+            estado=UsuarioEstado.activo,
+        )
+        db_session.add(usuario_b)
+        await db_session.commit()
+        await db_session.refresh(usuario_b)
+
+        # Importar padrón en tenant A con ese email
+        repo_a = PadronRepository(session=db_session, tenant_id=tenant_a.id)
+        version_data = {"tenant_id": tenant_a.id, "materia_id": materia.id, "cohorte_id": cohorte.id}
+        entries_data = [
+            {"nombre": "Alumno", "apellidos": "TenantA", "email_encrypted": email_compartido},
+        ]
+        version = await repo_a.create_and_activate(version_data, entries_data)
+
+        result = await db_session.execute(
+            select(EntradaPadron).where(EntradaPadron.version_id == version.id)
+        )
+        entries = list(result.scalars().all())
+        assert len(entries) == 1
+        # No debe linkearse al usuario de otro tenant
+        assert entries[0].usuario_id is None, (
+            "EntradaPadron de tenant A no debe linkearse al Usuario de tenant B"
+        )
+    finally:
+        await _cleanup_padron(db_session, tenant_a.id)
+        await db_session.execute(
+            text("DELETE FROM usuario WHERE tenant_id = :tid"), {"tid": str(tenant_b.id)}
+        )
+        await db_session.execute(
+            text("DELETE FROM tenants WHERE id = :tid"), {"tid": str(tenant_b.id)}
+        )
+        await db_session.commit()

@@ -22,11 +22,12 @@ export function useHilos({ enabled = true }: { enabled?: boolean } = {}) {
 }
 
 /** Total de mensajes no leídos en todos los hilos — para el badge de la campanita. */
-export function useNoLeidosInbox(): number {
+export function useNoLeidosInbox(enabled = true): number {
   const { data: hilos = [] } = useQuery({
     queryKey: KEYS.hilos,
     queryFn: listarHilos,
-    refetchInterval: 30_000,
+    refetchInterval: enabled ? 30_000 : false,
+    enabled,
   })
   return hilos.reduce((sum, h) => sum + (h.no_leidos ?? 0), 0)
 }

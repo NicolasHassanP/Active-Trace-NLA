@@ -51,6 +51,25 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    from fastapi.openapi.utils import get_openapi
+
+    def custom_openapi():
+        if application.openapi_schema:
+            return application.openapi_schema
+        schema = get_openapi(
+            title=application.title,
+            version=application.version,
+            routes=application.routes,
+        )
+        schema.setdefault("components", {})["securitySchemes"] = {
+            "BearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+        }
+        schema["security"] = [{"BearerAuth": []}]
+        application.openapi_schema = schema
+        return schema
+
+    application.openapi = custom_openapi  # type: ignore[method-assign]
+
     @application.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         body = await request.body()
