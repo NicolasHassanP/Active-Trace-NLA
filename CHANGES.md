@@ -41,8 +41,11 @@ C-01 foundation-setup (infra, Docker, FastAPI skel, DB inicial, OTel)
             │   ├── C-20 perfil-y-mensajeria-interna (perfil propio, inbox interno)
             │   └── C-21 frontend-shell-y-auth (SPA shell, login, guard, cliente HTTP)
             │       ├── C-22 frontend-academico-docente (importación, atrasados, comunicaciones)
+            │       │   └── C-27 historial-comunicaciones (historial envíos, tabs componer/historial) [+C-12]
             │       ├── C-23 frontend-coordinacion (equipos, avisos, tareas, monitores)
-            │       └── C-24 frontend-finanzas-y-admin (liquidaciones, facturas, estructura, auditoría)
+            │       ├── C-24 frontend-finanzas-y-admin (liquidaciones, facturas, estructura, auditoría)
+            │       ├── C-25 alumno-portal (estado académico, mi cursada) [+C-10, C-14]
+            │       └── C-26 mensajeria-frontend (inbox interno, hilos) [+C-20]
 ```
 
 ### Paralelismo por fase
@@ -93,6 +96,11 @@ GATE 10: C-21 ✓ + backend de cada dominio ✓       ← capa de presentación
   → C-22 frontend-academico-docente                [Agente C — si C-12 ✓]
   → C-23 frontend-coordinacion                     [Agente C — si C-08, C-15, C-16 ✓]
   → C-24 frontend-finanzas-y-admin                 [Agente C — si C-18, C-19 ✓]
+
+GATE 11: C-22 ✓ + backends C-10, C-14, C-20 ✓    ← extensiones frontend post-GATE 10
+  → C-25 alumno-portal                             [Agente C — si C-10, C-14 ✓]
+  → C-26 mensajeria-frontend                       [Agente C — si C-20 ✓]
+  → C-27 historial-comunicaciones                  [Agente C — si C-22, C-12 ✓]
 ```
 
 ### Camino crítico (10 changes — mínimo irreducible)
@@ -120,8 +128,9 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
 | 9 | C-14 evaluaciones-y-coloquios | C-11 analisis-atrasados-reportes | C-18 liquidaciones-y-honorarios |
 | 10 | C-19 panel-auditoria-metricas | C-12 comunicaciones-cola-worker | C-22 frontend-academico-docente |
 | 11 | — | C-23 frontend-coordinacion | C-24 frontend-finanzas-y-admin |
+| 12 | — | — | C-25 alumno-portal, C-26 mensajeria-frontend, C-27 historial-comunicaciones |
 
-> Los 3 agentes convergen alrededor del paso 10-11. El Agente A queda libre antes y puede tomar `C-19` o adelantar refactors.
+> Los 3 agentes convergen alrededor del paso 10-11. El Agente A queda libre antes y puede tomar `C-19` o adelantar refactors. Los changes C-25/26/27 (GATE 11) son extensiones paralelas independientes entre sí.
 
 ---
 
@@ -576,7 +585,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
 | Total de changes | 27 |
 | Fases | 6 (FASE 0 a FASE 5) |
 | Camino crítico | 10 changes (`C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 → C-12`) |
-| Gates de paralelismo | 11 (GATE 0 a GATE 10) |
+| Gates de paralelismo | 12 (GATE 0 a GATE 11) |
 | Changes CRITICO (governance) | 6 (C-02, C-03, C-04, C-05, C-07, C-18) |
 | Primer fork | GATE 4 (tras C-04, seguridad lista) |
 

@@ -93,7 +93,7 @@ Cargá la skill correspondiente al contexto **ANTES** de escribir código. Aplic
 
 El plan de implementación completo está en [CHANGES.md](CHANGES.md). Resumen:
 
-- **Total**: 24 changes (`C-01`…`C-24`) en 6 fases, organizados con 11 gates de paralelismo y un plan óptimo de 3 agentes (Backend Core / Backend Aux / Frontend).
+- **Total**: 27 changes (`C-01`…`C-27`) en 6 fases + extensiones, organizados con 12 gates de paralelismo y un plan óptimo de 3 agentes (Backend Core / Backend Aux / Frontend). Los changes `C-25` (alumno-portal), `C-26` (mensajeria-frontend) y `C-27` (historial-comunicaciones) son extensiones agregadas post-roadmap original (GATE 11), paralelas entre sí.
 - **Camino crítico** (10 changes, mínimo irreducible): `C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 → C-12`. Es el flujo de mayor valor: importar → analizar → comunicar, en producción multi-tenant.
 - **Primer change**: `C-01 foundation-setup` (infra, Docker, FastAPI skeleton, DB inicial, OpenTelemetry). Sin dependencias.
 - **Primer fork** (GATE 4, tras `C-04 rbac`): seguridad lista → arrancan en paralelo `C-05 audit-log`, `C-06 estructura-academica` y `C-21 frontend-shell-y-auth`.
