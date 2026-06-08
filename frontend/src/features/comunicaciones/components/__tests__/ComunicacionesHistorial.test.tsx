@@ -31,11 +31,16 @@ const wrapper = () => ({ children }: { children: React.ReactNode }) =>
 
 const makeItem = (id: string) => ({
   id,
+  tenant_id: 'tenant1',
   lote_id: 'lote1',
   destinatario_email: `dest-${id}@test.com`,
   asunto: `Asunto ${id}`,
   cuerpo: 'Cuerpo',
   estado: 'Enviado' as const,
+  enviado_por: null,
+  aprobado_por: null,
+  enviado_at: null,
+  error_detalle: null,
   creado_en: '2026-06-07T10:00:00Z',
   actualizado_en: '2026-06-07T10:00:00Z',
 })

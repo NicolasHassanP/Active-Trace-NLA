@@ -25,20 +25,38 @@ const createWrapper = () => {
     createElement(QueryClientProvider, { client: qc }, children)
 }
 
+const makeMsg = (estado: import('../../types').EstadoComunicacion) => ({
+  id: 'm1',
+  tenant_id: 't1',
+  lote_id: 'lote1',
+  destinatario_email: 'a@t.com',
+  asunto: '',
+  cuerpo: '',
+  estado,
+  enviado_por: null,
+  aprobado_por: null,
+  enviado_at: null,
+  error_detalle: null,
+  creado_en: '',
+  actualizado_en: '',
+})
+
 const mockLoteInProgress: LoteStatusResponse = {
   lote_id: 'lote1',
-  mensajes: [
-    { id: 'm1', lote_id: 'lote1', destinatario_email: 'a@t.com', asunto: '', cuerpo: '', estado: 'Pendiente', creado_en: '', actualizado_en: '' },
-  ],
-  pendientes: 1, enviados: 0, fallidos: 0, cancelados: 0,
+  mensajes: [makeMsg('Pendiente')],
+  pendientes: 1,
+  enviados: 0,
+  fallidos: 0,
+  cancelados: 0,
 }
 
 const mockLoteDone: LoteStatusResponse = {
   lote_id: 'lote1',
-  mensajes: [
-    { id: 'm1', lote_id: 'lote1', destinatario_email: 'a@t.com', asunto: '', cuerpo: '', estado: 'Enviado', creado_en: '', actualizado_en: '' },
-  ],
-  pendientes: 0, enviados: 1, fallidos: 0, cancelados: 0,
+  mensajes: [makeMsg('Enviado')],
+  pendientes: 0,
+  enviados: 1,
+  fallidos: 0,
+  cancelados: 0,
 }
 
 beforeEach(() => vi.clearAllMocks())
@@ -117,9 +135,7 @@ describe('useMisEnvios', () => {
     total: 3,
     offset: 0,
     limit: 20,
-    items: [
-      { id: 'm1', lote_id: 'lote1', destinatario_email: 'a@t.com', asunto: 'Test', cuerpo: 'Body', estado: 'Enviado', creado_en: '', actualizado_en: '' },
-    ],
+    items: [makeMsg('Enviado')],
   }
 
   it('returns data when API responds 200', async () => {

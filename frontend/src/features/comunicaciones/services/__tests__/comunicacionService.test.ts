@@ -23,9 +23,19 @@ beforeEach(() => { mock = new MockAdapter(apiClient) })
 afterEach(() => { mock.reset() })
 
 const sampleMsg: ComunicacionRead = {
-  id: 'msg1', lote_id: 'lote1', destinatario_email: 'a@t.com',
-  asunto: 'Hola', cuerpo: 'Texto', estado: 'Pendiente',
-  creado_en: '2026-06-05', actualizado_en: '2026-06-05',
+  id: 'msg1',
+  tenant_id: 't1',
+  lote_id: 'lote1',
+  destinatario_email: 'a@t.com',
+  asunto: 'Hola',
+  cuerpo: 'Texto',
+  estado: 'Pendiente',
+  enviado_por: null,
+  aprobado_por: null,
+  enviado_at: null,
+  error_detalle: null,
+  creado_en: '2026-06-05',
+  actualizado_en: '2026-06-05',
 }
 
 const sampleLote: LoteStatusResponse = {

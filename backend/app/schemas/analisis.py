@@ -152,6 +152,8 @@ class MonitorFiltros(BaseModel):
     Validación: fecha_desde <= fecha_hasta si ambas están presentes.
 
     fecha_desde/fecha_hasta: acota por importado_at de Calificacion (OQ-C11-3).
+    actividad_busqueda: término libre de búsqueda parcial case-insensitive sobre
+        el campo actividad (solo para el monitor — se aplica en Python post-fetch).
     """
     model_config = ConfigDict(extra="forbid")
 
@@ -161,6 +163,7 @@ class MonitorFiltros(BaseModel):
     regional: Optional[str] = None
     busqueda: Optional[str] = None
     actividad: Optional[str] = None
+    actividad_busqueda: Optional[str] = None
     min_cumplidas: Optional[int] = None
     fecha_desde: Optional[datetime] = None
     fecha_hasta: Optional[datetime] = None

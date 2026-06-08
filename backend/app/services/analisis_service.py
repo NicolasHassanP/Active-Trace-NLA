@@ -362,11 +362,15 @@ class AnalisisService:
 
         entrada_ids = [e.id for e in entradas]
 
-        # Obtener calificaciones con filtros de fecha (F2.9)
+        # Obtener calificaciones con filtros de fecha (F2.9).
+        # Cuando hay actividad_busqueda (búsqueda parcial libre del monitor),
+        # se omite el filtro SQL de actividades para traer todo y luego aplicar
+        # la coincidencia case-insensitive en Python.
+        actividades_sql = actividades if actividades else None
         calificaciones = await self._repo.calificaciones_por_materia(
             filtros.materia_id,
             importado_por=importado_por,
-            actividades=actividades if actividades else None,
+            actividades=actividades_sql,
             fecha_desde=filtros.fecha_desde,
             fecha_hasta=filtros.fecha_hasta,
         )
@@ -374,6 +378,15 @@ class AnalisisService:
         # Filtrar por las entradas del padrón visible
         entrada_ids_set = set(entrada_ids)
         calificaciones = [c for c in calificaciones if c.entrada_padron_id in entrada_ids_set]
+
+        # Búsqueda parcial case-insensitive sobre actividad (solo monitor, F2.7).
+        # Se aplica después del fetch para no alterar el contrato del repositorio.
+        if filtros.actividad_busqueda:
+            term = filtros.actividad_busqueda.lower()
+            calificaciones = [
+                c for c in calificaciones
+                if c.actividad and term in c.actividad.lower()
+            ]
 
         # Construir mapa
         cals_map: dict[uuid.UUID, list[dict]] = {}
@@ -398,6 +411,12 @@ class AnalisisService:
         filas: List[MonitorFila] = []
         for entrada in entradas:
             cals = cals_map.get(entrada.id, [])
+
+            # Cuando hay filtro de actividades activo y el alumno no tiene
+            # calificaciones para esas actividades, omitirlo del resultado.
+            # Sin filtro, se muestran todos los alumnos del padrón (comportamiento actual).
+            if not cals and actividades:
+                continue
 
             # Si se pasaron actividades explícitas úsalas; si no, usar las del
             # dataset (todas las actividades conocidas en las calificaciones).

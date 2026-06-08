@@ -26,11 +26,11 @@ const sampleFila: MonitorFila = {
   estado: 'atrasado',
   aprobadas: 2,
   faltantes: 3,
-  nombre: null,
-  apellidos: null,
-  email: null,
-  comision: null,
-  regional: null,
+  nombre: 'Diego',
+  apellidos: 'Fernández',
+  email: 'diego.fernandez@alumno.demo.com',
+  comision: '1A',
+  regional: 'Buenos Aires',
   actividades_detalle: [],
 }
 
@@ -113,35 +113,105 @@ describe('listarMonitor', () => {
 describe('exportarMonitorCsv', () => {
   it('returns a CSV Blob from MonitorFila rows', () => {
     const filas: MonitorFila[] = [
-      { entrada_padron_id: 'alumno-1', estado: 'atrasado', aprobadas: 1, faltantes: 3, nombre: null, apellidos: null, email: null, comision: null, regional: null, actividades_detalle: [] },
-      { entrada_padron_id: 'alumno-2', estado: 'al_dia', aprobadas: 4, faltantes: 0, nombre: null, apellidos: null, email: null, comision: null, regional: null, actividades_detalle: [] },
+      { entrada_padron_id: 'alumno-1', estado: 'atrasado', aprobadas: 1, faltantes: 3, nombre: 'Ana', apellidos: 'López', email: 'ana@demo.com', comision: '1A', regional: 'Córdoba', actividades_detalle: [] },
+      { entrada_padron_id: 'alumno-2', estado: 'al_dia', aprobadas: 4, faltantes: 0, nombre: 'Luis', apellidos: 'Gómez', email: 'luis@demo.com', comision: '2B', regional: 'Rosario', actividades_detalle: [] },
     ]
     const blob = exportarMonitorCsv(filas)
     expect(blob).toBeInstanceOf(Blob)
     expect(blob.type).toBe('text/csv')
   })
 
-  it('CSV contains header row with correct column names', async () => {
+  it('CSV contains header row with human-readable column names', async () => {
     const filas: MonitorFila[] = [
-      { entrada_padron_id: 'alumno-1', estado: 'atrasado', aprobadas: 1, faltantes: 3, nombre: null, apellidos: null, email: null, comision: null, regional: null, actividades_detalle: [] },
+      { entrada_padron_id: 'alumno-1', estado: 'atrasado', aprobadas: 1, faltantes: 3, nombre: 'Ana', apellidos: 'López', email: 'ana@demo.com', comision: '1A', regional: 'Córdoba', actividades_detalle: [] },
     ]
     const blob = exportarMonitorCsv(filas)
     const text = await blob.text()
-    expect(text).toContain('entrada_padron_id')
-    expect(text).toContain('estado')
-    expect(text).toContain('aprobadas')
-    expect(text).toContain('faltantes')
+    const header = text.split('\n')[0]
+    expect(header).toBe('nombre,apellidos,email,comision,regional,estado,aprobadas,faltantes,actividades_aprobadas')
   })
 
-  it('CSV contains data rows for each MonitorFila', async () => {
+  it('CSV contains data rows with nombre, apellidos, email, comision, regional', async () => {
     const filas: MonitorFila[] = [
-      { entrada_padron_id: 'alumno-uuid-1', estado: 'al_dia', aprobadas: 4, faltantes: 0, nombre: null, apellidos: null, email: null, comision: null, regional: null, actividades_detalle: [] },
+      {
+        entrada_padron_id: 'alumno-uuid-1',
+        estado: 'al_dia',
+        aprobadas: 4,
+        faltantes: 0,
+        nombre: 'Diego',
+        apellidos: 'Fernández',
+        email: 'diego.fernandez@alumno.demo.com',
+        comision: '1A',
+        regional: 'Buenos Aires',
+        actividades_detalle: [],
+      },
     ]
     const blob = exportarMonitorCsv(filas)
     const text = await blob.text()
-    expect(text).toContain('alumno-uuid-1')
+    expect(text).toContain('Diego')
+    expect(text).toContain('Fernández')
+    expect(text).toContain('diego.fernandez@alumno.demo.com')
+    expect(text).toContain('1A')
+    expect(text).toContain('Buenos Aires')
     expect(text).toContain('al_dia')
     expect(text).toContain('4')
+  })
+
+  it('CSV does NOT expose raw entrada_padron_id UUID in data rows', async () => {
+    const filas: MonitorFila[] = [
+      { entrada_padron_id: 'ac5ed4b7-raw-uuid', estado: 'atrasado', aprobadas: 0, faltantes: 2, nombre: 'María', apellidos: 'Ruiz', email: 'maria@demo.com', comision: '3C', regional: 'Mendoza', actividades_detalle: [] },
+    ]
+    const blob = exportarMonitorCsv(filas)
+    const text = await blob.text()
+    // UUID must not appear in data rows (only header + data rows after line 0)
+    const dataRows = text.split('\n').slice(1).join('\n')
+    expect(dataRows).not.toContain('ac5ed4b7-raw-uuid')
+  })
+
+  it('uses null-safe fallbacks (empty string) when fields are null', async () => {
+    const filas: MonitorFila[] = [
+      { entrada_padron_id: 'x', estado: 'sin_datos', aprobadas: 0, faltantes: 0, nombre: null, apellidos: null, email: null, comision: null, regional: null, actividades_detalle: [] },
+    ]
+    const blob = exportarMonitorCsv(filas)
+    const text = await blob.text()
+    const dataLine = text.split('\n')[1]
+    // All nullable fields resolve to empty string — 5 empty fields then estado
+    // fields: nombre,apellidos,email,comision,regional,estado,aprobadas,faltantes,actividades_aprobadas
+    expect(dataLine).toBe(',,,,,sin_datos,0,0,')
+  })
+
+  it('actividades_aprobadas lists only approved activity names joined by semicolon', async () => {
+    const filas: MonitorFila[] = [
+      {
+        entrada_padron_id: 'x',
+        estado: 'al_dia',
+        aprobadas: 2,
+        faltantes: 1,
+        nombre: 'Carlos',
+        apellidos: 'Vega',
+        email: 'c@demo.com',
+        comision: '1A',
+        regional: 'CABA',
+        actividades_detalle: [
+          { actividad: 'TP1', aprobado: true, nota: '8' },
+          { actividad: 'TP2', aprobado: false, nota: '3' },
+          { actividad: 'TP3', aprobado: true, nota: '9' },
+        ],
+      },
+    ]
+    const blob = exportarMonitorCsv(filas)
+    const text = await blob.text()
+    expect(text).toContain('TP1; TP3')
+    expect(text).not.toContain('TP2')
+  })
+
+  it('escapes CSV cells that contain commas', async () => {
+    const filas: MonitorFila[] = [
+      { entrada_padron_id: 'x', estado: 'atrasado', aprobadas: 0, faltantes: 1, nombre: 'De la Cruz, Jr.', apellidos: 'Smith', email: 's@demo.com', comision: '1A', regional: 'Norte', actividades_detalle: [] },
+    ]
+    const blob = exportarMonitorCsv(filas)
+    const text = await blob.text()
+    expect(text).toContain('"De la Cruz, Jr."')
   })
 
   it('returns Blob with one header row on empty filas array', async () => {
@@ -149,6 +219,6 @@ describe('exportarMonitorCsv', () => {
     const text = await blob.text()
     const lines = text.trim().split('\n')
     expect(lines).toHaveLength(1)
-    expect(lines[0]).toContain('entrada_padron_id')
+    expect(lines[0]).toBe('nombre,apellidos,email,comision,regional,estado,aprobadas,faltantes,actividades_aprobadas')
   })
 })

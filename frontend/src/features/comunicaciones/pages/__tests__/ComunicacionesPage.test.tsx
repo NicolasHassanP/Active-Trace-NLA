@@ -38,9 +38,26 @@ const wrapper = (url = '/comunicaciones') => ({ children }: { children: React.Re
 const mockLoteDone: LoteStatusResponse = {
   lote_id: 'lote1',
   mensajes: [
-    { id: 'm1', lote_id: 'lote1', destinatario_email: 'a@t.com', asunto: 'Hola', cuerpo: 'Texto', estado: 'Enviado', creado_en: '', actualizado_en: '' },
+    {
+      id: 'm1',
+      tenant_id: 't1',
+      lote_id: 'lote1',
+      destinatario_email: 'a@t.com',
+      asunto: 'Hola',
+      cuerpo: 'Texto',
+      estado: 'Enviado',
+      enviado_por: null,
+      aprobado_por: null,
+      enviado_at: null,
+      error_detalle: null,
+      creado_en: '',
+      actualizado_en: '',
+    },
   ],
-  pendientes: 0, enviados: 1, fallidos: 0, cancelados: 0,
+  pendientes: 0,
+  enviados: 1,
+  fallidos: 0,
+  cancelados: 0,
 }
 
 beforeEach(() => {
