@@ -10,7 +10,29 @@
  */
 import apiClient from '@/shared/services/api'
 import { parseDomainError } from '@/shared/services/domainError'
-import type { MonitorFila, MonitorParams } from '../types'
+import type { MonitorFila, MonitorParams, MateriaItem, CohorteItem } from '../types'
+
+// ---------------------------------------------------------------------------
+// Global-scope: all tenant materias (ADMIN / COORDINADOR only)
+// ---------------------------------------------------------------------------
+
+export async function listarTodasMaterias(): Promise<MateriaItem[]> {
+  try {
+    const response = await apiClient.get<MateriaItem[]>('/admin/materias')
+    return response.data
+  } catch (err) {
+    throw parseDomainError(err)
+  }
+}
+
+export async function listarTodosCohortes(): Promise<CohorteItem[]> {
+  try {
+    const response = await apiClient.get<CohorteItem[]>('/admin/cohortes')
+    return response.data
+  } catch (err) {
+    throw parseDomainError(err)
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Task 4.2 — listarMonitor

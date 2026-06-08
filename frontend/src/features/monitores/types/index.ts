@@ -33,6 +33,25 @@ export interface MonitorFila {
 }
 
 // ---------------------------------------------------------------------------
+// Admin estructura types (used by global-scope selector)
+// ---------------------------------------------------------------------------
+
+export interface MateriaItem {
+  id: string
+  codigo: string
+  nombre: string
+  estado: string
+}
+
+export interface CohorteItem {
+  id: string
+  carrera_id: string
+  nombre: string
+  anio: number
+  estado: string
+}
+
+// ---------------------------------------------------------------------------
 // Filter / param types
 // ---------------------------------------------------------------------------
 

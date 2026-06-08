@@ -22,6 +22,14 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
   useAuth: vi.fn(),
 }))
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import type { MateriaItem } from '../../types'
+
+const sampleMateria: MateriaItem = {
+  id: 'materia-uuid-1',
+  codigo: 'MAT001',
+  nombre: 'Matemáticas',
+  estado: 'activa',
+}
 
 // Silence downloadFile in JSDOM (no real anchor/blob support needed)
 vi.mock('@/shared/services/downloadFile', () => ({
@@ -54,6 +62,7 @@ const sampleFila: MonitorFila = {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(service.listarMonitor).mockResolvedValue([sampleFila])
+  vi.mocked(service.listarTodasMaterias).mockResolvedValue([sampleMateria])
 })
 
 // ---------------------------------------------------------------------------
@@ -80,7 +89,7 @@ describe('MonitorPage — COORDINADOR', () => {
   it('renders data rows when API returns results', async () => {
     render(<MonitorPage />, { wrapper: makeWrapper() })
     await waitFor(() => expect(screen.getByTestId('monitor-table')).toBeInTheDocument())
-    expect(screen.getByText('alumno-uuid-1')).toBeInTheDocument()
+    expect(screen.getByText('alumno-u')).toBeInTheDocument()
   })
 })
 
