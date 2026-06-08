@@ -113,7 +113,7 @@ export const NAV_CATALOG: NavItem[] = [
   {
     label: 'Comunicaciones',
     path: '/comunicaciones',
-    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
+    roles: ['PROFESOR', 'COORDINADOR', 'ADMIN'],
     icon: 'mail',
     group: 'TRABAJO',
   },

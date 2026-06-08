@@ -59,7 +59,6 @@ MATRIZ = [
     ('TUTOR', 'equipos:ver',               'propio'),
     ('TUTOR', 'padron:cargar',             'global'),
     ('TUTOR', 'tareas:gestionar',          'global'),
-    ('TUTOR', 'comunicacion:enviar',       'propio'),
     # PROFESOR
     ('PROFESOR', 'inbox:usar',                   'global'),
     ('PROFESOR', 'perfil:editar',                'propio'),
