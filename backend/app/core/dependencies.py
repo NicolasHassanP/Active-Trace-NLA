@@ -23,10 +23,14 @@ class CurrentUser:
 
     Derived ONLY from the verified JWT claims. Fields cannot be modified
     after creation (frozen dataclass).
+
+    impersonated_user_id — set when the token carries an impersonation session;
+                           None in normal (non-impersonated) sessions.
     """
     user_id: uuid.UUID
     tenant_id: uuid.UUID
     roles: List[str]
+    impersonated_user_id: Optional[uuid.UUID] = None
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +92,21 @@ async def get_current_user(request: Request) -> CurrentUser:
     except (KeyError, ValueError):
         raise credentials_exception
 
-    return CurrentUser(user_id=user_id, tenant_id=tenant_id, roles=roles)
+    # Parse optional impersonation claim (present only in impersonation sessions)
+    impersonated_user_id: Optional[uuid.UUID] = None
+    raw_imp = claims.get("impersonated_user_id")
+    if raw_imp:
+        try:
+            impersonated_user_id = uuid.UUID(raw_imp)
+        except ValueError:
+            raise credentials_exception
+
+    return CurrentUser(
+        user_id=user_id,
+        tenant_id=tenant_id,
+        roles=roles,
+        impersonated_user_id=impersonated_user_id,
+    )
 
 
 # ---------------------------------------------------------------------------

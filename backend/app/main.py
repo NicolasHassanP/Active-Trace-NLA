@@ -103,6 +103,10 @@ def create_app() -> FastAPI:
     from app.api.v1.routers.perfil import router as perfil_router
     from app.api.v1.routers.inbox import router as inbox_router
     from app.api.v1.routers.alumno import router as alumno_router
+    from app.api.v1.routers.impersonacion import (
+        usuarios_router as impersonacion_usuarios_router,
+        auth_router as impersonacion_auth_router,
+    )
 
     application.include_router(health_router)
     application.include_router(auth_router, prefix="/api/v1")
@@ -125,6 +129,8 @@ def create_app() -> FastAPI:
     application.include_router(perfil_router, prefix="/api/v1")
     application.include_router(inbox_router, prefix="/api/v1")
     application.include_router(alumno_router, prefix="/api/v1")
+    application.include_router(impersonacion_usuarios_router, prefix="/api/v1")
+    application.include_router(impersonacion_auth_router, prefix="/api/v1")
 
     return application
 
