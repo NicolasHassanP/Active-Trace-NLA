@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -77,7 +78,9 @@ def create_app() -> FastAPI:
             "422 RequestValidationError on %s %s | errors=%s | body_preview=%s",
             request.method, request.url.path, exc.errors(), body[:500]
         )
-        return JSONResponse(status_code=422, content={"detail": exc.errors()})
+        # jsonable_encoder serializa ctx no-JSON (p.ej. el objeto ValueError que
+        # un field_validator custom adjunta), evitando un crash 500 en vez de 422.
+        return JSONResponse(status_code=422, content=jsonable_encoder({"detail": exc.errors()}))
 
     from app.api.v1.routers.health import router as health_router
     from app.api.v1.routers.auth import router as auth_router
