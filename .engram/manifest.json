@@ -400,6 +400,14 @@
       "sessions": 0,
       "memories": 1,
       "prompts": 0
+    },
+    {
+      "id": "53ceae39",
+      "created_by": "Nico",
+      "created_at": "2026-06-09T12:04:48Z",
+      "sessions": 0,
+      "memories": 2,
+      "prompts": 0
     }
   ]
 }
