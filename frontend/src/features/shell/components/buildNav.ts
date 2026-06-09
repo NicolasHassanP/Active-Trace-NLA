@@ -41,7 +41,8 @@ export const NAV_CATALOG: NavItem[] = [
   {
     label: 'Padrón',
     path: '/padron',
-    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
+    // Cargar padrón: PROFESOR/COORDINADOR/ADMIN (C-09 design.md, KB §3.3 F1.3). TUTOR excluido.
+    roles: ['PROFESOR', 'COORDINADOR', 'ADMIN'],
     icon: 'users',
     group: 'MI CÁTEDRA',
   },

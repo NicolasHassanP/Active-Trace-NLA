@@ -98,7 +98,7 @@ export default function App() {
                   <Route
                     path="/padron"
                     element={
-                      <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}>
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'COORDINADOR', 'ADMIN']}>
                         <PadronPage />
                       </ProtectedRoute>
                     }
