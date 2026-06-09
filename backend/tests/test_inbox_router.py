@@ -134,17 +134,24 @@ async def inbox_router_data(test_engine, create_tables):
     uid2 = uuid.uuid4()
     uid_sin = uuid.uuid4()
     uid_otro_tenant = uuid.uuid4()
+    # C-28 invariant: el JWT sub es auth_identities.id, DISTINTO de usuario.id.
+    # El router resuelve el usuario de dominio por Usuario.auth_identity_id == JWT.sub.
+    # Los participantes/destinatarios siguen referenciando usuario.id (FK de dominio).
+    auth1 = uuid.uuid4()
+    auth2 = uuid.uuid4()
+    auth_sin = uuid.uuid4()
 
-    for uid, email, nombre in [
-        (uid1, f"inbox_u1_{tid}@test.com", "U1"),
-        (uid2, f"inbox_u2_{tid}@test.com", "U2"),
-        (uid_sin, f"inbox_norol_{tid}@test.com", "Sin"),
+    for uid, auth_id, email, nombre in [
+        (uid1, auth1, f"inbox_u1_{tid}@test.com", "U1"),
+        (uid2, auth2, f"inbox_u2_{tid}@test.com", "U2"),
+        (uid_sin, auth_sin, f"inbox_norol_{tid}@test.com", "Sin"),
     ]:
         session.add(Usuario(
             id=uid, tenant_id=tid,
             email_encrypted=email,
             email_hash=email_lookup_hash(email),
             nombre=nombre, apellidos="Test", estado=UsuarioEstado.activo,
+            auth_identity_id=auth_id,
         ))
 
     session.add(Usuario(
@@ -162,6 +169,9 @@ async def inbox_router_data(test_engine, create_tables):
         "uid2": uid2,
         "uid_sin": uid_sin,
         "uid_otro_tenant": uid_otro_tenant,
+        "auth1": auth1,
+        "auth2": auth2,
+        "auth_sin": auth_sin,
         "rol_inbox": rol_inbox.nombre,
         "rol_sin": rol_sin.nombre,
     }
@@ -235,7 +245,7 @@ async def test_get_inbox_sin_jwt_retorna_401(inbox_client):
 async def test_get_inbox_sin_permiso_retorna_403(inbox_client, inbox_router_data):
     """RED: GET /api/v1/inbox sin inbox:usar → 403."""
     data = inbox_router_data
-    token = _make_jwt(data["tid"], data["uid_sin"], [data["rol_sin"]])
+    token = _make_jwt(data["tid"], data["auth_sin"], [data["rol_sin"]])
     resp = await inbox_client.get(
         "/api/v1/inbox",
         headers={"Authorization": f"Bearer {token}"},
@@ -247,7 +257,7 @@ async def test_get_inbox_sin_permiso_retorna_403(inbox_client, inbox_router_data
 async def test_get_inbox_con_permiso_retorna_200_lista(inbox_client, inbox_router_data):
     """RED: GET /api/v1/inbox con inbox:usar → 200 con lista de hilos propios."""
     data = inbox_router_data
-    token = _make_jwt(data["tid"], data["uid1"], [data["rol_inbox"]])
+    token = _make_jwt(data["tid"], data["auth1"], [data["rol_inbox"]])
     resp = await inbox_client.get(
         "/api/v1/inbox",
         headers={"Authorization": f"Bearer {token}"},
@@ -264,7 +274,7 @@ async def test_get_inbox_con_permiso_retorna_200_lista(inbox_client, inbox_route
 async def test_post_inbox_crea_hilo_con_destinatario_valido(inbox_client, inbox_router_data):
     """RED: POST /api/v1/inbox con destinatario válido → 201."""
     data = inbox_router_data
-    token = _make_jwt(data["tid"], data["uid1"], [data["rol_inbox"]])
+    token = _make_jwt(data["tid"], data["auth1"], [data["rol_inbox"]])
     resp = await inbox_client.post(
         "/api/v1/inbox",
         json={
@@ -283,7 +293,7 @@ async def test_post_inbox_crea_hilo_con_destinatario_valido(inbox_client, inbox_
 async def test_post_inbox_destinatario_cross_tenant_retorna_404(inbox_client, inbox_router_data):
     """RED: POST /api/v1/inbox con destinatario de otro tenant → 404."""
     data = inbox_router_data
-    token = _make_jwt(data["tid"], data["uid1"], [data["rol_inbox"]])
+    token = _make_jwt(data["tid"], data["auth1"], [data["rol_inbox"]])
     resp = await inbox_client.post(
         "/api/v1/inbox",
         json={
@@ -304,8 +314,8 @@ async def test_post_inbox_destinatario_cross_tenant_retorna_404(inbox_client, in
 async def test_get_hilo_participante_retorna_200_y_marca_leido(inbox_client, inbox_router_data):
     """RED: GET /api/v1/inbox/{hilo_id} → 200 para participante y marca leído."""
     data = inbox_router_data
-    token1 = _make_jwt(data["tid"], data["uid1"], [data["rol_inbox"]])
-    token2 = _make_jwt(data["tid"], data["uid2"], [data["rol_inbox"]])
+    token1 = _make_jwt(data["tid"], data["auth1"], [data["rol_inbox"]])
+    token2 = _make_jwt(data["tid"], data["auth2"], [data["rol_inbox"]])
 
     # Crear hilo entre uid1 y uid2 (puede existir ya de test anterior; handle 409)
     create_resp = await inbox_client.post(
@@ -343,7 +353,7 @@ async def test_get_hilo_participante_retorna_200_y_marca_leido(inbox_client, inb
 async def test_get_hilo_no_participante_retorna_404(inbox_client, inbox_router_data):
     """RED: GET /api/v1/inbox/{hilo_id} para no participante → 404."""
     data = inbox_router_data
-    token = _make_jwt(data["tid"], data["uid1"], [data["rol_inbox"]])
+    token = _make_jwt(data["tid"], data["auth1"], [data["rol_inbox"]])
     resp = await inbox_client.get(
         f"/api/v1/inbox/{uuid.uuid4()}",
         headers={"Authorization": f"Bearer {token}"},
@@ -359,7 +369,7 @@ async def test_get_hilo_no_participante_retorna_404(inbox_client, inbox_router_d
 async def test_responder_participante_retorna_201(inbox_client, inbox_router_data):
     """RED: POST /api/v1/inbox/{hilo_id}/responder para participante → 201."""
     data = inbox_router_data
-    token1 = _make_jwt(data["tid"], data["uid1"], [data["rol_inbox"]])
+    token1 = _make_jwt(data["tid"], data["auth1"], [data["rol_inbox"]])
 
     # Listar inbox de uid1 para obtener un hilo
     list_resp = await inbox_client.get(
@@ -385,7 +395,7 @@ async def test_responder_participante_retorna_201(inbox_client, inbox_router_dat
 async def test_responder_no_participante_retorna_404(inbox_client, inbox_router_data):
     """RED: POST /api/v1/inbox/{hilo_id}/responder para no participante → 404."""
     data = inbox_router_data
-    token = _make_jwt(data["tid"], data["uid1"], [data["rol_inbox"]])
+    token = _make_jwt(data["tid"], data["auth1"], [data["rol_inbox"]])
     resp = await inbox_client.post(
         f"/api/v1/inbox/{uuid.uuid4()}/responder",
         json={"asunto": "X", "cuerpo": "Intruso"},
@@ -398,7 +408,7 @@ async def test_responder_no_participante_retorna_404(inbox_client, inbox_router_
 async def test_responder_cuerpo_vacio_retorna_422(inbox_client, inbox_router_data):
     """RED: POST /api/v1/inbox/{hilo_id}/responder con cuerpo vacío → 422."""
     data = inbox_router_data
-    token = _make_jwt(data["tid"], data["uid1"], [data["rol_inbox"]])
+    token = _make_jwt(data["tid"], data["auth1"], [data["rol_inbox"]])
     resp = await inbox_client.post(
         f"/api/v1/inbox/{uuid.uuid4()}/responder",
         json={"asunto": "X", "cuerpo": ""},
@@ -415,7 +425,7 @@ async def test_responder_cuerpo_vacio_retorna_422(inbox_client, inbox_router_dat
 async def test_iniciar_hilo_ignora_remitente_id_en_body(inbox_client, inbox_router_data):
     """TRIANGULATE: POST /api/v1/inbox rechaza remitente_id en body (extra='forbid')."""
     data = inbox_router_data
-    token = _make_jwt(data["tid"], data["uid1"], [data["rol_inbox"]])
+    token = _make_jwt(data["tid"], data["auth1"], [data["rol_inbox"]])
     resp = await inbox_client.post(
         "/api/v1/inbox",
         json={
@@ -434,7 +444,7 @@ async def test_iniciar_hilo_ignora_remitente_id_en_body(inbox_client, inbox_rout
 async def test_responder_campo_no_declarado_retorna_422(inbox_client, inbox_router_data):
     """TRIANGULATE: POST /api/v1/inbox/{hilo_id}/responder con tenant_id → 422."""
     data = inbox_router_data
-    token = _make_jwt(data["tid"], data["uid1"], [data["rol_inbox"]])
+    token = _make_jwt(data["tid"], data["auth1"], [data["rol_inbox"]])
     resp = await inbox_client.post(
         f"/api/v1/inbox/{uuid.uuid4()}/responder",
         json={"asunto": "X", "cuerpo": "Y", "tenant_id": str(data["tid"])},
