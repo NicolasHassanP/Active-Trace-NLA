@@ -61,28 +61,39 @@ Cada rol agrupa un conjunto de permisos. Los permisos efectivos de un usuario so
 
 > La matriz se expresa por **capacidad de negocio**, no por pantalla ni ruta, para que sea implementable en cualquier arquitectura. `✅` = el rol tiene la capacidad; `—` = no la tiene; `(propio)` = solo sobre sus propios datos, no los de otros usuarios.
 
-| Capacidad / Módulo | ALUMNO | TUTOR | PROFESOR | COORDINADOR | ADMIN | FINANZAS |
-|--------------------|:------:|:-----:|:--------:|:-----------:|:-----:|:--------:|
-| Ver estado académico propio | ✅ | — | — | — | — | — |
-| Reservar instancia de evaluación | ✅ | — | — | — | — | — |
-| Confirmar avisos (acknowledgment) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Importar calificaciones | — | — | ✅ (propio) | ✅ | ✅ | — |
-| Ver alumnos atrasados | — | ✅ | ✅ (propio) | ✅ | ✅ | — |
-| Detectar entregas sin corregir | — | ✅ | ✅ (propio) | ✅ | ✅ | — |
-| Enviar comunicaciones a alumnos | — | — | ✅ (propio) | ✅ | ✅ | — |
-| Aprobar comunicaciones masivas | — | — | — | ✅ | ✅ | — |
-| Gestionar encuentros | — | ✅ | ✅ (propio) | ✅ | ✅ | — |
-| Registrar guardias | — | ✅ (propio) | ✅ (propio) | ✅ | ✅ | — |
-| Gestionar tareas internas | — | — | ✅ (propio) | ✅ | ✅ | — |
-| Publicar avisos | — | — | — | ✅ | ✅ | — |
-| Gestionar equipos docentes (asignaciones) | — | — | — | ✅ | ✅ | — |
-| Gestionar estructura académica (carreras, cohortes, materias) | — | — | — | — | ✅ | — |
-| Gestionar usuarios del tenant | — | — | — | — | ✅ | — |
-| Ver auditoría | — | — | — | ✅ (propio) | ✅ | ✅ |
-| Operar grilla salarial | — | — | — | — | — | ✅ |
-| Calcular / cerrar liquidaciones | — | — | — | — | — | ✅ |
-| Gestionar facturas | — | — | — | — | — | ✅ |
-| Configurar el tenant | — | — | — | — | ✅ | — |
+> La columna **NEXO** se incorpora como rol pleno: su set base (`avisos:confirmar`, OQ-4 de C-04) crece con los changes posteriores (`equipos:ver` de C-08, `inbox:usar`/`perfil:editar` de C-20). Su semántica de articulación completa sigue diferida a **PA-25**.
+
+| Capacidad / Módulo | ALUMNO | TUTOR | PROFESOR | COORDINADOR | NEXO | ADMIN | FINANZAS |
+|--------------------|:------:|:-----:|:--------:|:-----------:|:----:|:-----:|:--------:|
+| Ver estado académico propio | ✅ | — | — | — | — | — | — |
+| Editar perfil propio (autoservicio) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Reservar instancia de evaluación | ✅ | — | — | — | — | — | — |
+| Reservar turno de coloquio | ✅ | — | — | — | — | — | — |
+| Confirmar avisos (acknowledgment) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Usar mensajería interna (inbox) | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Importar calificaciones | — | — | ✅ (propio) | ✅ | — | ✅ | — |
+| Configurar umbral de aprobación | — | — | ✅ (propio) | ✅ | — | ✅ | — |
+| Ver alumnos atrasados | — | ✅ | ✅ (propio) | ✅ | — | ✅ | — |
+| Detectar entregas sin corregir | — | ✅ | ✅ (propio) | ✅ | — | ✅ | — |
+| Enviar comunicaciones a alumnos | — | — | ✅ (propio) | ✅ | — | ✅ | — |
+| Aprobar comunicaciones masivas | — | — | — | ✅ | — | ✅ | — |
+| Gestionar encuentros | — | ✅ | ✅ (propio) | ✅ | — | ✅ | — |
+| Registrar guardias | — | ✅ (propio) | ✅ (propio) | ✅ | — | ✅ | — |
+| Gestionar tareas internas | — | — | ✅ (propio) | ✅ | — | ✅ | — |
+| Cargar padrón (importar / vaciar propio scope) | — | — | ✅ | ✅ | — | ✅ | — |
+| Gestionar padrón (vaciar cualquiera del tenant) | — | — | — | ✅ | — | ✅ | — |
+| Gestionar coloquios | — | — | ✅ | ✅ | — | ✅ | — |
+| Publicar avisos | — | — | — | ✅ | — | ✅ | — |
+| Ver equipos docentes / mis equipos | — | ✅ (propio) | ✅ (propio) | ✅ | ✅ (propio) | ✅ | ✅ |
+| Gestionar equipos docentes (asignaciones) | — | — | — | ✅ | — | ✅ | — |
+| Gestionar estructura académica (carreras, cohortes, materias) | — | — | — | — | — | ✅ | — |
+| Gestionar usuarios del tenant | — | — | — | — | — | ✅ | — |
+| Ver auditoría | — | — | — | ✅ (propio) | — | ✅ | ✅ |
+| Impersonar (suplantación legítima) | — | — | — | — | — | ✅ | — |
+| Operar grilla salarial | — | — | — | — | — | — | ✅ |
+| Calcular / cerrar liquidaciones | — | — | — | — | — | — | ✅ |
+| Gestionar facturas | — | — | — | — | — | — | ✅ |
+| Configurar el tenant | — | — | — | — | — | ✅ | — |
 
 > ⚠️ Esta matriz es el **punto de partida** del diseño de permisos. El equipo de implementación debe modelarla como datos (catálogo rol × permiso administrable), no hardcodearla.
 
