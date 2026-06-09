@@ -44,6 +44,9 @@ const InboxPage = lazy(() => import('@/features/mensajeria/pages/InboxPage'))
 // C-25 lazy pages
 const MiCursadaPage = lazy(() => import('@/features/mi-cursada/pages/MiCursadaPage'))
 
+// Perfil propio (M2 / F11.1) — accesible a TODO usuario autenticado (perfil:editar universal)
+const PerfilPage = lazy(() => import('@/features/perfil/pages/PerfilPage'))
+
 // HU-47 lazy pages
 const MisColoquiosPage = lazy(() => import('@/features/mis-coloquios/pages/MisColoquiosPage'))
 
@@ -245,6 +248,8 @@ export default function App() {
                       </ProtectedRoute>
                     }
                   />
+                  {/* === Perfil propio (M2 / F11.1) — sin requiredRoles: visible a todo autenticado === */}
+                  <Route path="/perfil" element={<PerfilPage />} />
                   {/* === End C-23 routes === */}
                   <Route path="*" element={<NotFound404 />} />
                 </Route>

@@ -16,7 +16,10 @@ describe('buildNav — pure function', () => {
     const items = buildNav(['FINANZAS'])
     expect(items.length).toBeGreaterThan(0)
     items.forEach(item => {
-      expect(item.roles).toContain('FINANZAS')
+      // Visible either because FINANZAS is listed, or because the item is
+      // global (roles: [] = visible to all authenticated users, e.g. /perfil).
+      const visible = item.roles.length === 0 || item.roles.includes('FINANZAS')
+      expect(visible).toBe(true)
     })
   })
 
@@ -180,6 +183,28 @@ describe('buildNav — C-25 mi-cursada item', () => {
   it('PROFESOR does NOT see /mi-cursada', () => {
     const paths = buildNav(['PROFESOR']).map((i) => i.path)
     expect(paths).not.toContain('/mi-cursada')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Perfil propio nav item (M2 / F11.1) — visible to ALL authenticated users
+// ---------------------------------------------------------------------------
+
+describe('buildNav — perfil item (visible to all)', () => {
+  const ROLES: Role[] = ['ALUMNO', 'TUTOR', 'PROFESOR', 'COORDINADOR', 'NEXO', 'ADMIN', 'FINANZAS']
+
+  it.each(ROLES)('%s sees /perfil', (role) => {
+    const paths = buildNav([role]).map((i) => i.path)
+    expect(paths).toContain('/perfil')
+  })
+
+  it('/perfil item has empty roles (visible to all)', () => {
+    const item = buildNav(['ALUMNO']).find((i) => i.path === '/perfil')
+    expect(item?.roles).toEqual([])
+  })
+
+  it('empty roles list (unauthenticated) still returns empty array', () => {
+    expect(buildNav([])).toEqual([])
   })
 
   it('COORDINADOR does NOT see /mi-cursada', () => {

@@ -140,6 +140,16 @@ export const NAV_CATALOG: NavItem[] = [
     icon: 'dollar-sign',
     group: 'FINANZAS',
   },
+  // ── CUENTA ───────────────────────────────────────────────
+  {
+    // Perfil propio (M2 / F11.1): perfil:editar es universal → visible a todo
+    // usuario autenticado. roles: [] = "visible to all authenticated users".
+    label: 'Mi perfil',
+    path: '/perfil',
+    roles: [],
+    icon: 'users',
+    group: 'CUENTA',
+  },
   // ── ADMINISTRACIÓN ───────────────────────────────────────
   {
     label: 'Usuarios',
