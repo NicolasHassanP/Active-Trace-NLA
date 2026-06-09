@@ -65,9 +65,11 @@ const mensajeOtro: MensajeRead = {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(useAuth).mockReturnValue({
-    user: { id: CURRENT_USER_ID, email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1', name: 'Prof Test' },
+    user: { id: CURRENT_USER_ID, email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1', name: 'Prof Test', isImpersonating: false, impersonatedName: null },
     roles: ['PROFESOR'], tenantId: 't1', isAuthenticated: true, isInitializing: false,
     login: vi.fn(), logout: vi.fn(),
+    isImpersonating: false, impersonatedName: null,
+    impersonarUsuario: vi.fn(), finalizarImpersonacion: vi.fn(),
   })
   vi.mocked(service.listarHilos).mockResolvedValue([sampleHilo])
   vi.mocked(service.abrirHilo).mockResolvedValue([mensajePropio, mensajeOtro])

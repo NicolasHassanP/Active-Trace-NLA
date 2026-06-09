@@ -90,13 +90,17 @@ beforeEach(() => vi.clearAllMocks())
 describe('SetupCuatrimestrePage — role gating', () => {
   it('renders wizard for COORDINADOR', async () => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1' },
+      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['COORDINADOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
     render(<SetupCuatrimestrePage />, { wrapper: makeWrapper() })
     await waitFor(() =>
@@ -106,13 +110,17 @@ describe('SetupCuatrimestrePage — role gating', () => {
 
   it('renders wizard for ADMIN', async () => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u2', email: 'admin@test.com', roles: ['ADMIN'], tenantId: 't1' },
+      user: { id: 'u2', email: 'admin@test.com', roles: ['ADMIN'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['ADMIN'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
     render(<SetupCuatrimestrePage />, { wrapper: makeWrapper() })
     await waitFor(() =>
@@ -122,13 +130,17 @@ describe('SetupCuatrimestrePage — role gating', () => {
 
   it('blocks PROFESOR with 403 message', async () => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u3', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1' },
+      user: { id: 'u3', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['PROFESOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
     render(<SetupCuatrimestrePage />, { wrapper: makeWrapper() })
     await waitFor(() => expect(screen.getByText('403')).toBeInTheDocument())
@@ -139,13 +151,17 @@ describe('SetupCuatrimestrePage — role gating', () => {
 describe('SetupCuatrimestrePage — sequential wizard', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1' },
+      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['COORDINADOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 

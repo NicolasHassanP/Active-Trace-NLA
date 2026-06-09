@@ -20,13 +20,17 @@ const mockUseAuth = vi.mocked(authHook.useAuth)
 
 function makeAuth(roles: Role[]) {
   mockUseAuth.mockReturnValue({
-    user: { id: 'u1', email: 'u@t.com', roles, tenantId: 't1' },
+    user: { id: 'u1', email: 'u@t.com', roles, tenantId: 't1', isImpersonating: false, impersonatedName: null },
     tenantId: 't1',
     isAuthenticated: true,
     isInitializing: false,
     roles,
     login: vi.fn(),
     logout: vi.fn(),
+    isImpersonating: false,
+    impersonatedName: null,
+    impersonarUsuario: vi.fn(),
+    finalizarImpersonacion: vi.fn(),
   })
 }
 

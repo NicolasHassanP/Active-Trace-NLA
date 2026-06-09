@@ -65,6 +65,8 @@ beforeEach(() => {
   mockUseAuth.mockReturnValue({
     user: null, tenantId: null, isAuthenticated: true, isInitializing: false, roles: ['COORDINADOR'],
     login: vi.fn(), logout: vi.fn(),
+    isImpersonating: false, impersonatedName: null,
+    impersonarUsuario: vi.fn(), finalizarImpersonacion: vi.fn(),
   })
 })
 
