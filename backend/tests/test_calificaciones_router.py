@@ -235,8 +235,9 @@ async def _create_router_context(db_session, monkeypatch):
 
 
 async def _cleanup_router(db_session, tenant_id: uuid.UUID):
+    from tests.conftest import delete_audit_events_for_tenant
+    await delete_audit_events_for_tenant(db_session, tenant_id)
     tid = str(tenant_id)
-    await db_session.execute(text("DELETE FROM audit_event WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM calificacion WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM umbral_materia WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM entrada_padron WHERE tenant_id = :tid"), {"tid": tid})

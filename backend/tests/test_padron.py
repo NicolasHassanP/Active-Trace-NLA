@@ -169,31 +169,21 @@ async def _create_padron_roles_and_perms(db_session, tenant):
 
 
 async def _create_test_usuario(db_session, tenant_id):
-    """Crea un usuario de prueba para el tenant (requerido para cargado_por FK)."""
-    from app.models.usuario import Usuario, UsuarioEstado
-    from app.core.security.passwords import email_lookup_hash
+    """Crea un usuario de prueba con AuthIdentity real (C-28: auth_identity_id ≠ usuario.id).
 
-    email = f"test-user-{uuid.uuid4().hex[:8]}@padron.test"
-    user_id = uuid.uuid4()
-    usuario = Usuario(
-        id=user_id,
-        tenant_id=tenant_id,
-        email_encrypted=email,
-        email_hash=email_lookup_hash(email),
-        nombre="Test",
-        apellidos="User",
-        estado=UsuarioEstado.activo,
-    )
-    db_session.add(usuario)
-    await db_session.commit()
-    await db_session.refresh(usuario)
-    return usuario
+    Usa create_usuario_con_identidad para garantizar que el JWT sub (auth_identity_id)
+    resuelva correctamente a un Usuario de dominio vía resolve_domain_user_id.
+    Retorna el Usuario; usa usuario.auth_identity_id como sub del JWT en endpoint tests.
+    """
+    from tests.conftest import create_usuario_con_identidad
+    return await create_usuario_con_identidad(db_session, tenant_id)
 
 
 async def _cleanup_padron(db_session, tenant_id):
     """Limpia todos los datos de padrón para el tenant en reverse FK order."""
+    from tests.conftest import delete_audit_events_for_tenant
+    await delete_audit_events_for_tenant(db_session, tenant_id)
     tid = str(tenant_id)
-    await db_session.execute(text("DELETE FROM audit_event WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM entrada_padron WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM version_padron WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM rol_permiso WHERE tenant_id = :tid"), {"tid": tid})
@@ -204,6 +194,7 @@ async def _cleanup_padron(db_session, tenant_id):
     await db_session.execute(text("DELETE FROM cohorte WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM carrera WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM usuario WHERE tenant_id = :tid"), {"tid": tid})
+    await db_session.execute(text("DELETE FROM auth_identities WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM tenants WHERE id = :tid"), {"tid": tid})
     await db_session.commit()
 
@@ -479,10 +470,10 @@ async def test_activar_creates_version_and_entries(db_session, monkeypatch):
         audit_repo = AuditRepository(session=db_session, tenant_id=tenant.id)
         svc = PadronService(repo=repo, db=db_session, audit_repo=audit_repo)
 
-        version = await svc.activar(rows, materia.id, cohorte.id, current_user)
+        version = await svc.activar(rows, materia.id, cohorte.id, current_user, domain_user_id=usuario.id)
 
         assert version.activa is True
-        assert version.cargado_por == current_user.user_id
+        assert version.cargado_por == usuario.id
 
         result = await db_session.execute(
             select(EntradaPadron).where(
@@ -523,7 +514,7 @@ async def test_activar_records_audit_padron_cargar(db_session, monkeypatch):
         audit_repo = AuditRepository(session=db_session, tenant_id=tenant.id)
         svc = PadronService(repo=repo, db=db_session, audit_repo=audit_repo)
 
-        await svc.activar(rows, materia.id, cohorte.id, current_user)
+        await svc.activar(rows, materia.id, cohorte.id, current_user, domain_user_id=usuario.id)
 
         stmt = select(AuditEvent).where(
             AuditEvent.tenant_id == tenant.id,
@@ -562,10 +553,10 @@ async def test_vaciar_own_version_succeeds(db_session, monkeypatch):
         audit_repo = AuditRepository(session=db_session, tenant_id=tenant.id)
         svc = PadronService(repo=repo, db=db_session, audit_repo=audit_repo)
 
-        version = await svc.activar(rows, materia.id, cohorte.id, current_user)
+        version = await svc.activar(rows, materia.id, cohorte.id, current_user, domain_user_id=usuario.id)
         assert version.activa is True
 
-        await svc.vaciar(materia.id, cohorte.id, current_user, has_gestionar=False)
+        await svc.vaciar(materia.id, cohorte.id, current_user, has_gestionar=False, domain_user_id=usuario.id)
 
         await db_session.refresh(version)
         assert version.deleted_at is not None
@@ -601,10 +592,10 @@ async def test_vaciar_other_user_version_raises_403(db_session, monkeypatch):
         audit_repo = AuditRepository(session=db_session, tenant_id=tenant.id)
         svc = PadronService(repo=repo, db=db_session, audit_repo=audit_repo)
 
-        await svc.activar(rows, materia.id, cohorte.id, user_a)
+        await svc.activar(rows, materia.id, cohorte.id, user_a, domain_user_id=usuario_a.id)
 
         with pytest.raises(HTTPException) as exc_info:
-            await svc.vaciar(materia.id, cohorte.id, user_b, has_gestionar=False)
+            await svc.vaciar(materia.id, cohorte.id, user_b, has_gestionar=False, domain_user_id=usuario_b.id)
 
         assert exc_info.value.status_code == 403
     finally:
@@ -633,7 +624,7 @@ async def test_vaciar_no_active_version_raises_404(db_session, monkeypatch):
         svc = PadronService(repo=repo, db=db_session, audit_repo=audit_repo)
 
         with pytest.raises(HTTPException) as exc_info:
-            await svc.vaciar(uuid.uuid4(), uuid.uuid4(), current_user, has_gestionar=True)
+            await svc.vaciar(uuid.uuid4(), uuid.uuid4(), current_user, has_gestionar=True, domain_user_id=uuid.uuid4())
 
         assert exc_info.value.status_code == 404
     finally:
@@ -666,8 +657,8 @@ async def test_vaciar_gestionar_can_delete_any_version(db_session, monkeypatch):
         audit_repo = AuditRepository(session=db_session, tenant_id=tenant.id)
         svc = PadronService(repo=repo, db=db_session, audit_repo=audit_repo)
 
-        version = await svc.activar(rows, materia.id, cohorte.id, user_a)
-        await svc.vaciar(materia.id, cohorte.id, coordinador, has_gestionar=True)
+        version = await svc.activar(rows, materia.id, cohorte.id, user_a, domain_user_id=usuario_a.id)
+        await svc.vaciar(materia.id, cohorte.id, coordinador, has_gestionar=True, domain_user_id=usuario_coord.id)
 
         await db_session.refresh(version)
         assert version.activa is False
@@ -710,6 +701,7 @@ async def test_sync_from_moodle_creates_version(db_session, monkeypatch):
         version = await svc.sync_from_moodle(
             course_id=99, materia_id=materia.id, cohorte_id=cohorte.id,
             current_user=current_user, moodle_client=mock_client,
+            domain_user_id=usuario.id,
         )
 
         assert version.activa is True
@@ -756,6 +748,7 @@ async def test_sync_from_moodle_502_propagates(db_session, monkeypatch):
             await svc.sync_from_moodle(
                 course_id=99, materia_id=materia.id, cohorte_id=cohorte.id,
                 current_user=current_user, moodle_client=mock_client,
+                domain_user_id=usuario.id,
             )
 
         assert exc_info.value.status_code == 502
@@ -856,7 +849,8 @@ async def test_activar_endpoint_creates_version(async_client, db_session, monkey
     try:
         await _create_padron_roles_and_perms(db_session, tenant)
         usuario = await _create_test_usuario(db_session, tenant.id)
-        token = _make_jwt(tenant.id, usuario.id, ["COORDINADOR"])
+        # C-28: JWT sub must be auth_identity_id, not usuario.id
+        token = _make_jwt(tenant.id, usuario.auth_identity_id, ["COORDINADOR"])
 
         body = {
             "materia_id": str(materia.id),
@@ -891,8 +885,8 @@ async def test_vaciar_endpoint_403_on_other_user_version(async_client, db_sessio
         usuario_a = await _create_test_usuario(db_session, tenant.id)
         usuario_b = await _create_test_usuario(db_session, tenant.id)
 
-        # User A (COORDINADOR) crea versión
-        token_a = _make_jwt(tenant.id, usuario_a.id, ["COORDINADOR"])
+        # User A (COORDINADOR) crea versión — C-28: JWT sub = auth_identity_id
+        token_a = _make_jwt(tenant.id, usuario_a.auth_identity_id, ["COORDINADOR"])
 
         body = {
             "materia_id": str(materia.id),
@@ -906,8 +900,8 @@ async def test_vaciar_endpoint_403_on_other_user_version(async_client, db_sessio
         )
         assert resp_a.status_code == 201
 
-        # User B (PROFESOR, sin gestionar) intenta vaciar → 403
-        token_b = _make_jwt(tenant.id, usuario_b.id, ["PROFESOR"])
+        # User B (PROFESOR, sin gestionar) intenta vaciar → 403 — C-28: JWT sub = auth_identity_id
+        token_b = _make_jwt(tenant.id, usuario_b.auth_identity_id, ["PROFESOR"])
 
         resp_b = await async_client.delete(
             f"/api/v1/padron/vaciar?materia_id={materia.id}&cohorte_id={cohorte.id}",

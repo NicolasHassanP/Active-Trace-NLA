@@ -151,10 +151,11 @@ async def _setup_permiso_enviar(session, tenant_id: uuid.UUID, rol_nombre: str =
 
 
 async def _cleanup(session, tenant_id: uuid.UUID) -> None:
+    from tests.conftest import delete_audit_events_for_tenant
     await session.execute(delete(RolPermiso).where(RolPermiso.tenant_id == tenant_id))
     await session.execute(delete(Permiso).where(Permiso.tenant_id == tenant_id))
     await session.execute(delete(Rol).where(Rol.tenant_id == tenant_id))
-    await session.execute(text("DELETE FROM audit_event WHERE tenant_id = :tid"), {"tid": str(tenant_id)})
+    await delete_audit_events_for_tenant(session, tenant_id)
     await session.execute(text("DELETE FROM comunicacion WHERE tenant_id = :tid"), {"tid": str(tenant_id)})
     await session.execute(text("DELETE FROM usuario WHERE tenant_id = :tid"), {"tid": str(tenant_id)})
     await session.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": str(tenant_id)})
@@ -301,7 +302,8 @@ async def c27_data(test_engine, create_tables):
     await session.execute(delete(RolPermiso).where(RolPermiso.tenant_id == tid))
     await session.execute(delete(Permiso).where(Permiso.tenant_id == tid))
     await session.execute(delete(Rol).where(Rol.tenant_id == tid))
-    await session.execute(text("DELETE FROM audit_event WHERE tenant_id = :tid"), {"tid": str(tid)})
+    from tests.conftest import delete_audit_events_for_tenant
+    await delete_audit_events_for_tenant(session, tid)
     await session.execute(text("DELETE FROM comunicacion WHERE tenant_id = :tid"), {"tid": str(tid)})
     await session.execute(delete(Usuario).where(Usuario.tenant_id == tid))
     await session.execute(delete(AuthIdentity).where(AuthIdentity.tenant_id == tid))

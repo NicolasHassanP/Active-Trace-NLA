@@ -184,10 +184,8 @@ async def test_encolar_crea_registros_pendiente(db_session, create_tables, monke
             assert com.enviado_por == usuario.id
 
     finally:
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant.id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant.id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant.id)},
@@ -285,10 +283,8 @@ async def test_encolar_con_aprobacion_requerida_crea_pendientes(db_session, crea
             assert com.id not in habilitados_ids, "Mensaje sin aprobar no debe ser elegible para el worker"
 
     finally:
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant.id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant.id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant.id)},
@@ -340,10 +336,8 @@ async def test_aprobar_lote_habilita_para_worker(db_session, create_tables, monk
             assert com.id in habilitados_ids
 
     finally:
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant.id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant.id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant.id)},
@@ -387,10 +381,8 @@ async def test_cancelar_lote_pasa_a_cancelado(db_session, create_tables, monkeyp
             assert com.estado == ModelEstado.Cancelado
 
     finally:
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant.id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant.id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant.id)},
@@ -444,10 +436,8 @@ async def test_cancelar_individual_solo_afecta_ese_mensaje(db_session, create_ta
         assert estados[coms[1].id] == ModelEstado.Pendiente
 
     finally:
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant.id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant.id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant.id)},
@@ -509,10 +499,8 @@ async def test_cancelar_enviado_falla_transicion_invalida(db_session, create_tab
             await db_session.rollback()
         except Exception:
             pass
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant_id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant_id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant_id)},
@@ -568,10 +556,8 @@ async def test_encolar_registra_auditoria_exactamente_una_vez(db_session, create
         assert count == 1, f"Debe haber exactamente 1 evento de auditoría, hay {count}"
 
     finally:
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant.id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant.id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant.id)},

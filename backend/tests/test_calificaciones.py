@@ -195,8 +195,9 @@ async def _create_cal_context(db_session, monkeypatch):
 
 
 async def _cleanup_cal(db_session, tenant_id: uuid.UUID):
+    from tests.conftest import delete_audit_events_for_tenant
+    await delete_audit_events_for_tenant(db_session, tenant_id)
     tid = str(tenant_id)
-    await db_session.execute(text("DELETE FROM audit_event WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM calificacion WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM umbral_materia WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM entrada_padron WHERE tenant_id = :tid"), {"tid": tid})
@@ -294,7 +295,7 @@ async def test_importar_persists_only_selected_activities(db_session, create_tab
             actividades_seleccionadas=["Tarea 1", "TP 1"],  # Skip TP 2
             filas=preview.filas,
         )
-        result = await svc.importar(req=req, current_user=current_user)
+        result = await svc.importar(req=req, current_user=current_user, domain_user_id=profesor.id)
 
         # Only Tarea 1 and TP 1 were selected — 2 students × 2 activities = 4
         assert len(result) == 4
@@ -340,7 +341,7 @@ async def test_row_not_in_active_padron_is_reported_not_persisted(db_session, cr
             filas=preview.filas,
         )
         # importar returns (calificaciones, no_en_padron)
-        cals, not_found = await svc.importar_with_report(req=req, current_user=current_user)
+        cals, not_found = await svc.importar_with_report(req=req, current_user=current_user, domain_user_id=profesor.id)
 
         # Only entry_a matched
         assert len(cals) == 1
@@ -404,7 +405,7 @@ async def test_import_scope_isolated_per_user(db_session, create_tables, monkeyp
             materia_id=materia.id, cohorte_id=cohorte.id,
             actividades_seleccionadas=["Tarea 1"], filas=preview_a.filas,
         )
-        cals_a = await svc.importar(req=req_a, current_user=user_a)
+        cals_a = await svc.importar(req=req_a, current_user=user_a, domain_user_id=profesor_a.id)
 
         # Profesor B imports different grades
         rows_b = [["Alumno A", "Test", email_a, "5"]]
@@ -415,7 +416,7 @@ async def test_import_scope_isolated_per_user(db_session, create_tables, monkeyp
             materia_id=materia.id, cohorte_id=cohorte.id,
             actividades_seleccionadas=["Tarea 1"], filas=preview_b.filas,
         )
-        cals_b = await svc.importar(req=req_b, current_user=user_b)
+        cals_b = await svc.importar(req=req_b, current_user=user_b, domain_user_id=profesor_b.id)
 
         # Two distinct rows: one per importador
         from app.repositories.calificacion_repository import CalificacionRepository
@@ -463,7 +464,7 @@ async def test_importar_records_audit_calificaciones_importar(db_session, create
             actividades_seleccionadas=["Tarea 1"],
             filas=preview.filas,
         )
-        await svc.importar(req=req, current_user=current_user)
+        await svc.importar(req=req, current_user=current_user, domain_user_id=profesor.id)
 
         # Verify audit event was created
         from sqlalchemy import text as sqla_text
@@ -511,7 +512,7 @@ async def test_reimport_same_activity_updates_not_duplicates(db_session, create_
             actividades_seleccionadas=["Tarea 1"],
             filas=preview1.filas,
         )
-        await svc.importar(req=req1, current_user=current_user)
+        await svc.importar(req=req1, current_user=current_user, domain_user_id=profesor.id)
 
         # Re-import with corrected note
         rows_v2 = [["Alumno A", "Test", email_a, "9"]]
@@ -523,7 +524,7 @@ async def test_reimport_same_activity_updates_not_duplicates(db_session, create_
             actividades_seleccionadas=["Tarea 1"],
             filas=preview2.filas,
         )
-        cals = await svc.importar(req=req2, current_user=current_user)
+        cals = await svc.importar(req=req2, current_user=current_user, domain_user_id=profesor.id)
 
         # Only 1 row (upsert, not duplicate)
         from app.repositories.calificacion_repository import CalificacionRepository
