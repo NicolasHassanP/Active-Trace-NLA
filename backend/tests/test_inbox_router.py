@@ -18,6 +18,7 @@ from app.core.database import build_session_factory
 from app.models.rbac import Permiso, Rol, RolPermiso, PermisoScope
 from app.models.tenant import Tenant, TenantEstado
 from app.models.usuario import Usuario, UsuarioEstado
+from tests.conftest import create_usuario_con_identidad
 
 TEST_SECRET_KEY = "supersecretkeyfortesting1234567890"
 TEST_ENCRYPTION_KEY = "E" * 32
@@ -130,29 +131,25 @@ async def inbox_router_data(test_engine, create_tables):
     ))
     await session.flush()
 
-    uid1 = uuid.uuid4()
-    uid2 = uuid.uuid4()
-    uid_sin = uuid.uuid4()
     uid_otro_tenant = uuid.uuid4()
-    # C-28 invariant: el JWT sub es auth_identities.id, DISTINTO de usuario.id.
-    # El router resuelve el usuario de dominio por Usuario.auth_identity_id == JWT.sub.
+    # C-28: use canonical helper — creates AuthIdentity + Usuario with auth_identity_id != usuario.id.
+    # JWT sub = usuario.auth_identity_id (NOT usuario.id).
     # Los participantes/destinatarios siguen referenciando usuario.id (FK de dominio).
-    auth1 = uuid.uuid4()
-    auth2 = uuid.uuid4()
-    auth_sin = uuid.uuid4()
-
-    for uid, auth_id, email, nombre in [
-        (uid1, auth1, f"inbox_u1_{tid}@test.com", "U1"),
-        (uid2, auth2, f"inbox_u2_{tid}@test.com", "U2"),
-        (uid_sin, auth_sin, f"inbox_norol_{tid}@test.com", "Sin"),
-    ]:
-        session.add(Usuario(
-            id=uid, tenant_id=tid,
-            email_encrypted=email,
-            email_hash=email_lookup_hash(email),
-            nombre=nombre, apellidos="Test", estado=UsuarioEstado.activo,
-            auth_identity_id=auth_id,
-        ))
+    u1 = await create_usuario_con_identidad(
+        session, tid,
+        email=f"inbox_u1_{tid}@test.com",
+        nombre="U1", apellidos="Test",
+    )
+    u2 = await create_usuario_con_identidad(
+        session, tid,
+        email=f"inbox_u2_{tid}@test.com",
+        nombre="U2", apellidos="Test",
+    )
+    u_sin = await create_usuario_con_identidad(
+        session, tid,
+        email=f"inbox_norol_{tid}@test.com",
+        nombre="Sin", apellidos="Test",
+    )
 
     session.add(Usuario(
         id=uid_otro_tenant, tenant_id=tid_otro,
@@ -165,13 +162,13 @@ async def inbox_router_data(test_engine, create_tables):
     yield {
         "tid": tid,
         "tid_otro": tid_otro,
-        "uid1": uid1,
-        "uid2": uid2,
-        "uid_sin": uid_sin,
+        "uid1": u1.id,
+        "uid2": u2.id,
+        "uid_sin": u_sin.id,
         "uid_otro_tenant": uid_otro_tenant,
-        "auth1": auth1,
-        "auth2": auth2,
-        "auth_sin": auth_sin,
+        "auth1": u1.auth_identity_id,
+        "auth2": u2.auth_identity_id,
+        "auth_sin": u_sin.auth_identity_id,
         "rol_inbox": rol_inbox.nombre,
         "rol_sin": rol_sin.nombre,
     }
@@ -179,6 +176,7 @@ async def inbox_router_data(test_engine, create_tables):
     # Cleanup
     from sqlalchemy import delete
     from app.models.mensajeria import HiloParticipante, HiloMensaje, Mensaje
+    from app.models.auth import AuthIdentity
     await session.execute(delete(HiloParticipante).where(HiloParticipante.tenant_id.in_([tid, tid_otro])))
     await session.execute(delete(Mensaje).where(Mensaje.tenant_id.in_([tid, tid_otro])))
     await session.execute(delete(HiloMensaje).where(HiloMensaje.tenant_id.in_([tid, tid_otro])))
@@ -186,6 +184,8 @@ async def inbox_router_data(test_engine, create_tables):
     await session.execute(delete(Permiso).where(Permiso.tenant_id.in_([tid, tid_otro])))
     await session.execute(delete(Rol).where(Rol.tenant_id.in_([tid, tid_otro])))
     await session.execute(delete(Usuario).where(Usuario.tenant_id.in_([tid, tid_otro])))
+    # C-28: delete auth_identities created by create_usuario_con_identidad
+    await session.execute(delete(AuthIdentity).where(AuthIdentity.tenant_id.in_([tid, tid_otro])))
     await session.execute(delete(Tenant).where(Tenant.id.in_([tid, tid_otro])))
     await session.commit()
     await session.close()

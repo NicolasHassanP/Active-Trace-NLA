@@ -45,6 +45,7 @@ from app.schemas.encuentro import (
     EditarInstanciaRequest,
 )
 from app.services.encuentro_service import EncuentroService, EncuentroValidationError
+from tests.conftest import create_usuario_con_identidad
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +87,13 @@ def _make_current_user(tid: uuid.UUID, uid: uuid.UUID, roles: list | None = None
     return CurrentUser(user_id=uid, tenant_id=tid, roles=roles or ["TESTROL"])
 
 
-def _make_usuario(tid: uuid.UUID, suffix: str, auth_identity_id: uuid.UUID | None = None) -> Usuario:
+def _make_usuario(tid: uuid.UUID, suffix: str) -> Usuario:
+    """Build a Usuario model instance for service-only tests (no JWT/HTTP needed).
+
+    Does NOT create an AuthIdentity row. Only use in service-layer tests where
+    the actor is a CurrentUser built directly (not via JWT → resolve_domain_user_id).
+    For HTTP/endpoint tests, use create_usuario_con_identidad from conftest instead.
+    """
     from app.core.security.passwords import email_lookup_hash as _hash
     email = f"enc_{suffix}_{uuid.uuid4().hex[:6]}@test.com"
     return Usuario(
@@ -96,7 +103,6 @@ def _make_usuario(tid: uuid.UUID, suffix: str, auth_identity_id: uuid.UUID | Non
         nombre="Test",
         apellidos=suffix,
         estado=UsuarioEstado.activo,
-        auth_identity_id=auth_identity_id,
     )
 
 
@@ -159,16 +165,19 @@ async def enc_setup(test_engine, create_tables):
     session.add(cohorte_b)
 
     # Create users + asignaciones for tenant A
-    usr_repo_a = UsuarioRepository(session=session, tenant_id=tid_a)
-    user_a = _make_usuario(tid_a, "enc_a")
-    user_coord = _make_usuario(tid_a, "enc_coord")
-    await usr_repo_a.add(user_a)
-    await usr_repo_a.add(user_coord)
-    # C-28: set auth_identity_id so resolve_domain_user_id works in HTTP tests
-    # JWT sub = user.id → auth_identity_id must match
-    user_a.auth_identity_id = user_a.id
-    user_coord.auth_identity_id = user_coord.id
-    await session.flush()
+    # C-28: use canonical helper — creates AuthIdentity + Usuario with auth_identity_id != usuario.id.
+    # HTTP tests: JWT sub = usuario.auth_identity_id (auth_a / auth_coord keys).
+    # Service tests: domain_user_id = usuario.id (user_a / user_coord keys).
+    user_a = await create_usuario_con_identidad(
+        session, tid_a,
+        email=f"enc_a_{uuid.uuid4().hex[:6]}@test.com",
+        nombre="Test", apellidos="enc_a",
+    )
+    user_coord = await create_usuario_con_identidad(
+        session, tid_a,
+        email=f"enc_coord_{uuid.uuid4().hex[:6]}@test.com",
+        nombre="Test", apellidos="enc_coord",
+    )
 
     # Asignacion for user_a (PROFESOR) on materia_a
     asig_repo_a = AsignacionRepository(session=session, tenant_id=tid_a)
@@ -201,6 +210,9 @@ async def enc_setup(test_engine, create_tables):
         "user_a": user_a.id,
         "user_coord": user_coord.id,
         "asig_a": asig_a.id,
+        # C-28: HTTP tests MUST use these as JWT sub (auth_identity_id != usuario.id)
+        "auth_a": user_a.auth_identity_id,
+        "auth_coord": user_coord.auth_identity_id,
     }
 
 
@@ -795,8 +807,8 @@ async def test_crear_slot_recurrente_endpoint_creates_instances(enc_client, enc_
     monkeypatch.setattr("app.core.config.Settings", _fake_settings)
     tid = enc_setup["tid_a"]
     mat_id = enc_setup["mat_a"]
-    user_id = enc_setup["user_a"]
-    token = _make_jwt(tid, user_id, roles=[enc_setup["rol_a"]])
+    # C-28: JWT sub = auth_identity_id (NOT usuario.id) so resolve_domain_user_id works
+    token = _make_jwt(tid, enc_setup["auth_a"], roles=[enc_setup["rol_a"]])
 
     resp = await enc_client.post(
         "/api/v1/encuentros/slots",
@@ -835,8 +847,8 @@ async def test_editar_instancia_endpoint_updates_estado(enc_client, enc_setup, d
     monkeypatch.setattr("app.core.config.Settings", _fake_settings)
     tid = enc_setup["tid_a"]
     mat_id = enc_setup["mat_a"]
-    user_id = enc_setup["user_a"]
-    token = _make_jwt(tid, user_id, roles=[enc_setup["rol_a"]])
+    # C-28: JWT sub = auth_identity_id (NOT usuario.id) so resolve_domain_user_id works
+    token = _make_jwt(tid, enc_setup["auth_a"], roles=[enc_setup["rol_a"]])
 
     # Create slot first
     slot_resp = await enc_client.post(
@@ -890,8 +902,8 @@ async def test_bloque_html_endpoint_returns_html(enc_client, enc_setup, db_sessi
     monkeypatch.setattr("app.core.config.Settings", _fake_settings)
     tid = enc_setup["tid_a"]
     mat_id = enc_setup["mat_a"]
-    user_id = enc_setup["user_a"]
-    token = _make_jwt(tid, user_id, roles=[enc_setup["rol_a"]])
+    # C-28: JWT sub = auth_identity_id (NOT usuario.id) so resolve_domain_user_id works
+    token = _make_jwt(tid, enc_setup["auth_a"], roles=[enc_setup["rol_a"]])
 
     # Create a slot first
     slot_resp = await enc_client.post(

@@ -17,6 +17,7 @@ from app.core.database import build_session_factory
 from app.models.rbac import Permiso, Rol, RolPermiso, PermisoScope
 from app.models.tenant import Tenant, TenantEstado
 from app.models.usuario import Usuario, UsuarioEstado
+from tests.conftest import create_usuario_con_identidad
 
 TEST_SECRET_KEY = "supersecretkeyfortesting1234567890"
 TEST_ENCRYPTION_KEY = "E" * 32
@@ -95,38 +96,25 @@ async def perfil_router_data(test_engine, create_tables):
     ))
     await session.flush()
 
-    uid_con_perm = uuid.uuid4()
-    uid_sin_perm = uuid.uuid4()
-    # C-28 invariant: el JWT sub es auth_identities.id, DISTINTO de usuario.id.
-    # get_self resuelve por Usuario.auth_identity_id == JWT.sub, no por usuario.id.
-    auth_con_perm = uuid.uuid4()
-    auth_sin_perm = uuid.uuid4()
-
+    # C-28: use canonical helper — creates AuthIdentity + Usuario with auth_identity_id != usuario.id.
+    # JWT sub = usuario.auth_identity_id (NOT usuario.id).
     email_con_perm = f"con_perm_{tid}@test.com"
     email_sin_perm = f"sin_perm_{tid}@test.com"
     email_otro = f"otro_{tid}@test.com"
 
-    u_con_perm = Usuario(
-        id=uid_con_perm,
-        tenant_id=tid,
-        email_encrypted=email_con_perm,
-        email_hash=email_lookup_hash(email_con_perm),
+    u_con_perm = await create_usuario_con_identidad(
+        session, tid,
+        email=email_con_perm,
         nombre="Con",
         apellidos="Permiso",
-        estado=UsuarioEstado.activo,
-        auth_identity_id=auth_con_perm,
     )
-    u_sin_perm = Usuario(
-        id=uid_sin_perm,
-        tenant_id=tid,
-        email_encrypted=email_sin_perm,
-        email_hash=email_lookup_hash(email_sin_perm),
+    u_sin_perm = await create_usuario_con_identidad(
+        session, tid,
+        email=email_sin_perm,
         nombre="Sin",
         apellidos="Permiso",
-        estado=UsuarioEstado.activo,
-        auth_identity_id=auth_sin_perm,
     )
-    # Usuario extra para test de email duplicado
+    # Usuario extra para test de email duplicado (no necesita autenticarse → sin AuthIdentity)
     u_otro = Usuario(
         tenant_id=tid,
         email_encrypted=email_otro,
@@ -135,15 +123,15 @@ async def perfil_router_data(test_engine, create_tables):
         apellidos="Usuario",
         estado=UsuarioEstado.activo,
     )
-    session.add_all([u_con_perm, u_sin_perm, u_otro])
+    session.add(u_otro)
     await session.commit()
 
     yield {
         "tid": tid,
-        "uid_con_perm": uid_con_perm,
-        "uid_sin_perm": uid_sin_perm,
-        "auth_con_perm": auth_con_perm,
-        "auth_sin_perm": auth_sin_perm,
+        "uid_con_perm": u_con_perm.id,
+        "uid_sin_perm": u_sin_perm.id,
+        "auth_con_perm": u_con_perm.auth_identity_id,
+        "auth_sin_perm": u_sin_perm.auth_identity_id,
         "rol_con_perm": rol_con_perm.nombre,
         "rol_sin_perm": rol_sin_perm.nombre,
         "email_con_perm": email_con_perm,
@@ -154,11 +142,14 @@ async def perfil_router_data(test_engine, create_tables):
     # Cleanup
     from sqlalchemy import delete
     from app.models.audit import AuditEvent
+    from app.models.auth import AuthIdentity
     await session.execute(delete(AuditEvent).where(AuditEvent.tenant_id == tid))
     await session.execute(delete(RolPermiso).where(RolPermiso.tenant_id == tid))
     await session.execute(delete(Permiso).where(Permiso.tenant_id == tid))
     await session.execute(delete(Rol).where(Rol.tenant_id == tid))
     await session.execute(delete(Usuario).where(Usuario.tenant_id == tid))
+    # C-28: delete auth_identities created by create_usuario_con_identidad
+    await session.execute(delete(AuthIdentity).where(AuthIdentity.tenant_id == tid))
     await session.execute(delete(Tenant).where(Tenant.id == tid))
     await session.commit()
     await session.close()
