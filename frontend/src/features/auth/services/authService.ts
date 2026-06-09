@@ -31,6 +31,8 @@ function tokenPairToAuthUser(accessToken: string): AuthUser | null {
     email: payload.email ?? '',
     roles: payload.roles,
     tenantId: payload.tenant_id,
+    isImpersonating: !!payload.impersonated_user_id,
+    impersonatedName: payload.impersonated_name ?? null,
   }
 }
 
@@ -106,4 +108,43 @@ export async function logout(): Promise<void> {
   } finally {
     tokenStore.clearAll()
   }
+}
+
+/**
+ * Impersonar usuario: POST /usuarios/{usuarioId}/impersonar
+ * Only callable by ADMIN. Returns a new access token with impersonation claims.
+ */
+export async function impersonarUsuario(
+  usuarioId: string,
+): Promise<{ accessToken: string; impersonatedName: string }> {
+  const response = await apiClient.post<{ access_token: string; impersonated_name: string }>(
+    `/usuarios/${usuarioId}/impersonar`,
+  )
+  const accessToken = response.data.access_token
+  tokenStore.setToken(accessToken)
+  return {
+    accessToken,
+    impersonatedName: response.data.impersonated_name,
+  }
+}
+
+/**
+ * Finalizar impersonación: POST /auth/impersonacion/finalizar
+ * Ends an active impersonation session. Returns a clean token (no impersonation claims).
+ * The Authorization header is injected automatically by the request interceptor.
+ */
+export async function finalizarImpersonacion(): Promise<{ user: AuthUser; tokens: AuthTokens }> {
+  const response = await apiClient.post<AccessTokenResponse>('/auth/impersonacion/finalizar')
+
+  const tokens: AuthTokens = {
+    accessToken: response.data.access_token,
+    tokenType: response.data.token_type,
+  }
+
+  tokenStore.setToken(tokens.accessToken)
+
+  const user = tokenPairToAuthUser(tokens.accessToken)
+  if (!user) throw new Error('Invalid access token received from server')
+
+  return { tokens, user }
 }

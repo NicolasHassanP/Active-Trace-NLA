@@ -82,6 +82,32 @@ export function AuthProvider({ children }: Props) {
     queryClient.clear()
   }, [queryClient])
 
+  // ---------- impersonation actions ----------
+  const impersonarUsuario = useCallback(async (usuarioId: string) => {
+    const { accessToken } = await authService.impersonarUsuario(usuarioId)
+    // Build the new AuthUser from the impersonation token
+    const { decodeJwtPayload } = await import('../services/decodeJwtPayload')
+    const payload = decodeJwtPayload(accessToken)
+    if (!payload) throw new Error('Invalid impersonation token received from server')
+    setUser({
+      id: payload.sub,
+      email: payload.email ?? '',
+      roles: payload.roles,
+      tenantId: payload.tenant_id,
+      isImpersonating: !!payload.impersonated_user_id,
+      impersonatedName: payload.impersonated_name ?? null,
+    })
+  }, [])
+
+  const finalizarImpersonacion = useCallback(async () => {
+    const { user: restoredUser } = await authService.finalizarImpersonacion()
+    setUser(restoredUser)
+  }, [])
+
+  // ---------- derived impersonation values ----------
+  const isImpersonating = user?.isImpersonating ?? false
+  const impersonatedName = user?.impersonatedName ?? null
+
   return (
     <AuthContext.Provider
       value={{
@@ -90,8 +116,12 @@ export function AuthProvider({ children }: Props) {
         tenantId,
         isAuthenticated,
         isInitializing,
+        isImpersonating,
+        impersonatedName,
         login,
         logout,
+        impersonarUsuario,
+        finalizarImpersonacion,
       }}
     >
       {children}
