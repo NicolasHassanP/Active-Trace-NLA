@@ -76,6 +76,13 @@ export const NAV_CATALOG: NavItem[] = [
     group: 'INSTANCIAS',
   },
   {
+    label: 'Guardias',
+    path: '/guardias',
+    roles: ['TUTOR', 'PROFESOR', 'COORDINADOR', 'ADMIN'],
+    icon: 'calendar',
+    group: 'INSTANCIAS',
+  },
+  {
     label: 'Coloquios',
     path: '/coloquios',
     roles: ['COORDINADOR', 'ADMIN'],

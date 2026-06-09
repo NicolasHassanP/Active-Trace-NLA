@@ -57,6 +57,7 @@ const AvisosPage = lazy(() => import('@/features/avisos/pages/AvisosPage'))
 const TareasPage = lazy(() => import('@/features/tareas/pages/TareasPage'))
 const MonitorPage = lazy(() => import('@/features/monitores/pages/MonitorPage'))
 const EncuentrosPage = lazy(() => import('@/features/encuentros-coord/pages/EncuentrosPage'))
+const GuardiasPage = lazy(() => import('@/features/guardias/pages/GuardiasPage'))
 const ColoquiosPage = lazy(() => import('@/features/coloquios/pages/ColoquiosPage'))
 const SetupCuatrimestrePage = lazy(
   () => import('@/features/setup-cuatrimestre/pages/SetupCuatrimestrePage'),
@@ -191,6 +192,15 @@ export default function App() {
                     element={
                       <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}>
                         <EncuentrosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* /guardias — Registro de guardias: TUTOR/PROFESOR/COORDINADOR/ADMIN (encuentros:gestionar) */}
+                  <Route
+                    path="/guardias"
+                    element={
+                      <ProtectedRoute requiredRoles={['TUTOR', 'PROFESOR', 'COORDINADOR', 'ADMIN']}>
+                        <GuardiasPage />
                       </ProtectedRoute>
                     }
                   />

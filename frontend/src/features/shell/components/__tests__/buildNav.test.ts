@@ -130,6 +130,32 @@ describe('buildNav — C-23 coordination items', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Guardias nav item (F6.6) — TUTOR/PROFESOR/COORDINADOR/ADMIN, group INSTANCIAS
+// ---------------------------------------------------------------------------
+
+describe('buildNav — guardias item', () => {
+  it.each<Role>(['TUTOR', 'PROFESOR', 'COORDINADOR', 'ADMIN'])('%s sees /guardias', (role) => {
+    const paths = buildNav([role]).map((i) => i.path)
+    expect(paths).toContain('/guardias')
+  })
+
+  it('ALUMNO does NOT see /guardias', () => {
+    const paths = buildNav(['ALUMNO']).map((i) => i.path)
+    expect(paths).not.toContain('/guardias')
+  })
+
+  it('FINANZAS does NOT see /guardias', () => {
+    const paths = buildNav(['FINANZAS']).map((i) => i.path)
+    expect(paths).not.toContain('/guardias')
+  })
+
+  it('/guardias item is in group INSTANCIAS', () => {
+    const item = buildNav(['PROFESOR']).find((i) => i.path === '/guardias')
+    expect(item?.group).toBe('INSTANCIAS')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // C-26 mensajería nav item (task 7.3)
 // ---------------------------------------------------------------------------
 
