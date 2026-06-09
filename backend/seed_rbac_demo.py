@@ -44,6 +44,7 @@ PERMISOS = [
 
 MATRIZ = [
     # ALUMNO
+    ('ALUMNO', 'perfil:editar',        'propio'),
     ('ALUMNO', 'academico:ver_propio', 'global'),
     ('ALUMNO', 'evaluacion:reservar',  'global'),
     ('ALUMNO', 'avisos:confirmar',     'global'),
@@ -95,6 +96,8 @@ MATRIZ = [
     ('COORDINADOR', 'padron:gestionar',            'global'),
     ('COORDINADOR', 'coloquios:gestionar',         'global'),
     # NEXO
+    ('NEXO', 'inbox:usar',       'global'),
+    ('NEXO', 'perfil:editar',    'propio'),
     ('NEXO', 'avisos:confirmar', 'global'),
     ('NEXO', 'equipos:ver',      'propio'),
     # ADMIN
@@ -125,6 +128,8 @@ MATRIZ = [
     ('ADMIN', 'padron:gestionar',             'global'),
     ('ADMIN', 'coloquios:gestionar',          'global'),
     # FINANZAS
+    ('FINANZAS', 'inbox:usar',                  'global'),
+    ('FINANZAS', 'perfil:editar',               'propio'),
     ('FINANZAS', 'avisos:confirmar',            'global'),
     ('FINANZAS', 'auditoria:ver',               'global'),
     ('FINANZAS', 'liquidaciones:operar_grilla', 'global'),
