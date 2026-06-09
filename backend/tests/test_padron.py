@@ -849,6 +849,8 @@ async def test_activar_endpoint_creates_version(async_client, db_session, monkey
     try:
         await _create_padron_roles_and_perms(db_session, tenant)
         usuario = await _create_test_usuario(db_session, tenant.id)
+        # C-28: commit so the endpoint's separate DB session can see auth_identity + usuario rows
+        await db_session.commit()
         # C-28: JWT sub must be auth_identity_id, not usuario.id
         token = _make_jwt(tenant.id, usuario.auth_identity_id, ["COORDINADOR"])
 
@@ -884,6 +886,8 @@ async def test_vaciar_endpoint_403_on_other_user_version(async_client, db_sessio
         await _create_padron_roles_and_perms(db_session, tenant)
         usuario_a = await _create_test_usuario(db_session, tenant.id)
         usuario_b = await _create_test_usuario(db_session, tenant.id)
+        # C-28: commit so the endpoint's separate DB session can see auth_identity + usuario rows
+        await db_session.commit()
 
         # User A (COORDINADOR) crea versión — C-28: JWT sub = auth_identity_id
         token_a = _make_jwt(tenant.id, usuario_a.auth_identity_id, ["COORDINADOR"])
