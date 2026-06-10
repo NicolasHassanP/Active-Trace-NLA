@@ -242,10 +242,15 @@ listo pero NO tienen página frontend. El ADMIN las ve en el nav pero llegan a 4
 
 | Change | Estado | Bloqueado por |
 |--------|--------|---------------|
-| C-18 `liquidaciones-y-honorarios` | `[ ]` pendiente | PA-22/PA-23 (preguntas de negocio sin cerrar) |
-| C-24 `frontend-finanzas-y-admin` | `[ ]` pendiente | C-18 |
+| C-18 `liquidaciones-y-honorarios` | `[ ]` **DIFERIDO a fin de proyecto** | PA-22/PA-23 — decisión 2026-06-09: NO se responden |
+| C-24 `frontend-finanzas-y-admin` | `[ ]` **DIFERIDO a fin de proyecto** | C-18 |
 
 No hay otros changes pendientes. Todo lo implementable está archivado.
+
+**Decisiones deliberadas (2026-06-09) — no son bugs, no revertir:**
+- PA-22/PA-23 quedan sin responder; C-18 y C-24 se difieren hasta finalizar el resto del proyecto.
+- Los ítems de nav del ADMIN/FINANZAS (Usuarios, Estructura académica, Auditoría, Liquidaciones) caen en 404 a propósito (sus páginas son C-24/C-18, diferidos). Ver §6.4.
+- No existe usuario demo de FINANZAS, también a propósito.
 
 ---
 
