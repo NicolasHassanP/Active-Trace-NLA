@@ -12,13 +12,14 @@ AsignacionRepository:
     - Hereda: add, get_by_id, list, delete (soft).
     - Agrega: list(usuario_id=..., rol=..., responsable_id=...) con filtros opcionales.
     - Agrega: update (PATCH parcial).
+    - Agrega: get_responsables_de_usuario (RN-11: travesía de cadena acíclica).
     - C-08 Agrega: list_by_equipo, bulk_add, bulk_update_vigencia.
 
 snake_case; ≤500 LOC. Queries SOLO en repositories (regla dura #11).
 """
 import uuid
 from datetime import date
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -122,6 +123,31 @@ class AsignacionRepository(TenantScopedRepository[Asignacion]):
         await self._session.commit()
         await self._session.refresh(obj)
         return obj
+
+    async def get_responsables_de_usuario(
+        self, usuario_id: uuid.UUID
+    ) -> Set[uuid.UUID]:
+        """
+        Devuelve el conjunto de responsable_id declarados en asignaciones activas
+        (deleted_at IS NULL) del usuario dado, dentro del tenant scope.
+
+        Usado por AsignacionService._validar_aciclo_responsable (RN-11) para
+        recorrer la cadena de supervisión sin query directo desde el service.
+
+        Retorna un set vacío si el usuario no tiene asignaciones con responsable.
+        Excluye responsable_id nulos.
+        """
+        stmt = (
+            select(Asignacion.responsable_id)
+            .where(
+                Asignacion.tenant_id == self._tenant_id,
+                Asignacion.usuario_id == usuario_id,
+                Asignacion.deleted_at.is_(None),
+                Asignacion.responsable_id.is_not(None),
+            )
+        )
+        result = await self._session.execute(stmt)
+        return {row[0] for row in result.fetchall()}
 
     # ------------------------------------------------------------------
     # C-08 — Equipo docente (proyección derivada de Asignacion)
