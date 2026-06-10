@@ -21,6 +21,8 @@ PERMISOS = [
     ('comunicacion:enviar',              'comunicacion',   'enviar'),
     ('comunicacion:aprobar',             'comunicacion',   'aprobar'),
     ('encuentros:gestionar',             'encuentros',     'gestionar'),
+    # RESERVADO — guardias:registrar existe en el catálogo pero ningún router lo consume.
+    # Las guardias se gestionan con encuentros:gestionar (decisión C-13). Reservado para uso futuro.
     ('guardias:registrar',               'guardias',       'registrar'),
     ('tareas:gestionar',                 'tareas',         'gestionar'),
     ('avisos:publicar',                  'avisos',         'publicar'),

@@ -3,6 +3,13 @@
 > Backlog de trabajo abierto para atacar en una próxima sesión. Generado al cierre de la sesión del **2026-06-09** sobre la rama `style/design-handoff`.
 > Detalle adicional en Engram (topic_keys citados en cada ítem). Ordenado por prioridad sugerida.
 
+> ### ✅ Actualización 2026-06-09 (sesión 3) — pendientes cerrados
+> Tras `git pull` (compañero: impersonación RN-41 backend+frontend, enums coloquios, design assets) se cerraron y commitearon:
+> - **Tarea B completa** (`66fa1a8` + `549e723`): teardowns `audit_event` migrados al helper de inmutabilidad en los 5 tests + 4 endpoint tests reescritos con `create_usuario_con_identidad` (patrón AuthIdentity-FK). Causa raíz del 500: el helper hacía `flush` sin `commit`, la sesión del endpoint no veía `auth_identities`. test_padron 25/25, test_calificaciones_router 7/7.
+> - **Tarea A / §1.1 / §1.2** (`eeea808`): enums de `encuentros-coord` alineados al backend (`DiaSemana` capitalizado+acentos, `InstanciaEncuentroEstado` sin `'postergado'`). tsc 0 errores, 34 vitest verdes. (coloquios + TareasAdminTable ya los había hecho el compañero.)
+> - **§6.5 bug producción** (`12cae5f`): `EncuentroService.listar_instancias` ahora aísla por asignación propia del docente (RN-04), no por materia. Subquery `slot_id ∈ slots del actor` con scope tenant+soft-delete. test_encuentros 15/15.
+> - Infra: OneDrive pausado (proceso killeado), Engram actualizado 1.14.5→1.16.1 (el `sync --import` ya funciona). **Pendiente restante**: Tarea C del HANDOFF (seed 4.3, comentario RESERVADO en `seed_rbac_demo.py`, BAJO).
+>
 > ### 🔄 Actualización 2026-06-09 (sesión 2)
 > Los ítems **1.1, 1.2, 2.1, 4.3** fueron **resueltos y verificados verdes**, pero **OneDrive revirtió los archivos** del working tree (el repo vive en OneDrive). El trabajo se re-aplica de forma mecánica siguiendo **[docs/HANDOFF-fixes-tests.md](HANDOFF-fixes-tests.md)** (plan detallado por-archivo). Lo único que sobrevivió y quedó **commiteado** (`fe840bc`) son los helpers de `conftest.py` + 3 tests de router migrados.
 > Además se diagnosticó la suite roja completa (~233 fallos): casi todos eran **test-side** (C-28 `domain_user_id`, fixture `audit_action`, patrón AuthIdentity-FK) y están cubiertos en el handoff. Quedó **un bug real de producción** nuevo (ver §6.5).
