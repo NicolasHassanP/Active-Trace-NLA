@@ -4,6 +4,7 @@
  * Fields aligned to:
  *   backend/app/schemas/encuentro.py (InstanciaEncuentroRead)
  *   backend/app/schemas/guardia.py (GuardiaRead, GuardiaFiltros)
+ *   backend/app/models/encuentro.py (DiaSemana, InstanciaEncuentroEstado enums)
  * Task 5.1.
  */
 
@@ -14,12 +15,12 @@
 /**
  * Maps InstanciaEncuentroEstado enum (backend/app/models/encuentro.py).
  * Values taken from the ORM model used by the backend.
+ * IMPORTANT: capitalized to match backend enum values exactly.
  */
 export type InstanciaEncuentroEstado =
-  | 'programado'
-  | 'realizado'
-  | 'cancelado'
-  | 'postergado'
+  | 'Programado'
+  | 'Realizado'
+  | 'Cancelado'
 
 /**
  * Mirrors InstanciaEncuentroRead from backend/app/schemas/encuentro.py.
@@ -79,15 +80,27 @@ export interface CrearSlotResponse {
 
 /**
  * Maps DiaSemana enum from backend/app/models/encuentro.py.
+ * Values are capitalized with Spanish accents — must match backend exactly.
  */
 export type DiaSemana =
-  | 'lunes'
-  | 'martes'
-  | 'miercoles'
-  | 'jueves'
-  | 'viernes'
-  | 'sabado'
-  | 'domingo'
+  | 'Lunes'
+  | 'Martes'
+  | 'Miércoles'
+  | 'Jueves'
+  | 'Viernes'
+  | 'Sábado'
+  | 'Domingo'
+
+/** Ordered list of DiaSemana values for selects — mirrors guardias feature pattern. */
+export const DIAS_SEMANA: DiaSemana[] = [
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
+  'Domingo',
+]
 
 /**
  * Maps GuardiaEstado enum from backend/app/models/encuentro.py.

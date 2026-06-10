@@ -4,9 +4,10 @@
  */
 import { useState } from 'react'
 import type { GuardiaParams } from '../types'
+import { DIAS_SEMANA } from '../types'
 import { Button } from '@/shared/components/ui'
 
-const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+const DIAS = DIAS_SEMANA
 const ESTADOS = ['Pendiente', 'Realizada', 'Cancelada']
 
 interface Props {
@@ -45,7 +46,7 @@ export default function GuardiasFilters({ onFilter, onClear }: Props) {
         >
           <option value="">Todos</option>
           {DIAS.map((d) => (
-            <option key={d} value={d} className="capitalize">
+            <option key={d} value={d}>
               {d}
             </option>
           ))}

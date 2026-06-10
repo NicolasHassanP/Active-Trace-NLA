@@ -7,8 +7,9 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useCrearSlot } from '../hooks/encuentrosCoordHooks'
 import type { SlotModo } from '../types'
+import { DIAS_SEMANA } from '../types'
 
-const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'] as const
+const DIAS = DIAS_SEMANA
 
 interface Props {
   materiaId: string
@@ -32,7 +33,7 @@ const EMPTY: FormState = {
   hora: '18:00',
   modo: 'unico',
   fecha_unica: '',
-  dia_semana: 'lunes',
+  dia_semana: 'Lunes',
   fecha_inicio: '',
   cant_semanas: 4,
   meet_url: '',
@@ -177,7 +178,7 @@ export default function CrearSlotDialog({ materiaId, materiaNombre, onClose }: P
                   className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   {DIAS.map((d) => (
-                    <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>
+                    <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
               </div>
