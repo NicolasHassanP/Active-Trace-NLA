@@ -43,6 +43,38 @@ async function doRefresh(): Promise<string> {
   return newAccessToken
 }
 
+/**
+ * Coalesced refresh — single in-flight refresh shared by ALL callers: the 401
+ * response interceptor AND the AuthProvider mount rehydration.
+ *
+ * Critical: the backend rotates the refresh cookie and revokes the whole token
+ * family on reuse. Two concurrent un-coalesced refreshes (e.g. React StrictMode
+ * double-invoking the mount effect) would replay the consumed cookie, trip
+ * reuse-detection and kill the session. Routing every refresh through this
+ * shared promise guarantees exactly one rotation per burst.
+ */
+export async function refreshAccessToken(): Promise<string> {
+  if (!refreshPromise) {
+    refreshPromise = doRefresh().finally(() => {
+      refreshPromise = null
+    })
+  }
+  return refreshPromise
+}
+
+/**
+ * Test-only: clears the module-level coalesced refresh promise.
+ *
+ * The shared `refreshPromise` is intentionally module-global so every caller in
+ * a single browser session collapses into one network refresh. In a test runner
+ * that module state survives across tests in the same file, so a refresh promise
+ * started by one test (e.g. a never-resolving mock) would leak into the next.
+ * Call this from `beforeEach`/`afterEach` to isolate tests. Never call from app code.
+ */
+export function __resetRefreshPromiseForTests(): void {
+  refreshPromise = null
+}
+
 // ---- Create the Axios instance ----
 const apiClient: AxiosInstance = axios.create({
   baseURL: '/api/v1',
@@ -97,13 +129,8 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true
 
       try {
-        // Serialize concurrent refreshes via shared promise
-        if (!refreshPromise) {
-          refreshPromise = doRefresh().finally(() => {
-            refreshPromise = null
-          })
-        }
-        const newToken = await refreshPromise
+        // Serialize concurrent refreshes via the shared coalesced refresh
+        const newToken = await refreshAccessToken()
         // Attach new token to the retried request
         originalRequest.headers['Authorization'] = `Bearer ${newToken}`
         return apiClient(originalRequest)

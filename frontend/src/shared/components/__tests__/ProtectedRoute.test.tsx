@@ -16,7 +16,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { type ReactNode } from 'react'
 import axios from 'axios'
 import MockAdapter from 'axios-mock-adapter'
-import apiClient from '@/shared/services/api'
+import apiClient, { __resetRefreshPromiseForTests } from '@/shared/services/api'
 import { AuthProvider } from '@/features/auth/hooks/AuthProvider'
 import ProtectedRoute from '../ProtectedRoute'
 import * as tokenStore from '@/shared/services/tokenStore'
@@ -47,15 +47,21 @@ describe('ProtectedRoute — authentication guard', () => {
   let mockApiClient: MockAdapter
 
   beforeEach(() => {
-    // authService.refresh() uses plain axios → mock the full path
+    // refresh() is coalesced through api.ts's shared refreshPromise, which calls
+    // plain axios under the hood → mock the full path on plain axios.
     mockAxios = new MockAdapter(axios)
     mockApiClient = new MockAdapter(apiClient)
+    // Clear the module-level coalesced refresh promise so a hung/settled refresh
+    // from a prior test cannot leak into this one (e.g. the never-resolving
+    // "shows loading state" mock).
+    __resetRefreshPromiseForTests()
     tokenStore.clearAll()
   })
 
   afterEach(() => {
     mockAxios.restore()
     mockApiClient.restore()
+    __resetRefreshPromiseForTests()
   })
 
   it('redirects unauthenticated user to /login', async () => {
@@ -127,15 +133,21 @@ describe('ProtectedRoute — role authorization', () => {
   let mockApiClient: MockAdapter
 
   beforeEach(() => {
-    // authService.refresh() uses plain axios → mock the full path
+    // refresh() is coalesced through api.ts's shared refreshPromise, which calls
+    // plain axios under the hood → mock the full path on plain axios.
     mockAxios = new MockAdapter(axios)
     mockApiClient = new MockAdapter(apiClient)
+    // Clear the module-level coalesced refresh promise so a hung/settled refresh
+    // from a prior test cannot leak into this one (e.g. the never-resolving
+    // "shows loading state" mock).
+    __resetRefreshPromiseForTests()
     tokenStore.clearAll()
   })
 
   afterEach(() => {
     mockAxios.restore()
     mockApiClient.restore()
+    __resetRefreshPromiseForTests()
   })
 
   it('user with required role accesses the route', async () => {
