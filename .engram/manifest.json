@@ -480,6 +480,14 @@
       "sessions": 0,
       "memories": 1,
       "prompts": 0
+    },
+    {
+      "id": "cb6e35b2",
+      "created_by": "Nico",
+      "created_at": "2026-06-10T22:40:22Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }
