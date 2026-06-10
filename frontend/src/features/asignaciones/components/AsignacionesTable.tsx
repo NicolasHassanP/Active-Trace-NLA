@@ -85,7 +85,7 @@ export default function AsignacionesTable({
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left font-medium uppercase tracking-wider text-gray-500">
-                  Usuario ID
+                  Usuario
                 </th>
                 <th className="px-4 py-3 text-left font-medium uppercase tracking-wider text-gray-500">
                   Rol
@@ -107,8 +107,18 @@ export default function AsignacionesTable({
             <tbody className="divide-y divide-gray-100 bg-white">
               {asignaciones.map((a) => (
                 <tr key={a.id}>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                    {a.usuario_id.slice(0, 8)}…
+                  <td className="px-4 py-3">
+                    {a.usuario_nombre
+                      ? (
+                        <span>
+                          <span className="text-gray-900">{a.usuario_nombre} {a.usuario_apellidos}</span>
+                          <span className="block font-mono text-xs text-gray-400">{a.usuario_id.slice(0, 8)}…</span>
+                        </span>
+                      )
+                      : (
+                        <span className="font-mono text-xs text-gray-500">{a.usuario_id.slice(0, 8)}…</span>
+                      )
+                    }
                   </td>
                   <td className="px-4 py-3 text-gray-900">{a.rol}</td>
                   <td className="px-4 py-3 text-gray-700">{formatDate(a.desde)}</td>

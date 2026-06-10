@@ -1260,3 +1260,141 @@ def test_require_permission_no_modificado_en_c07():
     src = inspect.getsource(require_permission)
     # Simplemente verificamos que el módulo existe y es invocable sin C-07 changes
     assert callable(require_permission)
+
+
+# ---------------------------------------------------------------------------
+# TASK 13 — AsignacionRead incluye usuario_nombre / usuario_apellidos (UX fix)
+# ---------------------------------------------------------------------------
+
+
+def test_asignacion_read_tiene_campos_nombre():
+    """RED: AsignacionRead incluye usuario_nombre y usuario_apellidos con default None."""
+    fields = set(AsignacionRead.model_fields.keys())
+    assert "usuario_nombre" in fields, "Falta usuario_nombre en AsignacionRead"
+    assert "usuario_apellidos" in fields, "Falta usuario_apellidos en AsignacionRead"
+
+
+def test_asignacion_read_nombre_default_none():
+    """RED: usuario_nombre y usuario_apellidos son Optional con default None."""
+    a = AsignacionRead(
+        id=uuid.uuid4(),
+        usuario_id=uuid.uuid4(),
+        rol=RolAsignacion.PROFESOR,
+        desde=date.today(),
+        estado_vigencia=EstadoVigencia.vigente,
+        created_at=datetime.datetime.now(),
+        updated_at=datetime.datetime.now(),
+    )
+    assert a.usuario_nombre is None
+    assert a.usuario_apellidos is None
+
+
+def test_asignacion_read_acepta_nombre_poblado():
+    """Triangulación: AsignacionRead acepta nombre y apellidos cuando se proveen."""
+    a = AsignacionRead(
+        id=uuid.uuid4(),
+        usuario_id=uuid.uuid4(),
+        rol=RolAsignacion.TUTOR,
+        desde=date.today(),
+        estado_vigencia=EstadoVigencia.vigente,
+        created_at=datetime.datetime.now(),
+        updated_at=datetime.datetime.now(),
+        usuario_nombre="Ana",
+        usuario_apellidos="García",
+    )
+    assert a.usuario_nombre == "Ana"
+    assert a.usuario_apellidos == "García"
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_listar_asignaciones_devuelve_nombre_usuario(
+    usuario_client, usuario_setup, monkeypatch
+):
+    """RED→GREEN: GET /api/v1/asignaciones devuelve usuario_nombre/usuario_apellidos poblados."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    tid = usuario_setup["tid_a"]
+    user_id = usuario_setup["user_admin_a"]
+    rol = usuario_setup["rol_admin_a"]
+    token = _make_jwt(tid, user_id, roles=[rol])
+
+    # Crear un usuario real en el tenant
+    email = f"nombre_test_{uuid.uuid4().hex[:8]}@test.com"
+    resp_usr = await usuario_client.post(
+        "/api/v1/admin/usuarios",
+        json={"email": email, "nombre": "Lucía", "apellidos": "Fernández"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_usr.status_code == 201
+    nuevo_usuario_id = resp_usr.json()["id"]
+
+    # Crear asignación para ese usuario
+    resp_asgn = await usuario_client.post(
+        "/api/v1/asignaciones",
+        json={
+            "usuario_id": nuevo_usuario_id,
+            "rol": "TUTOR",
+            "desde": str(date.today()),
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_asgn.status_code == 201
+    asgn_data = resp_asgn.json()
+    # POST también debe devolver nombre
+    assert asgn_data["usuario_nombre"] == "Lucía"
+    assert asgn_data["usuario_apellidos"] == "Fernández"
+
+    # GET lista también debe devolver nombre
+    resp_lista = await usuario_client.get(
+        "/api/v1/asignaciones",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_lista.status_code == 200
+    items = resp_lista.json()
+    match = [a for a in items if a["id"] == asgn_data["id"]]
+    assert match, "La asignación creada no aparece en el listado"
+    assert match[0]["usuario_nombre"] == "Lucía"
+    assert match[0]["usuario_apellidos"] == "Fernández"
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_editar_asignacion_devuelve_nombre_usuario(
+    usuario_client, usuario_setup, monkeypatch
+):
+    """Triangulación: PATCH /api/v1/asignaciones/{id} devuelve usuario_nombre/usuario_apellidos."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    tid = usuario_setup["tid_a"]
+    user_id = usuario_setup["user_admin_a"]
+    rol = usuario_setup["rol_admin_a"]
+    token = _make_jwt(tid, user_id, roles=[rol])
+
+    # Crear usuario
+    email = f"patch_nombre_{uuid.uuid4().hex[:8]}@test.com"
+    resp_usr = await usuario_client.post(
+        "/api/v1/admin/usuarios",
+        json={"email": email, "nombre": "Carlos", "apellidos": "López"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_usr.status_code == 201
+    nuevo_usuario_id = resp_usr.json()["id"]
+
+    # Crear asignación
+    resp_asgn = await usuario_client.post(
+        "/api/v1/asignaciones",
+        json={"usuario_id": nuevo_usuario_id, "rol": "PROFESOR", "desde": str(date.today())},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_asgn.status_code == 201
+    asgn_id = resp_asgn.json()["id"]
+
+    # Editar → debe seguir devolviendo el nombre
+    resp_patch = await usuario_client.patch(
+        f"/api/v1/asignaciones/{asgn_id}",
+        json={"rol": "COORDINADOR"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_patch.status_code == 200
+    data = resp_patch.json()
+    assert data["usuario_nombre"] == "Carlos"
+    assert data["usuario_apellidos"] == "López"

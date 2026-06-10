@@ -171,11 +171,14 @@ class AsignacionRead(BaseModel):
     """
     Output schema de una asignación.
     Incluye estado_vigencia computado (D4).
+    Incluye usuario_nombre / usuario_apellidos para visualización UX (no-PII).
     """
     model_config = ConfigDict(extra="forbid", from_attributes=False)
 
     id: uuid.UUID
     usuario_id: uuid.UUID
+    usuario_nombre: Optional[str] = None
+    usuario_apellidos: Optional[str] = None
     rol: RolAsignacion
     desde: date
     hasta: Optional[date] = None

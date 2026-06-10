@@ -26,6 +26,8 @@ export type EstadoVigencia = 'vigente' | 'vencida' | 'no_iniciada'
 export interface AsignacionRead {
   id: string
   usuario_id: string
+  usuario_nombre?: string | null
+  usuario_apellidos?: string | null
   rol: RolAsignacion
   desde: string             // ISO date string
   hasta: string | null      // ISO date string or null (open-ended)

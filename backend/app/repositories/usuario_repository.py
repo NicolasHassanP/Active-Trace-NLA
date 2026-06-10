@@ -27,6 +27,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.usuario import Asignacion, RolAsignacion, Usuario
 from app.repositories.base import TenantScopedRepository
 
+# Type alias for the nombre/apellidos tuple map used by callers.
+UsuarioNombreMap = dict[uuid.UUID, tuple[Optional[str], Optional[str]]]
+
 
 # ---------------------------------------------------------------------------
 # UsuarioRepository
@@ -70,6 +73,29 @@ class UsuarioRepository(TenantScopedRepository[Usuario]):
         await self._session.commit()
         await self._session.refresh(obj)
         return obj
+
+    async def get_nombres_por_ids(
+        self, ids: List[uuid.UUID]
+    ) -> UsuarioNombreMap:
+        """
+        Batch-fetch de nombre y apellidos para un conjunto de usuario_ids.
+
+        Emite un único SELECT con IN, scoped a tenant + soft-delete.
+        Retorna un dict {usuario_id: (nombre, apellidos)}.
+        Los ids no encontrados quedan ausentes del dict.
+        """
+        if not ids:
+            return {}
+        stmt = (
+            select(Usuario.id, Usuario.nombre, Usuario.apellidos)
+            .where(
+                Usuario.tenant_id == self._tenant_id,
+                Usuario.id.in_(ids),
+                Usuario.deleted_at.is_(None),
+            )
+        )
+        result = await self._session.execute(stmt)
+        return {row.id: (row.nombre, row.apellidos) for row in result.fetchall()}
 
 
 # ---------------------------------------------------------------------------
