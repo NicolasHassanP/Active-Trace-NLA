@@ -47,6 +47,9 @@ const MiCursadaPage = lazy(() => import('@/features/mi-cursada/pages/MiCursadaPa
 // Perfil propio (M2 / F11.1) — accesible a TODO usuario autenticado (perfil:editar universal)
 const PerfilPage = lazy(() => import('@/features/perfil/pages/PerfilPage'))
 
+// M3 / F4.3 — Gestión global de asignaciones (equipos:asignar → COORDINADOR, ADMIN)
+const AsignacionesPage = lazy(() => import('@/features/asignaciones/pages/AsignacionesPage'))
+
 // HU-47 lazy pages
 const MisColoquiosPage = lazy(() => import('@/features/mis-coloquios/pages/MisColoquiosPage'))
 
@@ -255,6 +258,15 @@ export default function App() {
                     element={
                       <ProtectedRoute requiredRoles={['ALUMNO']}>
                         <MisColoquiosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* === M3 / F4.3 — Gestión de asignaciones: COORDINADOR/ADMIN (equipos:asignar) === */}
+                  <Route
+                    path="/asignaciones"
+                    element={
+                      <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN']}>
+                        <AsignacionesPage />
                       </ProtectedRoute>
                     }
                   />
