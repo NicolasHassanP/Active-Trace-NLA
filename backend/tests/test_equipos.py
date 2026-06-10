@@ -905,7 +905,7 @@ async def test_listar_mis_equipos_devuelve_propias(db_session, create_tables, eq
 
     svc = _make_equipo_service_sync(db_session, tid)
     actor = _make_current_user(tid, u1.id)
-    result = await svc.listar_mis_equipos(actor)
+    result = await svc.listar_mis_equipos(actor, domain_user_id=u1.id)
 
     ids = {item.asignacion_id for item in result}
     assert a1.id in ids
@@ -953,7 +953,7 @@ async def test_listar_mis_equipos_estado_vigencia_derivado(db_session, create_ta
 
     svc = _make_equipo_service_sync(db_session, tid)
     actor = _make_current_user(tid, u.id)
-    result = await svc.listar_mis_equipos(actor)
+    result = await svc.listar_mis_equipos(actor, domain_user_id=u.id)
 
     por_id = {item.asignacion_id: item for item in result}
     assert por_id[av.id].estado_vigencia == EstadoVigencia.vigente
@@ -963,7 +963,7 @@ async def test_listar_mis_equipos_estado_vigencia_derivado(db_session, create_ta
     u2 = _make_usuario(tid, "empty")
     await usr_repo.add(u2)
     actor2 = _make_current_user(tid, u2.id)
-    r2 = await svc.listar_mis_equipos(actor2)
+    r2 = await svc.listar_mis_equipos(actor2, domain_user_id=u2.id)
     assert r2 == []
 
     # Cleanup
@@ -1743,12 +1743,14 @@ async def test_auditoria_vigencia_emite_evento(db_session, create_tables, equipo
 
 
 # 6.3 Reglas duras: identidad desde JWT
-def test_listar_mis_equipos_usa_current_user_id():
-    """6.3: EquipoService.listar_mis_equipos usa current_user.user_id, no parámetros externos."""
+def test_listar_mis_equipos_usa_domain_user_id():
+    """6.3: EquipoService.listar_mis_equipos usa domain_user_id (no current_user.user_id como FK)."""
     import inspect
     import app.services.equipo_service as svc_module
     src = inspect.getsource(svc_module.EquipoService.listar_mis_equipos)
-    assert "current_user.user_id" in src
+    # C-28: domain_user_id must be used, NOT current_user.user_id (auth_identity_id != usuario.id)
+    assert "domain_user_id" in src
+    assert "current_user.user_id" not in src
 
 
 # 6.3 Reglas duras: extra=forbid en todos los schemas

@@ -9,18 +9,35 @@ C-12 Design Decisions:
          (Pendiente + no requieren aprobación, o ya aprobados).
     D5 — actualizar_estado(): transición de estado atómica.
     D6 — Multi-tenancy: todas las queries filtran por tenant_id automáticamente.
+    D7 — list_pendientes_tenant() hace OUTER JOIN con Usuario para enriquecer
+         la respuesta con nombre del remitente (enviado_por_nombre).
 
 snake_case; ≤500 LOC.
 """
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.comunicacion import Comunicacion, ComunicacionEstado
+from app.models.usuario import Usuario
 from app.repositories.base import TenantScopedRepository
+
+
+@dataclass
+class ComunicacionPendienteRow:
+    """
+    Fila enriquecida de Comunicacion con el nombre del remitente.
+
+    comunicacion: instancia ORM de Comunicacion.
+    enviado_por_nombre: nombre completo del remitente (nombre + apellidos),
+        o None si el usuario fue eliminado (SET NULL por FK) o no existe.
+    """
+    comunicacion: Comunicacion
+    enviado_por_nombre: Optional[str]
 
 
 class ComunicacionRepository(TenantScopedRepository[Comunicacion]):
@@ -135,6 +152,124 @@ class ComunicacionRepository(TenantScopedRepository[Comunicacion]):
         )
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
+
+    # -----------------------------------------------------------------------
+    # list_pendientes_tenant — todos los Pendiente del tenant, paginado
+    # -----------------------------------------------------------------------
+
+    async def list_pendientes_tenant(
+        self,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[List[ComunicacionPendienteRow], int]:
+        """
+        Retorna todos los mensajes en estado Pendiente del tenant, paginados.
+
+        Filtra:
+            - tenant_id == self._tenant_id  (multi-tenancy automático)
+            - estado == Pendiente
+            - deleted_at IS NULL            (soft delete)
+
+        Ordenado por created_at DESC (más reciente primero).
+
+        Hace OUTER JOIN con Usuario (D7) para enriquecer la respuesta con el
+        nombre del remitente. El JOIN es OUTER porque enviado_por es nullable
+        y el usuario puede haber sido eliminado (SET NULL).
+
+        Returns:
+            (items, total) donde items es List[ComunicacionPendienteRow]
+            y total es el conteo sin paginar.
+        """
+        base_filters = [
+            Comunicacion.tenant_id == self._tenant_id,
+            Comunicacion.estado == ComunicacionEstado.Pendiente,
+            Comunicacion.deleted_at.is_(None),
+        ]
+
+        # Conteo total (sin paginar) — no necesita el JOIN
+        count_stmt = select(func.count()).select_from(Comunicacion).where(*base_filters)
+        total_result = await self._session.execute(count_stmt)
+        total = total_result.scalar_one()
+
+        # Items paginados con OUTER JOIN a Usuario para obtener el nombre del remitente
+        items_stmt = (
+            select(Comunicacion, Usuario.nombre, Usuario.apellidos)
+            .outerjoin(Usuario, Comunicacion.enviado_por == Usuario.id)
+            .where(*base_filters)
+            .order_by(Comunicacion.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        items_result = await self._session.execute(items_stmt)
+        rows = items_result.all()
+
+        enriched: List[ComunicacionPendienteRow] = []
+        for com, nombre, apellidos in rows:
+            if nombre is not None and apellidos is not None:
+                enviado_por_nombre: Optional[str] = f"{nombre} {apellidos}"
+            else:
+                enviado_por_nombre = None
+            enriched.append(
+                ComunicacionPendienteRow(
+                    comunicacion=com,
+                    enviado_por_nombre=enviado_por_nombre,
+                )
+            )
+
+        return enriched, total
+
+    # -----------------------------------------------------------------------
+    # list_by_sender — historial paginado de un remitente (C-27)
+    # -----------------------------------------------------------------------
+
+    async def list_by_sender(
+        self,
+        sender_id: uuid.UUID,
+        estado: Optional[ComunicacionEstado] = None,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> tuple[List[Comunicacion], int]:
+        """
+        Retorna las comunicaciones enviadas por sender_id en este tenant,
+        con paginación offset/limit.
+
+        Filtra:
+            - tenant_id == self._tenant_id  (multi-tenancy automático)
+            - enviado_por == sender_id
+            - deleted_at IS NULL            (soft delete)
+            - estado == estado              (opcional)
+
+        Returns:
+            (items, total) donde total es el conteo sin paginar.
+
+        C-27 D2 — filtrado por enviado_por es responsabilidad del repositorio.
+        C-27 D3 — sender_id se resuelve desde el JWT en el router; nunca de query params.
+        """
+        base_filters = [
+            Comunicacion.tenant_id == self._tenant_id,
+            Comunicacion.enviado_por == sender_id,
+            Comunicacion.deleted_at.is_(None),
+        ]
+        if estado is not None:
+            base_filters.append(Comunicacion.estado == estado)
+
+        # Conteo total (sin paginar)
+        count_stmt = select(func.count()).select_from(Comunicacion).where(*base_filters)
+        total_result = await self._session.execute(count_stmt)
+        total = total_result.scalar_one()
+
+        # Items paginados, orden created_at DESC (más reciente primero)
+        items_stmt = (
+            select(Comunicacion)
+            .where(*base_filters)
+            .order_by(Comunicacion.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        items_result = await self._session.execute(items_stmt)
+        items = list(items_result.scalars().all())
+
+        return items, total
 
     # -----------------------------------------------------------------------
     # actualizar_estado — transición atómica de estado

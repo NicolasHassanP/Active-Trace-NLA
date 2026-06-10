@@ -32,9 +32,15 @@ afterEach(() => {
 
 const sampleItem: MisEquiposItem = {
   asignacion_id: 'asg-1',
+  usuario_id: 'u1',
+  usuario_nombre: null,
+  usuario_apellidos: null,
   materia_id: 'mat-1',
   carrera_id: 'car-1',
   cohorte_id: 'coh-1',
+  materia_nombre: null,
+  carrera_nombre: null,
+  cohorte_nombre: null,
   rol: 'PROFESOR',
   desde: '2024-03-01',
   hasta: null,

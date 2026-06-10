@@ -24,10 +24,10 @@ export default function SyncMoodlePanel({ materia_id, cohorte_id, course_id }: P
       { course_id, materia_id, cohorte_id },
       {
         onSuccess: (version) => {
-          toast.success(`Sincronización exitosa: ${version.total_filas} filas desde Moodle`)
+          toast.success(`Sincronización exitosa: ${version.filas_total} filas desde Moodle`)
         },
         onError: (err) => {
-          const de = err as DomainError
+          const de = err as unknown as DomainError
           if (de.status === 503) {
             setLocalError({ kind: '503', detail: 'La integración con Moodle no está configurada en este entorno.' })
           } else if (de.status === 502) {

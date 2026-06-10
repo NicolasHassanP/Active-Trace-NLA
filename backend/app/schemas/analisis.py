@@ -38,6 +38,7 @@ class AlumnoAtrasado(BaseModel):
 
     entrada_padron_id: uuid.UUID
     nombre: Optional[str] = None
+    apellidos: Optional[str] = None
     email: Optional[str] = None
     actividades_faltantes: List[str]
     actividades_no_aprobadas: List[str]
@@ -101,6 +102,17 @@ class NotaFinalAlumno(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# ActividadResumen — detalle de una actividad por alumno en el monitor
+# ---------------------------------------------------------------------------
+
+class ActividadResumen(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    actividad: str
+    aprobado: bool
+    nota: Optional[str] = None
+
+
 # MonitorFila — fila del monitor de seguimiento (F2.7/F2.8)
 # ---------------------------------------------------------------------------
 
@@ -111,6 +123,8 @@ class MonitorFila(BaseModel):
     estado: 'atrasado' | 'al_dia' | 'sin_datos'
     aprobadas: cantidad de actividades aprobadas en el período filtrado.
     faltantes: cantidad de actividades seleccionadas sin calificación.
+    nombre / apellidos / email / comision / regional: datos desde EntradaPadron.
+    actividades_detalle: lista de actividades con su resultado individual.
     """
     model_config = ConfigDict(extra="forbid")
 
@@ -118,6 +132,12 @@ class MonitorFila(BaseModel):
     estado: Literal["atrasado", "al_dia", "sin_datos"]
     aprobadas: int
     faltantes: int
+    nombre: Optional[str] = None
+    apellidos: Optional[str] = None
+    email: Optional[str] = None
+    comision: Optional[str] = None
+    regional: Optional[str] = None
+    actividades_detalle: List[ActividadResumen] = []
 
 
 # ---------------------------------------------------------------------------
@@ -132,6 +152,8 @@ class MonitorFiltros(BaseModel):
     Validación: fecha_desde <= fecha_hasta si ambas están presentes.
 
     fecha_desde/fecha_hasta: acota por importado_at de Calificacion (OQ-C11-3).
+    actividad_busqueda: término libre de búsqueda parcial case-insensitive sobre
+        el campo actividad (solo para el monitor — se aplica en Python post-fetch).
     """
     model_config = ConfigDict(extra="forbid")
 
@@ -141,6 +163,7 @@ class MonitorFiltros(BaseModel):
     regional: Optional[str] = None
     busqueda: Optional[str] = None
     actividad: Optional[str] = None
+    actividad_busqueda: Optional[str] = None
     min_cumplidas: Optional[int] = None
     fecha_desde: Optional[datetime] = None
     fecha_hasta: Optional[datetime] = None

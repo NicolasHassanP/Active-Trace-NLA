@@ -152,6 +152,7 @@ class AvisoService:
         self,
         aviso_id: uuid.UUID,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> AcknowledgmentAviso:
         """
         Idempotent acknowledgment: create or return existing active ack.
@@ -161,7 +162,8 @@ class AvisoService:
             - If ack already exists (not soft-deleted), return it without inserting.
             - Partial unique index acts as defense-in-depth against races.
 
-        Identity (usuario_id, tenant_id) ALWAYS from current_user — never from body.
+        domain_user_id: usuario.id resuelto desde auth_identities.id (JWT sub).
+        Identity (tenant_id) ALWAYS from current_user — never from body.
         """
         # Fetch aviso in scope (get_by_id already scopes to tenant + not deleted)
         aviso = await self._aviso_repo.get_by_id(aviso_id)
@@ -180,7 +182,7 @@ class AvisoService:
             )
 
         # Idempotency: return existing active ack (D6)
-        existing = await self._ack_repo.get_by_aviso_usuario(aviso_id, current_user.user_id)
+        existing = await self._ack_repo.get_by_aviso_usuario(aviso_id, domain_user_id)
         if existing is not None:
             return existing
 
@@ -188,7 +190,7 @@ class AvisoService:
         ack = AcknowledgmentAviso(
             tenant_id=current_user.tenant_id,
             aviso_id=aviso_id,
-            usuario_id=current_user.user_id,
+            usuario_id=domain_user_id,
             confirmado_at=now,
         )
         ack = await self._ack_repo.add(ack)

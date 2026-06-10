@@ -25,10 +25,11 @@ const KEYS = {
  * Query hook for GET /api/v1/avisos/gestion.
  * Returns ALL tenant avisos for the management panel (COORDINADOR/ADMIN).
  */
-export function useAvisosGestion() {
+export function useAvisosGestion(enabled = true) {
   return useQuery({
     queryKey: KEYS.gestion,
     queryFn: listarGestion,
+    enabled,
   })
 }
 

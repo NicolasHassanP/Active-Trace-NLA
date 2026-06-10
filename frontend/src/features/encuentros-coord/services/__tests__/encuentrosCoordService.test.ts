@@ -34,7 +34,7 @@ const sampleInstancia: InstanciaEncuentroRead = {
   fecha: '2024-04-10',
   hora: '18:00:00',
   titulo: 'Clase sincrónica 1',
-  estado: 'programado',
+  estado: 'Programado',
   meet_url: 'https://meet.google.com/abc',
   video_url: null,
   comentario: '',
@@ -46,7 +46,7 @@ const sampleGuardia: GuardiaRead = {
   materia_id: 'mat-uuid-1',
   carrera_id: 'car-uuid-1',
   cohorte_id: 'coh-uuid-1',
-  dia: 'lunes',
+  dia: 'Lunes',
   horario: '10:00 - 12:00',
   estado: 'Pendiente',
   comentarios: '',
@@ -130,9 +130,9 @@ describe('listarGuardias', () => {
 
   it('passes dia and estado filters', async () => {
     mock.onGet('/guardias').reply(200, [])
-    await listarGuardias({ dia: 'lunes', estado: 'Pendiente' })
+    await listarGuardias({ dia: 'Lunes', estado: 'Pendiente' })
     const sentParams = mock.history.get[0].params
-    expect(sentParams).toMatchObject({ dia: 'lunes', estado: 'Pendiente' })
+    expect(sentParams).toMatchObject({ dia: 'Lunes', estado: 'Pendiente' })
   })
 
   it('omits null filter values from request', async () => {
@@ -160,7 +160,7 @@ describe('listarGuardias', () => {
 
 describe('exportarGuardias', () => {
   it('returns a Blob on 200 from /guardias/export', async () => {
-    const csvContent = 'id,dia\nguardia-1,lunes\n'
+    const csvContent = 'id,dia\nguardia-1,Lunes\n'
     mock.onGet('/guardias/export').reply(200, new Blob([csvContent], { type: 'text/csv' }))
     const result = await exportarGuardias({})
     expect(result).toBeInstanceOf(Blob)
@@ -168,9 +168,9 @@ describe('exportarGuardias', () => {
 
   it('passes filter params to /guardias/export', async () => {
     mock.onGet('/guardias/export').reply(200, new Blob([''], { type: 'text/csv' }))
-    await exportarGuardias({ materia_id: 'mat-1', dia: 'lunes' })
+    await exportarGuardias({ materia_id: 'mat-1', dia: 'Lunes' })
     const sentParams = mock.history.get[0].params
-    expect(sentParams).toMatchObject({ materia_id: 'mat-1', dia: 'lunes' })
+    expect(sentParams).toMatchObject({ materia_id: 'mat-1', dia: 'Lunes' })
   })
 
   it('omits null filter values from export request', async () => {

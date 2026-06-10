@@ -4,7 +4,8 @@ evaluacion_repository.py — Repositorios para C-14 evaluaciones-y-coloquios.
 Repositorios:
     EvaluacionRepository        — CRUD + listar_con_metricas (métricas derivadas).
     TurnoEvaluacionRepository   — alta de turnos, get_for_update, conteo reservas.
-    CandidatoEvaluacionRepository — import idempotente, existencia de candidato.
+    CandidatoEvaluacionRepository — import idempotente, existencia de candidato,
+                                    listar_convocatorias_del_alumno (HU-47).
     ReservaEvaluacionRepository  — alta, cancelación, conteos.
     ResultadoEvaluacionRepository — upsert, consultas.
 
@@ -256,6 +257,113 @@ class CandidatoEvaluacionRepository(TenantScopedRepository[CandidatoEvaluacion])
         )
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none() is not None
+
+    async def listar_convocatorias_del_alumno(
+        self,
+        alumno_id: uuid.UUID,
+    ) -> list:
+        """
+        HU-47 — Lista las convocatorias donde el alumno es candidato (no cerradas).
+
+        Por cada convocatoria retorna los turnos con cupos_disponibles derivados (D2).
+        Retorna una lista de ConvocatoriasAlumnoRead (importada aquí para evitar
+        dependencia circular con schemas — se construye el dict directamente).
+        """
+        from app.models.estructura import Materia
+        from app.schemas.evaluacion import ConvocatoriasAlumnoRead, TurnoConCupoRead
+
+        # Paso 1: obtener evaluacion_ids donde el alumno es candidato (activas, no cerradas)
+        stmt_evals = (
+            select(Evaluacion)
+            .join(CandidatoEvaluacion, CandidatoEvaluacion.evaluacion_id == Evaluacion.id)
+            .where(
+                CandidatoEvaluacion.alumno_id == alumno_id,
+                CandidatoEvaluacion.tenant_id == self._tenant_id,
+                CandidatoEvaluacion.deleted_at.is_(None),
+                Evaluacion.tenant_id == self._tenant_id,
+                Evaluacion.cerrada.is_(False),
+                Evaluacion.deleted_at.is_(None),
+            )
+        )
+        result_evals = await self._session.execute(stmt_evals)
+        evaluaciones = list(result_evals.scalars().all())
+
+        if not evaluaciones:
+            return []
+
+        # Paso 2: para cada evaluacion cargar materia_nombre + turnos con cupos derivados
+        output: list = []
+        for ev in evaluaciones:
+            # Materia nombre
+            stmt_mat = select(Materia.nombre).where(
+                Materia.id == ev.materia_id,
+                Materia.deleted_at.is_(None),
+            )
+            materia_nombre = (await self._session.execute(stmt_mat)).scalar_one_or_none() or ""
+
+            # Turnos de la evaluacion
+            stmt_turnos = (
+                select(TurnoEvaluacion)
+                .where(
+                    TurnoEvaluacion.evaluacion_id == ev.id,
+                    TurnoEvaluacion.tenant_id == self._tenant_id,
+                    TurnoEvaluacion.deleted_at.is_(None),
+                )
+            )
+            result_turnos = await self._session.execute(stmt_turnos)
+            turnos = list(result_turnos.scalars().all())
+
+            # Cupos disponibles por turno (D2 — derivados en query)
+            turnos_read: list = []
+            for turno in turnos:
+                stmt_res = (
+                    select(func.count(ReservaEvaluacion.id))
+                    .where(
+                        ReservaEvaluacion.turno_id == turno.id,
+                        ReservaEvaluacion.tenant_id == self._tenant_id,
+                        ReservaEvaluacion.estado == ReservaEstado.Activa,
+                        ReservaEvaluacion.deleted_at.is_(None),
+                    )
+                )
+                activas = (await self._session.execute(stmt_res)).scalar() or 0
+                cupos_disponibles = max(0, turno.cupo_total - activas)
+                turnos_read.append(
+                    TurnoConCupoRead(
+                        id=turno.id,
+                        evaluacion_id=turno.evaluacion_id,
+                        fecha=turno.fecha,
+                        cupo_total=turno.cupo_total,
+                        franja=turno.franja,
+                        cupos_disponibles=cupos_disponibles,
+                    )
+                )
+
+            # Reserva activa del alumno en esta convocatoria (D4 — al menos una activa)
+            stmt_reserva = (
+                select(ReservaEvaluacion.id)
+                .where(
+                    ReservaEvaluacion.alumno_id == alumno_id,
+                    ReservaEvaluacion.evaluacion_id == ev.id,
+                    ReservaEvaluacion.tenant_id == self._tenant_id,
+                    ReservaEvaluacion.estado == ReservaEstado.Activa,
+                    ReservaEvaluacion.deleted_at.is_(None),
+                )
+                .limit(1)
+            )
+            reserva_activa_id = (await self._session.execute(stmt_reserva)).scalar_one_or_none()
+
+            output.append(
+                ConvocatoriasAlumnoRead(
+                    evaluacion_id=ev.id,
+                    materia_nombre=materia_nombre,
+                    instancia=ev.instancia,
+                    tipo=ev.tipo,
+                    turnos=turnos_read,
+                    reserva_activa_id=reserva_activa_id,
+                )
+            )
+
+        return output
 
 
 # ---------------------------------------------------------------------------

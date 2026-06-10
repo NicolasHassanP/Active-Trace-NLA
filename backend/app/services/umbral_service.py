@@ -88,7 +88,7 @@ class UmbralService:
         Raises ValueError if no active Asignacion exists for current_user in materia_id.
         """
         asignacion_id = await self._resolve_asignacion(
-            user_id=current_user.user_id,
+            auth_identity_id=current_user.user_id,
             materia_id=materia_id,
             tenant_id=current_user.tenant_id,
         )
@@ -111,27 +111,26 @@ class UmbralService:
 
     async def _resolve_asignacion(
         self,
-        user_id: uuid.UUID,
+        auth_identity_id: uuid.UUID,
         materia_id: uuid.UUID,
         tenant_id: uuid.UUID,
     ) -> uuid.UUID:
         """
         Resolve the asignacion_id for current_user in materia_id.
 
-        Queries the DB for an active Asignacion matching:
-            (tenant_id, usuario_id=user_id, materia_id, deleted_at IS NULL)
-
-        Returns the asignacion_id.
+        auth_identity_id = auth_identities.id (JWT sub). Joins through Usuario
+        to reach Asignacion.usuario_id (usuario.id).
         Raises ValueError if no matching Asignacion is found.
         """
         from sqlalchemy import select
-        from app.models.usuario import Asignacion
+        from app.models.usuario import Asignacion, Usuario
 
         stmt = (
             select(Asignacion)
+            .join(Usuario, (Usuario.id == Asignacion.usuario_id) & (Usuario.deleted_at.is_(None)))
             .where(
                 Asignacion.tenant_id == tenant_id,
-                Asignacion.usuario_id == user_id,
+                Usuario.auth_identity_id == auth_identity_id,
                 Asignacion.materia_id == materia_id,
                 Asignacion.deleted_at.is_(None),
             )
@@ -143,7 +142,7 @@ class UmbralService:
 
         if asignacion is None:
             raise ValueError(
-                f"No active Asignacion found for user {user_id} in materia {materia_id}. "
+                f"No active Asignacion found in materia {materia_id}. "
                 "Cannot configure umbral without an active assignment."
             )
 

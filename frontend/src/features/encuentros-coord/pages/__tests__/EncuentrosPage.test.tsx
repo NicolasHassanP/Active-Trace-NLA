@@ -39,7 +39,7 @@ const sampleInstancia: InstanciaEncuentroRead = {
   fecha: '2024-04-10',
   hora: '18:00:00',
   titulo: 'Clase 1',
-  estado: 'programado',
+  estado: 'Programado',
   meet_url: null,
   video_url: null,
   comentario: '',
@@ -51,7 +51,7 @@ const sampleGuardia: GuardiaRead = {
   materia_id: 'mat-1',
   carrera_id: 'car-1',
   cohorte_id: 'coh-1',
-  dia: 'lunes',
+  dia: 'Lunes',
   horario: '10:00 - 12:00',
   estado: 'Pendiente',
   comentarios: '',
@@ -71,13 +71,17 @@ beforeEach(() => {
 describe('EncuentrosPage — COORDINADOR', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1' },
+      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['COORDINADOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -111,13 +115,17 @@ describe('EncuentrosPage — COORDINADOR', () => {
 describe('EncuentrosPage — ADMIN', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u2', email: 'admin@test.com', roles: ['ADMIN'], tenantId: 't1' },
+      user: { id: 'u2', email: 'admin@test.com', roles: ['ADMIN'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['ADMIN'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -134,13 +142,17 @@ describe('EncuentrosPage — ADMIN', () => {
 describe('EncuentrosPage — FINANZAS (non-authorized)', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u3', email: 'fin@test.com', roles: ['FINANZAS'], tenantId: 't1' },
+      user: { id: 'u3', email: 'fin@test.com', roles: ['FINANZAS'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['FINANZAS'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -162,13 +174,17 @@ describe('EncuentrosPage — FINANZAS (non-authorized)', () => {
 describe('EncuentrosPage — empty states', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1' },
+      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['COORDINADOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
     vi.mocked(service.listarInstancias).mockResolvedValue([])
     vi.mocked(service.listarGuardias).mockResolvedValue([])

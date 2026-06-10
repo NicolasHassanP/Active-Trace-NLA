@@ -93,7 +93,7 @@ Cargá la skill correspondiente al contexto **ANTES** de escribir código. Aplic
 
 El plan de implementación completo está en [CHANGES.md](CHANGES.md). Resumen:
 
-- **Total**: 24 changes (`C-01`…`C-24`) en 6 fases, organizados con 11 gates de paralelismo y un plan óptimo de 3 agentes (Backend Core / Backend Aux / Frontend).
+- **Total**: 28 changes (`C-01`…`C-28`) en 6 fases + extensiones + fixes transversales, organizados con 12 gates de paralelismo y un plan óptimo de 3 agentes (Backend Core / Backend Aux / Frontend). Los changes `C-25` (alumno-portal), `C-26` (mensajeria-frontend) y `C-27` (historial-comunicaciones) son extensiones agregadas post-roadmap original (GATE 11), paralelas entre sí. `C-28` (fix-domain-user-id-transversal) es un fix cross-cutting del invariante `auth_identity_id ≠ usuario.id`, aplicable desde GATE 6 en adelante.
 - **Camino crítico** (10 changes, mínimo irreducible): `C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 → C-12`. Es el flujo de mayor valor: importar → analizar → comunicar, en producción multi-tenant.
 - **Primer change**: `C-01 foundation-setup` (infra, Docker, FastAPI skeleton, DB inicial, OpenTelemetry). Sin dependencias.
 - **Primer fork** (GATE 4, tras `C-04 rbac`): seguridad lista → arrancan en paralelo `C-05 audit-log`, `C-06 estructura-academica` y `C-21 frontend-shell-y-auth`.
@@ -156,6 +156,55 @@ Antes de cualquier acción no trivial: identificá el nivel de governance del do
 ```
 
 Aplicá TODAS las reglas duras en cada paso. Ante conflicto entre la KB y este archivo, las reglas duras prevalecen.
+
+---
+
+## Delegación a Sub-agentes (Regla de Contexto)
+
+El orquestador (contexto principal) debe mantenerse delgado. La regla es simple: **¿esto infla mi contexto sin necesidad? → delegar**.
+
+| Acción | Inline | Delegar |
+|--------|--------|---------|
+| Leer 1–3 archivos para decidir/verificar | ✅ | — |
+| Leer 4+ archivos para explorar/entender | — | ✅ Agent(Explore) |
+| Leer archivos como prep para editar | — | ✅ juntos con el edit |
+| Escribir un archivo mecánico pequeño | ✅ | — |
+| Fix con análisis + 2+ archivos | — | ✅ Agent(general-purpose) |
+| Correr tests, builds, scripts Playwright | — | ✅ Agent(general-purpose) |
+| Estado git, `openspec status` | ✅ | — |
+
+### Flujo de Testing / Debugging (sin change formal)
+
+Cuando la tarea es "testear un flujo y corregir lo que falle" (no hay C-NN previo):
+
+```
+1. Describir qué flujo/rol se va a testear
+2. Investigación inicial (si hay que leer 4+ archivos):
+      Agent(Explore) — "¿Cómo funciona X? ¿Qué archivos tocan Y?"
+3. Ejecutar verificación UI:
+      Agent(general-purpose) — "Corré Playwright en este flujo, reportá errores visibles"
+4. Por cada bug encontrado, delegar el fix:
+      Agent(general-purpose) — "Fix en [archivo A] y [archivo B]: [descripción precisa del problema y la solución]"
+      Incluir: ruta de archivos, la causa raíz (si se conoce), el patrón correcto a aplicar
+5. Re-verificar con otro Agent(general-purpose) post-fix
+6. Llamar mem_session_summary al cerrar la sesión
+```
+
+**Anti-patterns a evitar:**
+- Leer 5+ archivos inline para "entender el bug" → siempre Explore primero
+- Editar 3+ archivos inline → siempre delegar el fix completo
+- Correr Playwright inline y analizar el output en el contexto principal → delegar
+
+### Cómo briefar un sub-agente de fix
+
+El sub-agente arranca sin contexto. El brief debe incluir:
+```
+Problema: [qué falla y por qué — causa raíz si se conoce]
+Archivos a modificar: [rutas exactas]
+Patrón correcto: [cómo debe quedar el código]
+Reglas duras del proyecto: [las relevantes — ej. identidad desde JWT, JOIN correcto]
+No hacer: [qué no romper, qué no tocar]
+```
 
 ---
 

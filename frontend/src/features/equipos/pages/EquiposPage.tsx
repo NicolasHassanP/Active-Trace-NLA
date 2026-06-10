@@ -47,7 +47,7 @@ export default function EquiposPage() {
   const misItems = misEquiposQuery.data ?? []
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 p-6">
+    <div className="space-y-8">
       <PageHeader title="Equipos docentes" />
 
       {/* Mis equipos — visible for all authorized roles */}

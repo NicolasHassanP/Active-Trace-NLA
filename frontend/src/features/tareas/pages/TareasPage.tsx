@@ -31,6 +31,7 @@ export default function TareasPage() {
   const cambiarEstadoMutation = useCambiarEstado()
 
   const [showForm, setShowForm] = useState(false)
+  const [selectedTareaId, setSelectedTareaId] = useState<string | null>(null)
 
   function handleCambiarEstado(tareaId: string, estado: TareaEstado) {
     cambiarEstadoMutation.mutate(
@@ -48,7 +49,7 @@ export default function TareasPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 p-6">
+    <div className="space-y-8">
       <PageHeader title="Tareas" />
 
       {/* Admin panel — COORDINADOR / ADMIN only */}
@@ -86,6 +87,8 @@ export default function TareasPage() {
               tareas={tareasAdminQuery.data ?? []}
               onCambiarEstado={handleCambiarEstado}
               onDelegar={handleDelegar}
+              selectedTareaId={selectedTareaId}
+              onSelect={setSelectedTareaId}
             />
           )}
         </section>
@@ -106,7 +109,11 @@ export default function TareasPage() {
         )}
 
         {!misTareasQuery.isLoading && !misTareasQuery.isError && (
-          <MisTareasList tareas={misTareasQuery.data ?? []} />
+          <MisTareasList
+            tareas={misTareasQuery.data ?? []}
+            selectedTareaId={selectedTareaId}
+            onSelect={setSelectedTareaId}
+          />
         )}
       </section>
     </div>

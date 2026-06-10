@@ -36,7 +36,7 @@ export default function VaciarPadronButton({ materia_id, cohorte_id, onSuccess }
           onSuccess?.()
         },
         onError: (err) => {
-          const de = err as DomainError
+          const de = err as unknown as DomainError
           if (de.status === 404) {
             toast.info('No existía un padrón activo para vaciar')
           } else if (de.status === 403) {

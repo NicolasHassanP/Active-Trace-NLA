@@ -31,7 +31,7 @@ export default function PadronImportForm({ materia_id, cohorte_id, onSuccess }: 
     preview.mutate(file, {
       onSuccess: (rows) => setPreviewRows(rows),
       onError: (err) => {
-        const de = err as DomainError
+        const de = err as unknown as DomainError
         setPreviewError(de.detail ?? 'Error al previsualizar el archivo')
       },
     })
@@ -43,13 +43,13 @@ export default function PadronImportForm({ materia_id, cohorte_id, onSuccess }: 
       { materia_id, cohorte_id, rows: previewRows },
       {
         onSuccess: (version) => {
-          toast.success(`Padrón activado: ${version.total_filas} filas importadas`)
+          toast.success(`Padrón activado: ${version.filas_total} filas importadas`)
           setPreviewRows(null)
           if (fileRef.current) fileRef.current.value = ''
-          onSuccess?.(version.total_filas)
+          onSuccess?.(version.filas_total)
         },
         onError: (err) => {
-          const de = err as DomainError
+          const de = err as unknown as DomainError
           toast.error(`Error al activar: ${de.detail}`)
         },
       },
@@ -78,9 +78,16 @@ export default function PadronImportForm({ materia_id, cohorte_id, onSuccess }: 
       )}
 
       {previewError && (
-        <p role="alert" className="text-sm text-red-600">
-          {previewError}
-        </p>
+        <div role="alert" className="flex items-start gap-2 rounded border border-red-300 bg-red-50 px-3 py-2">
+          <p className="flex-1 text-sm text-red-700">{previewError}</p>
+          <button
+            onClick={() => setPreviewError(null)}
+            className="shrink-0 text-red-400 hover:text-red-600"
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       {previewRows && previewRows.length > 0 && (

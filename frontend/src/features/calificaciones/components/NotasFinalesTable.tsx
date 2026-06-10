@@ -38,7 +38,7 @@ export default function NotasFinalesTable({ materia_id, actividades = [] }: Prop
   }
 
   if (isError) {
-    const de = error as DomainError
+    const de = error as unknown as DomainError
     return (
       <p role="alert" className="text-sm text-red-600">
         {de.detail ?? 'Error al cargar las notas finales'}

@@ -23,7 +23,7 @@ from typing import List
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.calificacion_repository import CalificacionRepository
 from app.repositories.padron_repository import PadronRepository
@@ -116,8 +116,9 @@ async def importar_calificaciones(
     Retorna la lista de CalificacionRead creadas/actualizadas.
     La identidad del actor viene del JWT — nunca del body.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_cal_service(db, current_user.tenant_id)
-    cals = await svc.importar(req=body, current_user=current_user)
+    cals = await svc.importar(req=body, current_user=current_user, domain_user_id=domain_user_id)
     return cals
 
 
@@ -200,14 +201,16 @@ async def get_umbral(
     Identidad del actor desde el JWT — nunca del query param.
     """
     from sqlalchemy import select
-    from app.models.usuario import Asignacion
+    from app.models.usuario import Asignacion, Usuario
 
-    # Resolve asignacion_id from current_user + materia_id
+    # current_user.user_id = auth_identities.id (JWT sub).
+    # Asignacion.usuario_id references usuario.id — resolve via Usuario join.
     stmt = (
         select(Asignacion)
+        .join(Usuario, (Usuario.id == Asignacion.usuario_id) & (Usuario.deleted_at.is_(None)))
         .where(
             Asignacion.tenant_id == current_user.tenant_id,
-            Asignacion.usuario_id == current_user.user_id,
+            Usuario.auth_identity_id == current_user.user_id,
             Asignacion.materia_id == materia_id,
             Asignacion.deleted_at.is_(None),
         )

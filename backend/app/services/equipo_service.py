@@ -64,22 +64,90 @@ class EquipoService:
     # listar_mis_equipos — GET /mis-equipos
     # -----------------------------------------------------------------------
 
-    async def listar_mis_equipos(self, current_user: CurrentUser) -> List[MisEquiposItem]:
+    async def listar_mis_equipos(
+        self,
+        current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
+    ) -> List[MisEquiposItem]:
         """
         Devuelve las asignaciones del usuario autenticado con estado_vigencia derivado.
         Identidad SIEMPRE desde el JWT — nunca del body.
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
-        asignaciones = await self._asig_repo.list(usuario_id=current_user.user_id)
-        return [self._to_mis_equipos_item(a) for a in asignaciones]
+        asignaciones = await self._asig_repo.list(
+            usuario_id=domain_user_id
+        )
+        if not asignaciones:
+            return []
 
-    def _to_mis_equipos_item(self, asig: Asignacion) -> MisEquiposItem:
+        # Resolver nombres de materia/carrera/cohorte/usuario en un solo round-trip
+        from sqlalchemy import select
+        from app.models.estructura import Materia, Carrera, Cohorte
+        from app.models.usuario import Usuario
+
+        materia_ids = {a.materia_id for a in asignaciones if a.materia_id}
+        carrera_ids = {a.carrera_id for a in asignaciones if a.carrera_id}
+        cohorte_ids = {a.cohorte_id for a in asignaciones if a.cohorte_id}
+        usuario_ids = {a.usuario_id for a in asignaciones if a.usuario_id}
+
+        db = self._asig_repo._session
+
+        materias_map: dict = {}
+        if materia_ids:
+            rows = (await db.execute(
+                select(Materia.id, Materia.nombre).where(Materia.id.in_(materia_ids))
+            )).all()
+            materias_map = {r.id: r.nombre for r in rows}
+
+        carreras_map: dict = {}
+        if carrera_ids:
+            rows = (await db.execute(
+                select(Carrera.id, Carrera.nombre).where(Carrera.id.in_(carrera_ids))
+            )).all()
+            carreras_map = {r.id: r.nombre for r in rows}
+
+        cohortes_map: dict = {}
+        if cohorte_ids:
+            rows = (await db.execute(
+                select(Cohorte.id, Cohorte.nombre).where(Cohorte.id.in_(cohorte_ids))
+            )).all()
+            cohortes_map = {r.id: r.nombre for r in rows}
+
+        usuarios_map: dict = {}
+        if usuario_ids:
+            rows = (await db.execute(
+                select(Usuario.id, Usuario.nombre, Usuario.apellidos)
+                .where(Usuario.id.in_(usuario_ids))
+            )).all()
+            usuarios_map = {r.id: (r.nombre, r.apellidos) for r in rows}
+
+        return [
+            self._to_mis_equipos_item(a, materias_map, carreras_map, cohortes_map, usuarios_map)
+            for a in asignaciones
+        ]
+
+    def _to_mis_equipos_item(
+        self,
+        asig: Asignacion,
+        materias_map: dict = {},
+        carreras_map: dict = {},
+        cohortes_map: dict = {},
+        usuarios_map: dict = {},
+    ) -> MisEquiposItem:
         """Mapea una Asignacion a MisEquiposItem con estado_vigencia derivado."""
         ev = estado_vigencia(asig.desde, asig.hasta)
+        usr = usuarios_map.get(asig.usuario_id, (None, None))
         return MisEquiposItem(
             asignacion_id=asig.id,
+            usuario_id=asig.usuario_id,
+            usuario_nombre=usr[0],
+            usuario_apellidos=usr[1],
             materia_id=asig.materia_id,
             carrera_id=asig.carrera_id,
             cohorte_id=asig.cohorte_id,
+            materia_nombre=materias_map.get(asig.materia_id) if asig.materia_id else None,
+            carrera_nombre=carreras_map.get(asig.carrera_id) if asig.carrera_id else None,
+            cohorte_nombre=cohortes_map.get(asig.cohorte_id) if asig.cohorte_id else None,
             rol=asig.rol,
             desde=asig.desde,
             hasta=asig.hasta,
@@ -103,7 +171,23 @@ class EquipoService:
             rol=query.rol,
             responsable_id=query.responsable_id,
         )
-        return [self._to_mis_equipos_item(a) for a in asignaciones]
+        if not asignaciones:
+            return []
+
+        from sqlalchemy import select
+        from app.models.usuario import Usuario
+
+        usuario_ids = {a.usuario_id for a in asignaciones if a.usuario_id}
+        db = self._asig_repo._session
+        usuarios_map: dict = {}
+        if usuario_ids:
+            rows = (await db.execute(
+                select(Usuario.id, Usuario.nombre, Usuario.apellidos)
+                .where(Usuario.id.in_(usuario_ids))
+            )).all()
+            usuarios_map = {r.id: (r.nombre, r.apellidos) for r in rows}
+
+        return [self._to_mis_equipos_item(a, usuarios_map=usuarios_map) for a in asignaciones]
 
     # -----------------------------------------------------------------------
     # asignacion_masiva — POST /asignacion-masiva

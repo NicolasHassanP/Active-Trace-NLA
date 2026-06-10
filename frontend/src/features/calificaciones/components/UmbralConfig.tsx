@@ -44,7 +44,7 @@ export default function UmbralConfig({ materia_id }: Props) {
           )
         },
         onError: (err) => {
-          const de = err as DomainError
+          const de = err as unknown as DomainError
           toast.error(`Error al guardar umbral: ${de.detail}`)
         },
       },
@@ -56,7 +56,7 @@ export default function UmbralConfig({ materia_id }: Props) {
   }
 
   if (isError) {
-    const de = error as DomainError
+    const de = error as unknown as DomainError
     return (
       <p role="alert" className="text-sm text-red-600">
         {de.detail ?? 'Error al cargar el umbral'}

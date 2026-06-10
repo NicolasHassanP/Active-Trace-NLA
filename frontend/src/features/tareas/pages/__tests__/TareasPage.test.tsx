@@ -1,10 +1,11 @@
 /**
- * TareasPage render tests — role-gated rendering.
+ * TareasPage render tests — role-gated rendering + accordion comments.
  * Task 3.8 — TDD: RED first.
- * Covers: COORDINADOR sees admin panel, PROFESOR sees only mis-tareas, error state.
+ * Covers: COORDINADOR sees admin panel, PROFESOR sees only mis-tareas,
+ * error state, and accordion click shows ComentariosThread.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { createElement } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -48,18 +49,23 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(service.listarMias).mockResolvedValue([sampleTarea])
   vi.mocked(service.listarAdmin).mockResolvedValue([sampleTarea])
+  vi.mocked(service.listarComentarios).mockResolvedValue([])
 })
 
 describe('TareasPage — COORDINADOR', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1' },
+      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['COORDINADOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -79,13 +85,17 @@ describe('TareasPage — COORDINADOR', () => {
 describe('TareasPage — PROFESOR', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u2', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1' },
+      user: { id: 'u2', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['PROFESOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -104,13 +114,17 @@ describe('TareasPage — PROFESOR', () => {
 describe('TareasPage — empty mis-tareas', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u2', email: 'prof@test.com', roles: ['TUTOR'], tenantId: 't1' },
+      user: { id: 'u2', email: 'prof@test.com', roles: ['TUTOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['TUTOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
     vi.mocked(service.listarMias).mockResolvedValue([])
   })
@@ -124,13 +138,17 @@ describe('TareasPage — empty mis-tareas', () => {
 describe('TareasPage — error state', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u2', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1' },
+      user: { id: 'u2', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['PROFESOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
     vi.mocked(service.listarMias).mockRejectedValue({ status: 403, detail: 'Forbidden' })
   })
@@ -138,5 +156,58 @@ describe('TareasPage — error state', () => {
   it('shows error alert when API call fails', async () => {
     render(<TareasPage />, { wrapper: makeWrapper() })
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+  })
+})
+
+describe('TareasPage — accordion comments', () => {
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: 'u2', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
+      roles: ['PROFESOR'],
+      tenantId: 't1',
+      isAuthenticated: true,
+      isInitializing: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
+    })
+  })
+
+  it('clicking a task row expands ComentariosThread for that task', async () => {
+    render(<TareasPage />, { wrapper: makeWrapper() })
+
+    // Wait for the task list to render
+    await screen.findByTestId('mis-tareas-list')
+
+    // ComentariosThread not visible yet
+    expect(screen.queryByTestId('comentarios-thread')).not.toBeInTheDocument()
+
+    // Click the task row (the role=button div inside the li)
+    const rowButton = screen.getByRole('button', { name: /revisar actas/i })
+    fireEvent.click(rowButton)
+
+    // ComentariosThread should now be visible
+    await waitFor(() =>
+      expect(screen.getByTestId('comentarios-thread')).toBeInTheDocument()
+    )
+  })
+
+  it('clicking the same task row again collapses the accordion', async () => {
+    render(<TareasPage />, { wrapper: makeWrapper() })
+
+    await screen.findByTestId('mis-tareas-list')
+
+    const rowButton = screen.getByRole('button', { name: /revisar actas/i })
+    fireEvent.click(rowButton)
+    await waitFor(() => expect(screen.getByTestId('comentarios-thread')).toBeInTheDocument())
+
+    // Click again to collapse
+    fireEvent.click(rowButton)
+    await waitFor(() =>
+      expect(screen.queryByTestId('comentarios-thread')).not.toBeInTheDocument()
+    )
   })
 })

@@ -29,6 +29,7 @@ from app.models.rbac import PermisoScope
 from app.repositories.analisis_repository import AnalisisRepository
 from app.repositories.audit_repository import AuditRepository
 from app.schemas.analisis import (
+    ActividadResumen,
     AlumnoAtrasado,
     MonitorFila,
     MonitorFiltros,
@@ -79,29 +80,29 @@ class AnalisisService:
         actividades: List[str],
         current_user: CurrentUser,
         grant,
+        domain_user_id: uuid.UUID,
     ) -> List[AlumnoAtrasado]:
         """
         Lista de alumnos atrasados para materia×cohorte×actividades.
 
-        Scope propio: filtra por importado_por=current_user.user_id (RN-04).
+        Scope propio: filtra por importado_por=domain_user_id (RN-04).
         Scope global: todas las importaciones del tenant.
-        Fail-closed: sin actividades → vacío.
+        Sin actividades: usa todas las actividades importadas para la materia.
 
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         Identidad/tenant SIEMPRE desde current_user.
         """
-        if not actividades:
-            return []
-
         importado_por = (
             None
             if self._es_scope_global(grant)
-            else current_user.user_id
+            else domain_user_id
         )
 
+        # Fetch todas las cals (sin filtro de actividades si no se especificaron)
         calificaciones = await self._repo.calificaciones_por_materia(
             materia_id,
             importado_por=importado_por,
-            actividades=actividades,
+            actividades=actividades if actividades else None,
         )
 
         # Construir mapa entrada_padron_id → [cal dicts]
@@ -115,7 +116,40 @@ class AnalisisService:
                 "nota_textual": cal.nota_textual,
             })
 
-        return calcular_atrasados(actividades, cals_map)
+        # Si no se pasaron actividades, derivarlas de las calificaciones cargadas
+        actividades_efectivas = actividades if actividades else list({
+            cal.actividad for cal in calificaciones if cal.actividad
+        })
+
+        if not actividades_efectivas:
+            return []
+
+        atrasados = calcular_atrasados(actividades_efectivas, cals_map)
+        if not atrasados:
+            return []
+
+        # Enriquecer con nombre/apellidos/email desde EntradaPadron.
+        # Se busca por los IDs concretos de los atrasados (no por versión activa)
+        # para que re-importaciones del padrón no rompan el lookup: las
+        # calificaciones siguen apuntando a los UUIDs de la versión anterior.
+        ids_a_buscar = [a.entrada_padron_id for a in atrasados]
+        entradas = await self._repo.get_entradas_by_ids(ids_a_buscar)
+        entradas_map = {e.id: e for e in entradas}
+
+        resultado: List[AlumnoAtrasado] = []
+        for a in atrasados:
+            entry = entradas_map.get(a.entrada_padron_id)
+            resultado.append(
+                AlumnoAtrasado(
+                    entrada_padron_id=a.entrada_padron_id,
+                    nombre=entry.nombre if entry else None,
+                    apellidos=entry.apellidos if entry else None,
+                    email=entry.email_encrypted if entry else None,
+                    actividades_faltantes=a.actividades_faltantes,
+                    actividades_no_aprobadas=a.actividades_no_aprobadas,
+                )
+            )
+        return resultado
 
     # -----------------------------------------------------------------------
     # ranking — RN-09 (5.4)
@@ -127,12 +161,14 @@ class AnalisisService:
         actividades: List[str],
         current_user: CurrentUser,
         grant,
+        domain_user_id: uuid.UUID,
     ) -> List[RankingFila]:
         """
         Ranking de alumnos por actividades aprobadas (RN-09).
 
         Solo alumnos con al menos 1 aprobada en las actividades seleccionadas.
         Ordenado descendente.
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
         if not actividades:
             return []
@@ -140,7 +176,7 @@ class AnalisisService:
         importado_por = (
             None
             if self._es_scope_global(grant)
-            else current_user.user_id
+            else domain_user_id
         )
 
         calificaciones = await self._repo.calificaciones_por_materia(
@@ -172,32 +208,25 @@ class AnalisisService:
         actividades: List[str],
         current_user: CurrentUser,
         grant,
+        domain_user_id: uuid.UUID,
     ) -> ReporteMateria:
         """
         Métricas consolidadas de una materia×cohorte (F2.4).
 
-        sin_datos=True si no hay calificaciones o actividades vacías.
+        sin_datos=True si no hay calificaciones.
+        Sin actividades: usa todas las importadas para la materia.
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
-        if not actividades:
-            return ReporteMateria(
-                total_actividades=0,
-                total_alumnos=0,
-                total_atrasados=0,
-                total_aprobadas=0,
-                tasa_aprobacion=0.0,
-                sin_datos=True,
-            )
-
         importado_por = (
             None
             if self._es_scope_global(grant)
-            else current_user.user_id
+            else domain_user_id
         )
 
         calificaciones = await self._repo.calificaciones_por_materia(
             materia_id,
             importado_por=importado_por,
-            actividades=actividades,
+            actividades=actividades if actividades else None,
         )
 
         if not calificaciones:
@@ -221,7 +250,11 @@ class AnalisisService:
                 "nota_textual": cal.nota_textual,
             })
 
-        atrasados = calcular_atrasados(actividades, cals_map)
+        # Usar actividades efectivas (las pasadas, o derivadas de las calificaciones)
+        actividades_efectivas = actividades if actividades else list({
+            cal.actividad for cal in calificaciones if cal.actividad
+        })
+        atrasados = calcular_atrasados(actividades_efectivas, cals_map)
         total_alumnos = len(cals_map)
         total_aprobadas = sum(1 for c in calificaciones if c.aprobado)
         total_registros = len(calificaciones)
@@ -246,11 +279,13 @@ class AnalisisService:
         actividades: List[str],
         current_user: CurrentUser,
         grant,
+        domain_user_id: uuid.UUID,
     ) -> List[NotaFinalAlumno]:
         """
         Notas finales por alumno (promedio simple, D7, OQ-C11-1).
 
         Incluye alumnos sin calificaciones (nota_final=None).
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
         if not actividades:
             return []
@@ -258,7 +293,7 @@ class AnalisisService:
         importado_por = (
             None
             if self._es_scope_global(grant)
-            else current_user.user_id
+            else domain_user_id
         )
 
         calificaciones = await self._repo.calificaciones_por_materia(
@@ -289,6 +324,7 @@ class AnalisisService:
         actividades: List[str],
         current_user: CurrentUser,
         grant,
+        domain_user_id: uuid.UUID,
     ) -> List[MonitorFila]:
         """
         Monitor de seguimiento (F2.7/F2.8/F2.9).
@@ -297,6 +333,7 @@ class AnalisisService:
         Scope propio: solo alumnos de materias asignadas al docente (D4).
 
         Filtros: comision, regional, busqueda, rango de fechas (OQ-C11-3).
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
         if filtros.materia_id is None:
             return []
@@ -304,7 +341,7 @@ class AnalisisService:
         importado_por = (
             None
             if self._es_scope_global(grant)
-            else current_user.user_id
+            else domain_user_id
         )
 
         # Obtener entradas del padrón activo (con filtros de comisión/regional/búsqueda)
@@ -325,11 +362,15 @@ class AnalisisService:
 
         entrada_ids = [e.id for e in entradas]
 
-        # Obtener calificaciones con filtros de fecha (F2.9)
+        # Obtener calificaciones con filtros de fecha (F2.9).
+        # Cuando hay actividad_busqueda (búsqueda parcial libre del monitor),
+        # se omite el filtro SQL de actividades para traer todo y luego aplicar
+        # la coincidencia case-insensitive en Python.
+        actividades_sql = actividades if actividades else None
         calificaciones = await self._repo.calificaciones_por_materia(
             filtros.materia_id,
             importado_por=importado_por,
-            actividades=actividades if actividades else None,
+            actividades=actividades_sql,
             fecha_desde=filtros.fecha_desde,
             fecha_hasta=filtros.fecha_hasta,
         )
@@ -337,6 +378,15 @@ class AnalisisService:
         # Filtrar por las entradas del padrón visible
         entrada_ids_set = set(entrada_ids)
         calificaciones = [c for c in calificaciones if c.entrada_padron_id in entrada_ids_set]
+
+        # Búsqueda parcial case-insensitive sobre actividad (solo monitor, F2.7).
+        # Se aplica después del fetch para no alterar el contrato del repositorio.
+        if filtros.actividad_busqueda:
+            term = filtros.actividad_busqueda.lower()
+            calificaciones = [
+                c for c in calificaciones
+                if c.actividad and term in c.actividad.lower()
+            ]
 
         # Construir mapa
         cals_map: dict[uuid.UUID, list[dict]] = {}
@@ -349,11 +399,28 @@ class AnalisisService:
                 "nota_textual": cal.nota_textual,
             })
 
+        # Derivar todas las actividades presentes en el dataset cuando no se
+        # especifica filtro. Calculado una vez antes del loop (O(n), no O(n²)).
+        todas_actividades_dataset: set[str] = (
+            {cal.actividad for cal in calificaciones if cal.actividad}
+            if not actividades
+            else set()
+        )
+
         # Construir filas del monitor
         filas: List[MonitorFila] = []
         for entrada in entradas:
             cals = cals_map.get(entrada.id, [])
-            actividades_set = set(actividades) if actividades else set()
+
+            # Cuando hay filtro de actividades activo y el alumno no tiene
+            # calificaciones para esas actividades, omitirlo del resultado.
+            # Sin filtro, se muestran todos los alumnos del padrón (comportamiento actual).
+            if not cals and actividades:
+                continue
+
+            # Si se pasaron actividades explícitas úsalas; si no, usar las del
+            # dataset (todas las actividades conocidas en las calificaciones).
+            actividades_set = set(actividades) if actividades else todas_actividades_dataset
 
             if not cals:
                 # Sin datos para este alumno
@@ -361,9 +428,17 @@ class AnalisisService:
                 faltantes = len(actividades_set)
                 estado = "sin_datos"
             else:
-                aprobadas = sum(1 for c in cals if c["aprobado"] and (not actividades or c["actividad"] in actividades_set))
-                faltantes_set = actividades_set - {c["actividad"] for c in cals if c["actividad"] in actividades_set}
-                no_aprobadas = [c for c in cals if not c["aprobado"] and c["actividad"] in (actividades_set or {c["actividad"]})]
+                aprobadas = sum(
+                    1 for c in cals
+                    if c["aprobado"] and (not actividades or c["actividad"] in actividades_set)
+                )
+                faltantes_set = actividades_set - {
+                    c["actividad"] for c in cals if c["actividad"] in actividades_set
+                }
+                no_aprobadas = [
+                    c for c in cals
+                    if not c["aprobado"] and c["actividad"] in actividades_set
+                ]
                 faltantes = len(faltantes_set)
 
                 if faltantes > 0 or no_aprobadas:
@@ -375,11 +450,31 @@ class AnalisisService:
             if filtros.min_cumplidas is not None and aprobadas < filtros.min_cumplidas:
                 continue
 
+            detalle = [
+                ActividadResumen(
+                    actividad=c["actividad"],
+                    aprobado=c["aprobado"],
+                    nota=(
+                        str(c["nota_numerica"])
+                        if c["nota_numerica"] is not None
+                        else c["nota_textual"]
+                    ),
+                )
+                for c in cals
+                if not actividades_set or c["actividad"] in actividades_set
+            ]
+
             filas.append(MonitorFila(
                 entrada_padron_id=entrada.id,
                 estado=estado,
                 aprobadas=aprobadas,
                 faltantes=faltantes,
+                nombre=getattr(entrada, "nombre", None),
+                apellidos=getattr(entrada, "apellidos", None),
+                email=getattr(entrada, "email_encrypted", None),
+                comision=getattr(entrada, "comision", None),
+                regional=getattr(entrada, "regional", None),
+                actividades_detalle=detalle,
             ))
 
         return filas

@@ -98,6 +98,7 @@ class InboxHiloRead(BaseModel):
 
     no_leidos: mensajes con created_at > last_read_at del participante.
     ultimo_mensaje_at: timestamp del mensaje más reciente.
+    otro_participante_nombre: nombre completo del otro usuario en la conversación.
     """
     model_config = ConfigDict(extra="forbid", from_attributes=False)
 
@@ -105,6 +106,7 @@ class InboxHiloRead(BaseModel):
     asunto: Optional[str] = None
     no_leidos: int = 0
     ultimo_mensaje_at: Optional[datetime] = None
+    otro_participante_nombre: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

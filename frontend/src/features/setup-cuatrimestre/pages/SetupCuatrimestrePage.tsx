@@ -57,7 +57,7 @@ function SetupWizard() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-6 grid grid-cols-3 gap-8">
+    <div className="grid grid-cols-3 gap-8">
       {/* Left panel: stepper */}
       <aside className="col-span-1">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">

@@ -34,12 +34,12 @@ const wrapper =
 
 const mockAlumnos: AlumnoAtrasado[] = [
   {
-    alumno_id: 'a1', nombre: 'Ana', apellidos: 'Paz', email: 'ana@test.com',
-    actividades_faltantes: ['TP1'], actividades_no_aprobadas: [], estado: 'atrasado',
+    entrada_padron_id: 'a1', nombre: 'Ana', apellidos: 'Paz', email: 'ana@test.com',
+    actividades_faltantes: ['TP1'], actividades_no_aprobadas: [],
   },
   {
-    alumno_id: 'a2', nombre: 'Luis', apellidos: 'Vera', email: 'luis@test.com',
-    actividades_faltantes: [], actividades_no_aprobadas: ['Parcial1'], estado: 'atrasado',
+    entrada_padron_id: 'a2', nombre: 'Luis', apellidos: 'Vera', email: 'luis@test.com',
+    actividades_faltantes: [], actividades_no_aprobadas: ['Parcial1'],
   },
 ]
 

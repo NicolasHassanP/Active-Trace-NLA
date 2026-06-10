@@ -23,7 +23,7 @@ const sampleInstancia: InstanciaEncuentroRead = {
   fecha: '2024-04-10',
   hora: '18:00:00',
   titulo: 'Clase 1',
-  estado: 'programado',
+  estado: 'Programado',
   meet_url: null,
   video_url: null,
   comentario: '',
@@ -35,7 +35,7 @@ const sampleGuardia: GuardiaRead = {
   materia_id: 'mat-1',
   carrera_id: 'car-1',
   cohorte_id: 'coh-1',
-  dia: 'lunes',
+  dia: 'Lunes',
   horario: '10:00 - 12:00',
   estado: 'Pendiente',
   comentarios: '',
@@ -109,7 +109,7 @@ describe('useGuardias', () => {
 
   it('calls service with all provided filter params', async () => {
     vi.mocked(service.listarGuardias).mockResolvedValue([])
-    const params = { materia_id: 'mat-1', dia: 'lunes', estado: 'Pendiente' }
+    const params = { materia_id: 'mat-1', dia: 'Lunes', estado: 'Pendiente' }
     const { result } = renderHook(() => useGuardias(params), { wrapper: makeWrapper() })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(service.listarGuardias).toHaveBeenCalledWith(params)
@@ -127,10 +127,10 @@ describe('useGuardias', () => {
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       createElement(QueryClientProvider, { client: qc }, children)
 
-    const { result: r1 } = renderHook(() => useGuardias({ dia: 'lunes' }), { wrapper })
+    const { result: r1 } = renderHook(() => useGuardias({ dia: 'Lunes' }), { wrapper })
     await waitFor(() => expect(r1.current.isSuccess).toBe(true))
 
-    const { result: r2 } = renderHook(() => useGuardias({ dia: 'martes' }), { wrapper })
+    const { result: r2 } = renderHook(() => useGuardias({ dia: 'Martes' }), { wrapper })
     await waitFor(() => expect(r2.current.isSuccess).toBe(true))
 
     expect(service.listarGuardias).toHaveBeenCalledTimes(2)

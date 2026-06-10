@@ -1,43 +1,82 @@
 /**
- * TareaForm — RHF + Zod form for creating a new Tarea.
+ * TareaForm — form for creating a new Tarea.
+ * Docente selector from GET /equipos/mis-equipos (uses user's team context).
+ * Materia selector from GET /perfil/mis-asignaciones.
  * Task 3.7. < 200 LOC.
  */
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { tareaCreateSchema, type TareaCreateFormValues } from '../services/tareaSchema'
+import { getMisAsignaciones } from '@/features/padron/services/misAsignacionesService'
+import { listarMisEquipos, consultarEquipo } from '@/features/equipos/services/equiposService'
 import { useCrearTarea } from '../hooks/tareasHooks'
 
 interface Props {
   onClose: () => void
 }
 
+function docenteLabel(item: { usuario_nombre: string | null; usuario_apellidos: string | null; usuario_id: string; rol: string }): string {
+  const nombre = [item.usuario_apellidos, item.usuario_nombre].filter(Boolean).join(', ')
+  return nombre ? `${nombre} (${item.rol})` : `${item.usuario_id.slice(0, 8)}… (${item.rol})`
+}
+
 export default function TareaForm({ onClose }: Props) {
   const crearMutation = useCrearTarea()
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<TareaCreateFormValues>({
-    resolver: zodResolver(tareaCreateSchema),
-    defaultValues: {
-      asignado_a: '',
-      descripcion: '',
-      materia_id: null,
-      contexto_id: null,
-      contexto_tipo: null,
-    },
+  const [asignadoA, setAsignadoA] = useState('')
+  const [descripcion, setDescripcion] = useState('')
+  const [materiaId, setMateriaId] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  // Load coordinator's own asignaciones to get materia context
+  const misEquiposQuery = useQuery({
+    queryKey: ['mis-equipos-form'],
+    queryFn: listarMisEquipos,
   })
 
-  function onSubmit(data: TareaCreateFormValues) {
+  const misAsignacionesQuery = useQuery({
+    queryKey: ['mis-asignaciones'],
+    queryFn: getMisAsignaciones,
+  })
+
+  // Get first available materia/carrera/cohorte from coordinator's assignments
+  const misEquipos = misEquiposQuery.data ?? []
+  const uniqueMaterias = misEquipos.filter(
+    (a, i, arr) => a.materia_id && arr.findIndex((b) => b.materia_id === a.materia_id) === i,
+  )
+  const selectedEquipoContext = misEquipos.find((e) => e.materia_id === materiaId)
+
+  // Load team members for selected materia context
+  const equipoQuery = useQuery({
+    queryKey: ['equipo-docentes', selectedEquipoContext?.materia_id, selectedEquipoContext?.carrera_id, selectedEquipoContext?.cohorte_id],
+    queryFn: () =>
+      consultarEquipo({
+        materia_id: selectedEquipoContext!.materia_id!,
+        carrera_id: selectedEquipoContext!.carrera_id!,
+        cohorte_id: selectedEquipoContext!.cohorte_id!,
+      }),
+    enabled: !!(selectedEquipoContext?.materia_id && selectedEquipoContext?.carrera_id && selectedEquipoContext?.cohorte_id),
+  })
+
+  // Reset docente when materia changes
+  useEffect(() => { setAsignadoA('') }, [materiaId])
+
+  const docentes = equipoQuery.data ?? []
+  const misAsignaciones = misAsignacionesQuery.data ?? []
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!asignadoA) { setError('Seleccioná un docente.'); return }
+    if (!descripcion.trim()) { setError('La descripción es obligatoria.'); return }
+
     crearMutation.mutate(
       {
-        asignado_a: data.asignado_a,
-        descripcion: data.descripcion,
-        materia_id: data.materia_id ?? null,
-        contexto_id: data.contexto_id ?? null,
-        contexto_tipo: data.contexto_tipo ?? null,
+        asignado_a: asignadoA,
+        descripcion: descripcion.trim(),
+        materia_id: materiaId || null,
+        contexto_id: null,
+        contexto_tipo: null,
       },
       {
         onSuccess: () => {
@@ -52,52 +91,76 @@ export default function TareaForm({ onClose }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+
+      {/* Materia (context para cargar equipo) */}
       <div>
-        <label htmlFor="asignado_a" className="block text-sm font-medium text-gray-700">
-          Docente asignado (ID) <span className="text-red-500">*</span>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Materia (opcional)
         </label>
-        <input
-          id="asignado_a"
-          type="text"
-          {...register('asignado_a')}
-          className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
-        />
-        {errors.asignado_a && (
-          <p className="mt-1 text-xs text-red-600">{errors.asignado_a.message}</p>
+        <select
+          value={materiaId}
+          onChange={(e) => setMateriaId(e.target.value)}
+          className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+        >
+          <option value="">Sin materia asignada</option>
+          {uniqueMaterias.map((e) => (
+            <option key={e.materia_id!} value={e.materia_id!}>
+              {e.materia_nombre ?? e.materia_id}
+            </option>
+          ))}
+          {misAsignaciones
+            .filter((a) => a.materia_id && !uniqueMaterias.some((e) => e.materia_id === a.materia_id))
+            .map((a) => (
+              <option key={a.materia_id!} value={a.materia_id!}>
+                {a.materia_nombre ?? a.materia_id}
+              </option>
+            ))}
+        </select>
+      </div>
+
+      {/* Docente asignado */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Docente asignado <span className="text-red-500">*</span>
+        </label>
+        {!materiaId ? (
+          <p className="text-xs text-gray-400 italic">Seleccioná una materia para ver el equipo disponible.</p>
+        ) : equipoQuery.isLoading ? (
+          <p className="text-xs text-gray-400">Cargando equipo…</p>
+        ) : docentes.length === 0 ? (
+          <p className="text-xs text-amber-600">No hay docentes en el equipo para esta materia.</p>
+        ) : (
+          <select
+            value={asignadoA}
+            onChange={(e) => setAsignadoA(e.target.value)}
+            className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+          >
+            <option value="">-- Seleccioná un docente --</option>
+            {docentes.map((d) => (
+              <option key={d.asignacion_id} value={d.usuario_id}>
+                {docenteLabel(d)}
+              </option>
+            ))}
+          </select>
         )}
       </div>
 
+      {/* Descripción */}
       <div>
-        <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           Descripción <span className="text-red-500">*</span>
         </label>
         <textarea
-          id="descripcion"
           rows={3}
-          {...register('descripcion')}
-          className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
-        />
-        {errors.descripcion && (
-          <p className="mt-1 text-xs text-red-600">{errors.descripcion.message}</p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor="materia_id" className="block text-sm font-medium text-gray-700">
-          Materia (ID, opcional)
-        </label>
-        <input
-          id="materia_id"
-          type="text"
-          {...register('materia_id')}
-          className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+          value={descripcion}
+          onChange={(e) => setDescripcion(e.target.value)}
+          className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+          placeholder="Describí la tarea a realizar…"
         />
       </div>
 
-      {errors.root && (
-        <p className="text-xs text-red-600">{errors.root.message}</p>
-      )}
+      {error && <p className="text-xs text-red-600">{error}</p>}
 
       <div className="flex justify-end gap-3">
         <button
@@ -109,7 +172,7 @@ export default function TareaForm({ onClose }: Props) {
         </button>
         <button
           type="submit"
-          disabled={isSubmitting || crearMutation.isPending}
+          disabled={crearMutation.isPending}
           className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
         >
           {crearMutation.isPending ? 'Creando…' : 'Crear tarea'}

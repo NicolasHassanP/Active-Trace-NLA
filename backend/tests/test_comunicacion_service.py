@@ -174,6 +174,7 @@ async def test_encolar_crea_registros_pendiente(db_session, create_tables, monke
                 "dest2@test.edu": {"nombre": "Carlos"},
             },
             current_user=current_user,
+            domain_user_id=usuario.id,
         )
 
         assert len(coms) == 2
@@ -183,10 +184,8 @@ async def test_encolar_crea_registros_pendiente(db_session, create_tables, monke
             assert com.enviado_por == usuario.id
 
     finally:
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant.id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant.id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant.id)},
@@ -220,6 +219,7 @@ async def test_encolar_falla_fuerte_variable_faltante(db_session, create_tables,
                 cuerpo_plantilla="Cuerpo",
                 variables_por_destinatario={},  # Sin variables — falla fuerte
                 current_user=current_user,
+                domain_user_id=usuario.id,
             )
 
         # No se debe haber creado NINGÚN registro del lote
@@ -268,6 +268,7 @@ async def test_encolar_con_aprobacion_requerida_crea_pendientes(db_session, crea
             cuerpo_plantilla="Cuerpo {nombre}.",
             variables_por_destinatario={"dest@test.edu": {"nombre": "Ana"}},
             current_user=current_user,
+            domain_user_id=usuario.id,
         )
 
         # Los mensajes deben estar Pendiente con aprobado_por=None (esperan aprobación)
@@ -282,10 +283,8 @@ async def test_encolar_con_aprobacion_requerida_crea_pendientes(db_session, crea
             assert com.id not in habilitados_ids, "Mensaje sin aprobar no debe ser elegible para el worker"
 
     finally:
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant.id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant.id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant.id)},
@@ -324,9 +323,10 @@ async def test_aprobar_lote_habilita_para_worker(db_session, create_tables, monk
             cuerpo_plantilla="Cuerpo",
             variables_por_destinatario={"dest@test.edu": {}},
             current_user=current_user,
+            domain_user_id=usuario.id,
         )
 
-        await svc.aprobar_lote(lote_id=lote_id, current_user=aprobador_user)
+        await svc.aprobar_lote(lote_id=lote_id, current_user=aprobador_user, domain_user_id=aprobador.id)
 
         # Después de aprobar, los mensajes deben aparecer en habilitados
         com_repo = ComunicacionRepository(session=db_session, tenant_id=tenant.id)
@@ -336,10 +336,8 @@ async def test_aprobar_lote_habilita_para_worker(db_session, create_tables, monk
             assert com.id in habilitados_ids
 
     finally:
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant.id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant.id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant.id)},
@@ -372,6 +370,7 @@ async def test_cancelar_lote_pasa_a_cancelado(db_session, create_tables, monkeyp
             cuerpo_plantilla="Cuerpo",
             variables_por_destinatario={"dest@test.edu": {}},
             current_user=current_user,
+            domain_user_id=usuario.id,
         )
 
         await svc.cancelar_lote(lote_id=lote_id, current_user=current_user)
@@ -382,10 +381,8 @@ async def test_cancelar_lote_pasa_a_cancelado(db_session, create_tables, monkeyp
             assert com.estado == ModelEstado.Cancelado
 
     finally:
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant.id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant.id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant.id)},
@@ -422,6 +419,7 @@ async def test_cancelar_individual_solo_afecta_ese_mensaje(db_session, create_ta
             cuerpo_plantilla="Cuerpo",
             variables_por_destinatario={"a@test.edu": {}, "b@test.edu": {}},
             current_user=current_user,
+            domain_user_id=usuario.id,
         )
 
         # Cancelar solo el primero
@@ -438,10 +436,8 @@ async def test_cancelar_individual_solo_afecta_ese_mensaje(db_session, create_ta
         assert estados[coms[1].id] == ModelEstado.Pendiente
 
     finally:
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant.id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant.id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant.id)},
@@ -475,6 +471,7 @@ async def test_cancelar_enviado_falla_transicion_invalida(db_session, create_tab
             cuerpo_plantilla="Cuerpo",
             variables_por_destinatario={"dest@test.edu": {}},
             current_user=current_user,
+            domain_user_id=usuario.id,
         )
 
         # Simular que el mensaje ya fue enviado
@@ -502,10 +499,8 @@ async def test_cancelar_enviado_falla_transicion_invalida(db_session, create_tab
             await db_session.rollback()
         except Exception:
             pass
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant_id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant_id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant_id)},
@@ -546,6 +541,7 @@ async def test_encolar_registra_auditoria_exactamente_una_vez(db_session, create
                 "c@test.edu": {},
             },
             current_user=current_user,
+            domain_user_id=usuario.id,
         )
 
         # Verificar que hay exactamente 1 evento de auditoría
@@ -560,10 +556,8 @@ async def test_encolar_registra_auditoria_exactamente_una_vez(db_session, create
         assert count == 1, f"Debe haber exactamente 1 evento de auditoría, hay {count}"
 
     finally:
-        await db_session.execute(
-            text("DELETE FROM audit_event WHERE tenant_id = :tid"),
-            {"tid": str(tenant.id)},
-        )
+        from tests.conftest import delete_audit_events_for_tenant
+        await delete_audit_events_for_tenant(db_session, tenant.id)
         await db_session.execute(
             text("DELETE FROM comunicacion WHERE tenant_id = :tid"),
             {"tid": str(tenant.id)},

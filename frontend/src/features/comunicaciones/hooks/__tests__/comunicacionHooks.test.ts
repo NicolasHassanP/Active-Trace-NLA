@@ -12,9 +12,10 @@ import {
   useAprobarLote,
   useCancelarLote,
   useLoteStatus,
+  useMisEnvios,
 } from '../comunicacionHooks'
 import * as service from '../../services/comunicacionService'
-import type { LoteStatusResponse } from '../../types'
+import type { LoteStatusResponse, MisEnviosResponse } from '../../types'
 
 vi.mock('../../services/comunicacionService')
 
@@ -24,20 +25,38 @@ const createWrapper = () => {
     createElement(QueryClientProvider, { client: qc }, children)
 }
 
+const makeMsg = (estado: import('../../types').EstadoComunicacion) => ({
+  id: 'm1',
+  tenant_id: 't1',
+  lote_id: 'lote1',
+  destinatario_email: 'a@t.com',
+  asunto: '',
+  cuerpo: '',
+  estado,
+  enviado_por: null,
+  aprobado_por: null,
+  enviado_at: null,
+  error_detalle: null,
+  creado_en: '',
+  actualizado_en: '',
+})
+
 const mockLoteInProgress: LoteStatusResponse = {
   lote_id: 'lote1',
-  mensajes: [
-    { id: 'm1', lote_id: 'lote1', destinatario_email: 'a@t.com', asunto: '', cuerpo: '', estado: 'Pendiente', creado_en: '', actualizado_en: '' },
-  ],
-  pendientes: 1, enviados: 0, fallidos: 0, cancelados: 0,
+  mensajes: [makeMsg('Pendiente')],
+  pendientes: 1,
+  enviados: 0,
+  fallidos: 0,
+  cancelados: 0,
 }
 
 const mockLoteDone: LoteStatusResponse = {
   lote_id: 'lote1',
-  mensajes: [
-    { id: 'm1', lote_id: 'lote1', destinatario_email: 'a@t.com', asunto: '', cuerpo: '', estado: 'Enviado', creado_en: '', actualizado_en: '' },
-  ],
-  pendientes: 0, enviados: 1, fallidos: 0, cancelados: 0,
+  mensajes: [makeMsg('Enviado')],
+  pendientes: 0,
+  enviados: 1,
+  fallidos: 0,
+  cancelados: 0,
 }
 
 beforeEach(() => vi.clearAllMocks())
@@ -63,7 +82,7 @@ describe('useEncolarLote', () => {
   it('calls encolarLote and returns lote_id', async () => {
     vi.mocked(service.encolarLote).mockResolvedValue({ lote_id: 'lote1', total_encolados: 3 })
     const { result } = renderHook(() => useEncolarLote(), { wrapper: createWrapper() })
-    result.current.mutate({ asunto_plantilla: 'X', cuerpo_plantilla: 'X', variables_por_destinatario: [] })
+    result.current.mutate({ destinatarios: [], asunto_plantilla: 'X', cuerpo_plantilla: 'X', variables_por_destinatario: {} })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.data?.lote_id).toBe('lote1')
   })
@@ -107,5 +126,42 @@ describe('useLoteStatus', () => {
     const { result } = renderHook(() => useLoteStatus('lote1'), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.isTerminal).toBe(false)
+  })
+})
+
+// C-27 — useMisEnvios
+describe('useMisEnvios', () => {
+  const mockMisEnvios: MisEnviosResponse = {
+    total: 3,
+    offset: 0,
+    limit: 20,
+    items: [makeMsg('Enviado')],
+  }
+
+  it('returns data when API responds 200', async () => {
+    vi.mocked(service.getMisEnvios).mockResolvedValue(mockMisEnvios)
+    const { result } = renderHook(() => useMisEnvios({ offset: 0, limit: 20 }), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.total).toBe(3)
+    expect(result.current.data?.items).toHaveLength(1)
+  })
+
+  it('sets isError=true on 403', async () => {
+    vi.mocked(service.getMisEnvios).mockRejectedValue({ status: 403, detail: 'forbidden' })
+    const { result } = renderHook(() => useMisEnvios(), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+  })
+
+  it('re-fetches when params change', async () => {
+    vi.mocked(service.getMisEnvios).mockResolvedValue({ ...mockMisEnvios, total: 1 })
+    const { result, rerender } = renderHook(
+      ({ estado }) => useMisEnvios({ estado }),
+      { wrapper: createWrapper(), initialProps: { estado: undefined as any } },
+    )
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    vi.mocked(service.getMisEnvios).mockResolvedValue({ ...mockMisEnvios, total: 5 })
+    rerender({ estado: 'Enviado' as any })
+    await waitFor(() => expect(result.current.data?.total).toBe(5))
   })
 })

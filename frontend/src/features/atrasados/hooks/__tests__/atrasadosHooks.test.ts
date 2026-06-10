@@ -20,8 +20,8 @@ const createWrapper = () => {
 
 const mockAlumnos: AlumnoAtrasado[] = [
   {
-    alumno_id: 'a1', nombre: 'Sol', apellidos: 'Paz', email: 's@t.com',
-    actividades_faltantes: ['TP1'], actividades_no_aprobadas: [], estado: 'atrasado',
+    entrada_padron_id: 'a1', nombre: 'Sol', apellidos: 'Paz', email: 's@t.com',
+    actividades_faltantes: ['TP1'], actividades_no_aprobadas: [],
   },
 ]
 const mockReporte: ReporteMateria = {

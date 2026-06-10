@@ -20,9 +20,9 @@ const ESTADO_LABELS: Record<string, string> = {
   sin_datos: 'Sin datos',
 }
 
-/** Returns the first 8 characters of a UUID for compact display. */
-function shortId(uuid: string): string {
-  return uuid.slice(0, 8)
+function nombreCompleto(fila: SeguimientoFila): string {
+  const partes = [fila.apellidos, fila.nombre].filter(Boolean)
+  return partes.length > 0 ? partes.join(', ') : fila.entrada_padron_id.slice(0, 8)
 }
 
 export default function SeguimientoTable({ filas }: Props) {
@@ -39,7 +39,9 @@ export default function SeguimientoTable({ filas }: Props) {
       <table className="min-w-full divide-y divide-gray-200 text-sm">
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-4 py-3 text-left font-medium text-gray-700">Alumno ID</th>
+            <th className="px-4 py-3 text-left font-medium text-gray-700">Alumno</th>
+            <th className="px-4 py-3 text-left font-medium text-gray-700">Comisión</th>
+            <th className="px-4 py-3 text-left font-medium text-gray-700">Regional</th>
             <th className="px-4 py-3 text-left font-medium text-gray-700">Estado</th>
             <th className="px-4 py-3 text-left font-medium text-gray-700">Aprobadas</th>
             <th className="px-4 py-3 text-left font-medium text-gray-700">Faltantes</th>
@@ -48,12 +50,11 @@ export default function SeguimientoTable({ filas }: Props) {
         <tbody className="divide-y divide-gray-100">
           {filas.map((fila) => (
             <tr key={fila.entrada_padron_id} className="hover:bg-gray-50">
-              <td
-                className="px-4 py-3 font-mono text-gray-900"
-                title={fila.entrada_padron_id}
-              >
-                {shortId(fila.entrada_padron_id)}
+              <td className="px-4 py-3 text-gray-900">
+                {nombreCompleto(fila)}
               </td>
+              <td className="px-4 py-3 text-gray-600">{fila.comision ?? '—'}</td>
+              <td className="px-4 py-3 text-gray-600">{fila.regional ?? '—'}</td>
               <td className="px-4 py-3">
                 <StatusBadge
                   status={fila.estado}

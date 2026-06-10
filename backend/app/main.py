@@ -1,6 +1,12 @@
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+_log = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
@@ -46,6 +52,36 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    from fastapi.openapi.utils import get_openapi
+
+    def custom_openapi():
+        if application.openapi_schema:
+            return application.openapi_schema
+        schema = get_openapi(
+            title=application.title,
+            version=application.version,
+            routes=application.routes,
+        )
+        schema.setdefault("components", {})["securitySchemes"] = {
+            "BearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+        }
+        schema["security"] = [{"BearerAuth": []}]
+        application.openapi_schema = schema
+        return schema
+
+    application.openapi = custom_openapi  # type: ignore[method-assign]
+
+    @application.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        body = await request.body()
+        _log.error(
+            "422 RequestValidationError on %s %s | errors=%s | body_preview=%s",
+            request.method, request.url.path, exc.errors(), body[:500]
+        )
+        # jsonable_encoder serializa ctx no-JSON (p.ej. el objeto ValueError que
+        # un field_validator custom adjunta), evitando un crash 500 en vez de 422.
+        return JSONResponse(status_code=422, content=jsonable_encoder({"detail": exc.errors()}))
+
     from app.api.v1.routers.health import router as health_router
     from app.api.v1.routers.auth import router as auth_router
     from app.api.v1.routers.auditoria import router as auditoria_router
@@ -66,6 +102,11 @@ def create_app() -> FastAPI:
     from app.api.v1.routers.fechas_academicas import router as fechas_academicas_router
     from app.api.v1.routers.perfil import router as perfil_router
     from app.api.v1.routers.inbox import router as inbox_router
+    from app.api.v1.routers.alumno import router as alumno_router
+    from app.api.v1.routers.impersonacion import (
+        usuarios_router as impersonacion_usuarios_router,
+        auth_router as impersonacion_auth_router,
+    )
 
     application.include_router(health_router)
     application.include_router(auth_router, prefix="/api/v1")
@@ -87,6 +128,9 @@ def create_app() -> FastAPI:
     application.include_router(fechas_academicas_router, prefix="/api/v1")
     application.include_router(perfil_router, prefix="/api/v1")
     application.include_router(inbox_router, prefix="/api/v1")
+    application.include_router(alumno_router, prefix="/api/v1")
+    application.include_router(impersonacion_usuarios_router, prefix="/api/v1")
+    application.include_router(impersonacion_auth_router, prefix="/api/v1")
 
     return application
 

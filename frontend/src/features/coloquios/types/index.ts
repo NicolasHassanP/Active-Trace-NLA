@@ -12,12 +12,12 @@
 /**
  * Maps EvaluacionTipo from backend/app/models/evaluacion.py.
  */
-export type EvaluacionTipo = 'coloquio' | 'examen' | 'parcial'
+export type EvaluacionTipo = 'Coloquio' | 'TP' | 'Parcial' | 'Recuperatorio'
 
 /**
  * Maps ReservaEstado from backend/app/models/evaluacion.py.
  */
-export type ReservaEstado = 'activa' | 'cancelada'
+export type ReservaEstado = 'Activa' | 'Cancelada'
 
 // ---------------------------------------------------------------------------
 // Response types — matches exactly the backend Read schemas

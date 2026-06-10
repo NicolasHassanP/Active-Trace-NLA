@@ -20,12 +20,17 @@ const mockUseAuth = vi.mocked(authHook.useAuth)
 
 function makeAuth(roles: Role[]) {
   mockUseAuth.mockReturnValue({
-    user: { id: 'u1', email: 'u@t.com', roles, tenantId: 't1' },
+    user: { id: 'u1', email: 'u@t.com', roles, tenantId: 't1', isImpersonating: false, impersonatedName: null },
+    tenantId: 't1',
     isAuthenticated: true,
     isInitializing: false,
     roles,
     login: vi.fn(),
     logout: vi.fn(),
+    isImpersonating: false,
+    impersonatedName: null,
+    impersonarUsuario: vi.fn(),
+    finalizarImpersonacion: vi.fn(),
   })
 }
 
@@ -60,13 +65,20 @@ beforeEach(() => vi.clearAllMocks())
 describe('C-22 routing — fail-closed RBAC', () => {
   it('PROFESOR can access /padron', async () => {
     makeAuth(['PROFESOR'])
-    renderRoute('/padron', ['PROFESOR'], <PadronPage />, ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'])
+    renderRoute('/padron', ['PROFESOR'], <PadronPage />, ['PROFESOR', 'COORDINADOR', 'ADMIN'])
     await waitFor(() => expect(screen.getByText('PadronPage')).toBeInTheDocument())
   })
 
   it('FINANZAS is blocked from /padron (403)', async () => {
     makeAuth(['FINANZAS'])
-    renderRoute('/padron', ['FINANZAS'], <PadronPage />, ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'])
+    renderRoute('/padron', ['FINANZAS'], <PadronPage />, ['PROFESOR', 'COORDINADOR', 'ADMIN'])
+    await waitFor(() => expect(screen.getByText('403')).toBeInTheDocument())
+    expect(screen.queryByText('PadronPage')).not.toBeInTheDocument()
+  })
+
+  it('TUTOR is blocked from /padron (403) — cargar padrón es PROFESOR/COORD/ADMIN (C-09, KB F1.3)', async () => {
+    makeAuth(['TUTOR'])
+    renderRoute('/padron', ['TUTOR'], <PadronPage />, ['PROFESOR', 'COORDINADOR', 'ADMIN'])
     await waitFor(() => expect(screen.getByText('403')).toBeInTheDocument())
     expect(screen.queryByText('PadronPage')).not.toBeInTheDocument()
   })

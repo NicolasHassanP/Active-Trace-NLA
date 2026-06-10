@@ -30,6 +30,9 @@ export interface MisMateriasItem {
   materia_id: string | null
   carrera_id: string | null
   cohorte_id: string | null
+  materia_nombre: string | null
+  carrera_nombre: string | null
+  cohorte_nombre: string | null
   rol: RolAsignacion
   desde: string           // ISO date string
   hasta: string | null    // ISO date string or null (open-ended)

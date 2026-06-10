@@ -19,6 +19,8 @@ export async function listarSeguimiento(params: SeguimientoParams): Promise<Segu
   try {
     const query: Record<string, string | number> = {}
 
+    if (params.materia_id != null) query['materia_id'] = params.materia_id
+    if (params.cohorte_id != null) query['cohorte_id'] = params.cohorte_id
     if (params.busqueda != null) query['busqueda'] = params.busqueda
     if (params.comision != null) query['comision'] = params.comision
     if (params.regional != null) query['regional'] = params.regional

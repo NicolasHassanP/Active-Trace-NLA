@@ -16,7 +16,10 @@ describe('buildNav — pure function', () => {
     const items = buildNav(['FINANZAS'])
     expect(items.length).toBeGreaterThan(0)
     items.forEach(item => {
-      expect(item.roles).toContain('FINANZAS')
+      // Visible either because FINANZAS is listed, or because the item is
+      // global (roles: [] = visible to all authenticated users, e.g. /perfil).
+      const visible = item.roles.length === 0 || item.roles.includes('FINANZAS')
+      expect(visible).toBe(true)
     })
   })
 
@@ -33,10 +36,12 @@ describe('buildNav — pure function', () => {
     })
   })
 
-  it('returns empty list for role with no nav destinations (ALUMNO — no items defined yet)', () => {
-    // ALUMNO has no nav items in the initial catalog
+  it('returns items for ALUMNO role (/mi-cursada)', () => {
+    // ALUMNO now has /mi-cursada from C-25
     const items = buildNav(['ALUMNO'])
-    expect(items).toEqual([])
+    expect(items.length).toBeGreaterThan(0)
+    const paths = items.map((i) => i.path)
+    expect(paths).toContain('/mi-cursada')
   })
 
   it('ADMIN sees all items', () => {
@@ -61,16 +66,17 @@ describe('buildNav — pure function', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildNav — C-23 coordination items', () => {
-  it('COORDINADOR sees all coordination-exclusive items (/avisos, /tareas, /monitor, /setup-cuatrimestre, /equipos, /encuentros, /coloquios)', () => {
+  it('COORDINADOR sees coordination items (/avisos, /tareas, /monitor, /equipos, /encuentros, /coloquios) but NOT /setup-cuatrimestre', () => {
     const items = buildNav(['COORDINADOR'])
     const paths = items.map((i) => i.path)
     expect(paths).toContain('/avisos')
     expect(paths).toContain('/tareas')
     expect(paths).toContain('/monitor')
-    expect(paths).toContain('/setup-cuatrimestre')
     expect(paths).toContain('/equipos')
     expect(paths).toContain('/encuentros')
     expect(paths).toContain('/coloquios')
+    // Setup cuatrimestre requiere estructura:gestionar → solo ADMIN (03_actores_y_roles.md:79)
+    expect(paths).not.toContain('/setup-cuatrimestre')
   })
 
   it('ADMIN sees all coordination items', () => {
@@ -85,24 +91,27 @@ describe('buildNav — C-23 coordination items', () => {
     expect(paths).toContain('/coloquios')
   })
 
-  it('PROFESOR sees /avisos and /tareas but NOT /monitor, /setup-cuatrimestre, /equipos (coordination-exclusive)', () => {
+  it('PROFESOR sees /avisos, /tareas, /encuentros but NOT /monitor, /setup-cuatrimestre, /equipos, /coloquios', () => {
     const items = buildNav(['PROFESOR'])
     const paths = items.map((i) => i.path)
-    // Bandeja de avisos (broad) and tareas (own) are visible to PROFESOR
+    // Bandeja de avisos (broad), tareas (propias) y encuentros (propios) son visibles a PROFESOR
+    // (matriz 03_actores_y_roles.md: "Gestionar encuentros" → PROFESOR propio)
     expect(paths).toContain('/avisos')
     expect(paths).toContain('/tareas')
+    expect(paths).toContain('/encuentros')
     // Coordination-exclusive items must NOT appear
     expect(paths).not.toContain('/monitor')
     expect(paths).not.toContain('/setup-cuatrimestre')
     expect(paths).not.toContain('/equipos')
-    expect(paths).not.toContain('/encuentros')
     expect(paths).not.toContain('/coloquios')
   })
 
-  it('FINANZAS does NOT see any coordination items', () => {
+  it('FINANZAS sees /avisos and /liquidaciones but NOT coordination items', () => {
     const items = buildNav(['FINANZAS'])
     const paths = items.map((i) => i.path)
-    expect(paths).not.toContain('/avisos')
+    // FINANZAS tiene avisos:confirmar (matriz) → ve la bandeja de avisos
+    expect(paths).toContain('/avisos')
+    expect(paths).toContain('/liquidaciones')
     expect(paths).not.toContain('/tareas')
     expect(paths).not.toContain('/monitor')
     expect(paths).not.toContain('/setup-cuatrimestre')
@@ -117,5 +126,120 @@ describe('buildNav — C-23 coordination items', () => {
     expect(paths).toContain('/tareas')
     expect(paths).not.toContain('/monitor')
     expect(paths).not.toContain('/setup-cuatrimestre')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Guardias nav item (F6.6) — TUTOR/PROFESOR/COORDINADOR/ADMIN, group INSTANCIAS
+// ---------------------------------------------------------------------------
+
+describe('buildNav — guardias item', () => {
+  it.each<Role>(['TUTOR', 'PROFESOR', 'COORDINADOR', 'ADMIN'])('%s sees /guardias', (role) => {
+    const paths = buildNav([role]).map((i) => i.path)
+    expect(paths).toContain('/guardias')
+  })
+
+  it('ALUMNO does NOT see /guardias', () => {
+    const paths = buildNav(['ALUMNO']).map((i) => i.path)
+    expect(paths).not.toContain('/guardias')
+  })
+
+  it('FINANZAS does NOT see /guardias', () => {
+    const paths = buildNav(['FINANZAS']).map((i) => i.path)
+    expect(paths).not.toContain('/guardias')
+  })
+
+  it('/guardias item is in group INSTANCIAS', () => {
+    const item = buildNav(['PROFESOR']).find((i) => i.path === '/guardias')
+    expect(item?.group).toBe('INSTANCIAS')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// C-26 mensajería nav item (task 7.3)
+// ---------------------------------------------------------------------------
+
+describe('buildNav — C-26 mensajería item', () => {
+  it('COORDINADOR sees /mensajes', () => {
+    const paths = buildNav(['COORDINADOR']).map((i) => i.path)
+    expect(paths).toContain('/mensajes')
+  })
+
+  it('PROFESOR sees /mensajes', () => {
+    const paths = buildNav(['PROFESOR']).map((i) => i.path)
+    expect(paths).toContain('/mensajes')
+  })
+
+  it('TUTOR sees /mensajes', () => {
+    const paths = buildNav(['TUTOR']).map((i) => i.path)
+    expect(paths).toContain('/mensajes')
+  })
+
+  it('ADMIN sees /mensajes', () => {
+    const paths = buildNav(['ADMIN']).map((i) => i.path)
+    expect(paths).toContain('/mensajes')
+  })
+
+  it('ALUMNO does NOT see /mensajes', () => {
+    const paths = buildNav(['ALUMNO']).map((i) => i.path)
+    expect(paths).not.toContain('/mensajes')
+  })
+
+  it('/mensajes item is in group TRABAJO', () => {
+    const item = buildNav(['COORDINADOR']).find((i) => i.path === '/mensajes')
+    expect(item?.group).toBe('TRABAJO')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// C-25 mi-cursada nav item (task 7.2)
+// ---------------------------------------------------------------------------
+
+describe('buildNav — C-25 mi-cursada item', () => {
+  it('ALUMNO sees /mi-cursada', () => {
+    const paths = buildNav(['ALUMNO']).map((i) => i.path)
+    expect(paths).toContain('/mi-cursada')
+  })
+
+  it('/mi-cursada item is in group MI CURSADA', () => {
+    const item = buildNav(['ALUMNO']).find((i) => i.path === '/mi-cursada')
+    expect(item?.group).toBe('MI CURSADA')
+  })
+
+  it('PROFESOR does NOT see /mi-cursada', () => {
+    const paths = buildNav(['PROFESOR']).map((i) => i.path)
+    expect(paths).not.toContain('/mi-cursada')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Perfil propio nav item (M2 / F11.1) — visible to ALL authenticated users
+// ---------------------------------------------------------------------------
+
+describe('buildNav — perfil item (visible to all)', () => {
+  const ROLES: Role[] = ['ALUMNO', 'TUTOR', 'PROFESOR', 'COORDINADOR', 'NEXO', 'ADMIN', 'FINANZAS']
+
+  it.each(ROLES)('%s sees /perfil', (role) => {
+    const paths = buildNav([role]).map((i) => i.path)
+    expect(paths).toContain('/perfil')
+  })
+
+  it('/perfil item has empty roles (visible to all)', () => {
+    const item = buildNav(['ALUMNO']).find((i) => i.path === '/perfil')
+    expect(item?.roles).toEqual([])
+  })
+
+  it('empty roles list (unauthenticated) still returns empty array', () => {
+    expect(buildNav([])).toEqual([])
+  })
+
+  it('COORDINADOR does NOT see /mi-cursada', () => {
+    const paths = buildNav(['COORDINADOR']).map((i) => i.path)
+    expect(paths).not.toContain('/mi-cursada')
+  })
+
+  it('ADMIN does NOT see /mi-cursada (exclusive to ALUMNO)', () => {
+    const paths = buildNav(['ADMIN']).map((i) => i.path)
+    expect(paths).not.toContain('/mi-cursada')
   })
 })

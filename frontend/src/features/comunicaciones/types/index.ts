@@ -14,11 +14,16 @@ export type EstadoComunicacion =
 /** A single communication message record */
 export interface ComunicacionRead {
   id: string
+  tenant_id: string
   lote_id: string
   destinatario_email: string
   asunto: string
   cuerpo: string
   estado: EstadoComunicacion
+  enviado_por: string | null
+  aprobado_por: string | null
+  enviado_at: string | null
+  error_detalle: string | null
   creado_en: string
   actualizado_en: string
 }
@@ -39,16 +44,13 @@ export interface PreviewResponse {
 
 // ---- Encolar ----
 
-export interface VariablesPorDestinatario {
-  email: string
-  variables: Record<string, string>
-}
-
 /** Request for POST /comunicaciones/encolar */
 export interface EncolarRequest {
+  destinatarios: string[]
   asunto_plantilla: string
   cuerpo_plantilla: string
-  variables_por_destinatario: VariablesPorDestinatario[]
+  /** Dict keyed by email → { variable: valor } — mirrors backend Dict[str, Dict[str, Any]] */
+  variables_por_destinatario: Record<string, Record<string, string>>
 }
 
 /** Response from POST /comunicaciones/encolar (201) */
@@ -76,4 +78,48 @@ export interface LoteRequest {
 
 export interface IndividualRequest {
   comunicacion_id: string
+}
+
+// ---- Mis Envíos (C-27) ----
+
+/** Query params for GET /comunicaciones/mis-envios */
+export interface MisEnviosParams {
+  estado?: EstadoComunicacion
+  offset?: number
+  limit?: number
+}
+
+/** Paginated response from GET /comunicaciones/mis-envios */
+export interface MisEnviosResponse {
+  total: number
+  offset: number
+  limit: number
+  items: ComunicacionRead[]
+}
+
+// ---- Pendientes Aprobación ----
+
+/** Query params for GET /comunicaciones/pendientes-aprobacion */
+export interface PendientesAprobacionParams {
+  offset?: number
+  limit?: number
+}
+
+/**
+ * Enriched item returned by GET /comunicaciones/pendientes-aprobacion.
+ * Extends ComunicacionRead with sender name and asunto preview.
+ */
+export interface PendienteAprobacionItem extends ComunicacionRead {
+  /** Full name of the sender (nombre + apellidos), null if user was deleted */
+  enviado_por_nombre: string | null
+  /** First 60 chars of the asunto field — always present since asunto is NOT NULL */
+  asunto_preview: string | null
+}
+
+/** Paginated response from GET /comunicaciones/pendientes-aprobacion */
+export interface PendientesAprobacionResponse {
+  total: number
+  offset: number
+  limit: number
+  items: PendienteAprobacionItem[]
 }

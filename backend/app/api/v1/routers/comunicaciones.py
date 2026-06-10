@@ -20,12 +20,12 @@ Endpoints:
 snake_case; ≤500 LOC.
 """
 import uuid
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.comunicacion_repository import ComunicacionRepository
 from app.repositories.tenant_config_repository import TenantConfigRepository
@@ -36,6 +36,9 @@ from app.schemas.comunicacion import (
     IndividualRequest,
     LoteRequest,
     LoteStatusResponse,
+    MisEnviosResponse,
+    PendienteAprobacionItem,
+    PendientesAprobacionResponse,
     PreviewRequest,
     PreviewResponse,
 )
@@ -65,11 +68,14 @@ def _to_read(com) -> ComunicacionRead:
         estado=com.estado.value if hasattr(com.estado, "value") else str(com.estado),
         lote_id=com.lote_id,
         asunto=com.asunto,
+        cuerpo=com.cuerpo,
+        destinatario_email=com.destinatario,
         enviado_at=com.enviado_at,
         error_detalle=com.error_detalle,
         enviado_por=com.enviado_por,
         aprobado_por=com.aprobado_por,
-        created_at=com.created_at,
+        creado_en=com.created_at,
+        actualizado_en=com.updated_at,
     )
 
 
@@ -125,6 +131,7 @@ async def encolar_comunicaciones(
     La identidad/tenant del remitente viene del JWT — nunca del body.
     Audita COMUNICACION_ENVIAR exactamente una vez.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     try:
         lote_id, coms = await svc.encolar(
@@ -133,6 +140,7 @@ async def encolar_comunicaciones(
             cuerpo_plantilla=body.cuerpo_plantilla,
             variables_por_destinatario=body.variables_por_destinatario,
             current_user=current_user,
+            domain_user_id=domain_user_id,
         )
     except VariablePlantillaFaltanteError as exc:
         raise HTTPException(
@@ -162,8 +170,9 @@ async def aprobar_lote(
 
     La identidad del aprobador viene del JWT.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
-    actualizados = await svc.aprobar_lote(lote_id=body.lote_id, current_user=current_user)
+    actualizados = await svc.aprobar_lote(lote_id=body.lote_id, current_user=current_user, domain_user_id=domain_user_id)
     return [_to_read(c) for c in actualizados]
 
 
@@ -210,11 +219,13 @@ async def aprobar_individual(
 
     Retorna 404 si el mensaje no existe en el tenant del actor.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     try:
         com = await svc.aprobar_individual(
             comunicacion_id=body.comunicacion_id,
             current_user=current_user,
+            domain_user_id=domain_user_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
@@ -275,7 +286,102 @@ async def get_lote(
         total=len(mensajes),
         pendientes=sum(1 for m in mensajes if m.estado == ModelEstado.Pendiente),
         enviados=sum(1 for m in mensajes if m.estado == ModelEstado.Enviado),
-        errores=sum(1 for m in mensajes if m.estado == ModelEstado.Error),
+        fallidos=sum(1 for m in mensajes if m.estado == ModelEstado.Error),
         cancelados=sum(1 for m in mensajes if m.estado == ModelEstado.Cancelado),
         mensajes=[_to_read(m) for m in mensajes],
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /comunicaciones/pendientes-aprobacion — lista paginada para aprobador
+# ---------------------------------------------------------------------------
+
+@router.get("/pendientes-aprobacion", response_model=PendientesAprobacionResponse)
+async def get_pendientes_aprobacion(
+    offset: int = Query(default=0, ge=0, description="Paginación: inicio"),
+    limit: int = Query(default=50, ge=1, le=200, description="Paginación: cantidad máxima"),
+    _grant=Depends(require_permission("comunicacion:aprobar")),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> PendientesAprobacionResponse:
+    """
+    Retorna todos los mensajes en estado Pendiente del tenant, paginados.
+
+    Destinado al aprobador para revisar y actuar sobre las comunicaciones
+    que aguardan aprobación antes de ser despachadas.
+
+    La identidad y tenant_id SIEMPRE vienen del JWT — nunca de body ni URL.
+    Requiere permiso: comunicacion:aprobar (D2).
+    Scoped al tenant del JWT (multi-tenancy automático en el repositorio).
+
+    Query params:
+        offset: default 0
+        limit: default 50, max 200
+    """
+    svc = _make_service(db, current_user.tenant_id)
+    items, total = await svc.listar_pendientes_aprobacion(offset=offset, limit=limit)
+    return PendientesAprobacionResponse(
+        items=items,
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /comunicaciones/mis-envios — historial del remitente (C-27)
+# ---------------------------------------------------------------------------
+
+@router.get("/mis-envios", response_model=MisEnviosResponse)
+async def get_mis_envios(
+    estado: Optional[str] = Query(default=None, description="Filtro opcional por estado"),
+    offset: int = Query(default=0, ge=0, description="Paginación: inicio"),
+    limit: int = Query(default=20, ge=1, le=100, description="Paginación: cantidad máxima"),
+    _grant=Depends(require_permission("comunicacion:enviar")),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MisEnviosResponse:
+    """
+    Retorna el historial de comunicaciones enviadas por el usuario autenticado.
+
+    Identidad del remitente SIEMPRE desde el JWT (resolve_domain_user_id).
+    Nunca acepta un sender_id como query param.
+
+    Requiere permiso: comunicacion:enviar (D6 — reutiliza el mismo permiso que encolar).
+    Scoped al tenant del JWT (multi-tenancy automático en el repositorio).
+
+    Query params opcionales:
+        estado: uno de Pendiente|Enviando|Enviado|Error|Cancelado
+        offset: default 0
+        limit: default 20, max 100
+    """
+    from app.models.comunicacion import ComunicacionEstado as ModelEstado
+
+    # D3 — identidad del remitente SIEMPRE desde el JWT
+    domain_user_id = await resolve_domain_user_id(current_user, db)
+
+    # Parsear estado si se proveyó
+    estado_enum: Optional[ModelEstado] = None
+    if estado is not None:
+        try:
+            estado_enum = ModelEstado(estado)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Estado inválido: '{estado}'. Valores permitidos: Pendiente, Enviando, Enviado, Error, Cancelado.",
+            )
+
+    repo = ComunicacionRepository(session=db, tenant_id=current_user.tenant_id)
+    items, total = await repo.list_by_sender(
+        sender_id=domain_user_id,
+        estado=estado_enum,
+        offset=offset,
+        limit=limit,
+    )
+
+    return MisEnviosResponse(
+        total=total,
+        offset=offset,
+        limit=limit,
+        items=[_to_read(m) for m in items],
     )

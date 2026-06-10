@@ -4,7 +4,7 @@
  * Task 4.4.
  */
 import { useQuery } from '@tanstack/react-query'
-import { listarMonitor } from '../services/monitoresService'
+import { listarMonitor, listarTodasMaterias, listarTodosCohortes } from '../services/monitoresService'
 import type { MonitorParams } from '../types'
 
 /**
@@ -33,9 +33,32 @@ function monitorKey(params: MonitorParams) {
  * queryKey includes ALL active filters — different filter combinations never
  * share cache entries (requirement from task 4.4 and spec).
  */
-export function useMonitor(params: MonitorParams) {
+export function useMonitor(params: MonitorParams, enabled = true) {
   return useQuery({
     queryKey: monitorKey(params),
     queryFn: () => listarMonitor(params),
+    enabled,
+  })
+}
+
+/**
+ * Query hook for GET /api/v1/admin/materias — used by global-scope users
+ * (ADMIN / COORDINADOR) to populate the materia selector.
+ * Only enabled when `enabled` is true to avoid unnecessary fetches for
+ * role-scoped users who use mis-asignaciones instead.
+ */
+export function useTodasMaterias(enabled: boolean) {
+  return useQuery({
+    queryKey: ['admin-materias'],
+    queryFn: listarTodasMaterias,
+    enabled,
+  })
+}
+
+export function useTodosCohortes(enabled: boolean) {
+  return useQuery({
+    queryKey: ['admin-cohortes'],
+    queryFn: listarTodosCohortes,
+    enabled,
   })
 }

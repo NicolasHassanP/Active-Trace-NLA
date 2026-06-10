@@ -1,8 +1,3 @@
-/**
- * EmptyState — generic empty/zero-results state.
- * Props: icon? (ReactNode), title (string), description? (string), action? (ReactNode).
- * < 200 LOC. No `any`. Only Tailwind v3.
- */
 import { type ReactNode } from 'react'
 
 interface EmptyStateProps {
@@ -15,7 +10,7 @@ interface EmptyStateProps {
 function DefaultIcon() {
   return (
     <svg
-      className="mx-auto h-12 w-12 text-gray-300"
+      className="h-6 w-6 text-[#c2c7d2]"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
@@ -34,11 +29,13 @@ function DefaultIcon() {
 
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="mb-4">{icon ?? <DefaultIcon />}</div>
-      <p className="text-sm font-medium text-gray-900">{title}</p>
+    <div className="flex flex-col items-center justify-center py-[46px] px-5 text-center text-faint">
+      <div className="w-[54px] h-[54px] rounded-[14px] bg-[#f3f4f7] flex items-center justify-center mb-[14px]">
+        {icon ?? <DefaultIcon />}
+      </div>
+      <b className="text-[#5a6172] text-[14px] font-bold">{title}</b>
       {description && (
-        <p className="mt-1 text-sm text-gray-500">{description}</p>
+        <p className="text-[12.5px] mt-[5px]">{description}</p>
       )}
       {action && <div className="mt-4">{action}</div>}
     </div>

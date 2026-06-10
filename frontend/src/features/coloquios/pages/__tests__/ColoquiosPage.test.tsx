@@ -47,7 +47,7 @@ const sampleConvocatoria: ConvocatoriaMetricasRead = {
   id: 'eval-1',
   materia_id: 'mat-1',
   cohorte_id: 'coh-1',
-  tipo: 'coloquio',
+  tipo: 'Coloquio',
   instancia: 'Primera',
   cerrada: false,
   convocados: 30,
@@ -71,13 +71,17 @@ beforeEach(() => {
 describe('ColoquiosPage — COORDINADOR', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1' },
+      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['COORDINADOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -111,13 +115,17 @@ describe('ColoquiosPage — COORDINADOR', () => {
 describe('ColoquiosPage — ADMIN', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u2', email: 'admin@test.com', roles: ['ADMIN'], tenantId: 't1' },
+      user: { id: 'u2', email: 'admin@test.com', roles: ['ADMIN'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['ADMIN'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -134,13 +142,17 @@ describe('ColoquiosPage — ADMIN', () => {
 describe('ColoquiosPage — TUTOR (non-authorized)', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u3', email: 'tutor@test.com', roles: ['TUTOR'], tenantId: 't1' },
+      user: { id: 'u3', email: 'tutor@test.com', roles: ['TUTOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['TUTOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -162,13 +174,17 @@ describe('ColoquiosPage — TUTOR (non-authorized)', () => {
 describe('ColoquiosPage — empty convocatorias', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1' },
+      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['COORDINADOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
     vi.mocked(service.listarConvocatorias).mockResolvedValue([])
   })
@@ -186,13 +202,17 @@ describe('ColoquiosPage — empty convocatorias', () => {
 describe('ColoquiosPage — metrics values', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1' },
+      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['COORDINADOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 

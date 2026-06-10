@@ -9,4 +9,5 @@ export interface NavItem {
   path: string
   roles: Role[]
   icon?: string
+  group?: string
 }

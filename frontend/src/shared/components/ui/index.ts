@@ -11,3 +11,7 @@ export { EmptyState } from './EmptyState'
 export { PageHeader } from './PageHeader'
 
 export { StatusBadge } from './StatusBadge'
+
+export { KpiCard } from './KpiCard'
+
+export { TableWrapper } from './TableWrapper'

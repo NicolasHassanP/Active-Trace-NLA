@@ -12,7 +12,7 @@ abrir_hilo(actor, hilo_id):
     Raises HiloNoEncontrado si el actor no participa o es cross-tenant.
 
 responder(actor, hilo_id, body):
-    Agrega mensaje. Remitente = actor.user_id (ignora body).
+    Agrega mensaje. Remitente = usuario.id resuelto del JWT (ignora body).
     Raises HiloNoEncontrado si el actor no participa.
 
 iniciar_hilo(actor, body):
@@ -28,10 +28,19 @@ Excepciones mapeadas a HTTP en el router:
 
 Regla dura #11: lógica SOLO aquí. Queries SOLO en repository.
 snake_case; ≤500 LOC.
+
+NOTA: actor.user_id es auth_identities.id (JWT sub). Las FKs de dominio
+(hilo_participantes.usuario_id) referencian usuario.id. _resolve_usuario_id
+hace el puente en cada método público.
 """
+import uuid
 from typing import List
 
+from fastapi import HTTPException, status
+from sqlalchemy import select
+
 from app.core.dependencies import CurrentUser
+from app.models.usuario import Usuario
 from app.repositories.mensajeria_repository import MensajeriaRepository
 from app.repositories.usuario_repository import UsuarioRepository
 from app.schemas.mensajeria import HiloCreate, InboxHiloRead, MensajeRead, RespuestaCreate
@@ -68,21 +77,39 @@ class InboxService:
     def __init__(self, repo: MensajeriaRepository) -> None:
         self._repo = repo
 
-    async def ver_inbox(self, actor: CurrentUser) -> List[InboxHiloRead]:
+    async def _resolve_usuario_id(self, actor: CurrentUser) -> uuid.UUID:
         """
-        Lista hilos del actor con conteo de no-leídos.
+        Resuelve auth_identity_id (JWT sub) → usuario.id (FK de dominio).
 
-        Usa actor.user_id (JWT) — no acepta id externo.
+        actor.user_id = auth_identities.id; hilo_participantes referencia usuario.id.
         """
-        hilos_raw = await self._repo.listar_hilos(actor.user_id)
+        stmt = select(Usuario.id).where(
+            Usuario.auth_identity_id == actor.user_id,
+            Usuario.tenant_id == actor.tenant_id,
+            Usuario.deleted_at.is_(None),
+        )
+        result = await self._repo._session.execute(stmt)
+        uid = result.scalar_one_or_none()
+        if uid is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Usuario de dominio no encontrado para la identidad autenticada",
+            )
+        return uid
+
+    async def ver_inbox(self, actor: CurrentUser) -> List[InboxHiloRead]:
+        """Lista hilos del actor con conteo de no-leídos."""
+        usuario_id = await self._resolve_usuario_id(actor)
+        hilos_raw = await self._repo.listar_hilos(usuario_id)
         result = []
         for item in hilos_raw:
-            no_leidos = await self._repo.contar_no_leidos(item["hilo_id"], actor.user_id)
+            no_leidos = await self._repo.contar_no_leidos(item["hilo_id"], usuario_id)
             result.append(InboxHiloRead(
                 id=item["hilo_id"],
                 asunto=item.get("asunto"),
                 no_leidos=no_leidos,
                 ultimo_mensaje_at=item.get("ultimo_mensaje_at"),
+                otro_participante_nombre=item.get("otro_participante_nombre"),
             ))
         return result
 
@@ -94,12 +121,13 @@ class InboxService:
 
         Raises HiloNoEncontrado si el actor no participa o es cross-tenant.
         """
-        hilo = await self._repo.obtener_hilo(hilo_id, actor.user_id)
+        usuario_id = await self._resolve_usuario_id(actor)
+        hilo = await self._repo.obtener_hilo(hilo_id, usuario_id)
         if hilo is None:
             raise HiloNoEncontrado("Hilo no encontrado.")
 
-        await self._repo.marcar_leido(hilo_id, actor.user_id)
-        mensajes = await self._repo.obtener_mensajes(hilo_id, actor.user_id)
+        await self._repo.marcar_leido(hilo_id, usuario_id)
+        mensajes = await self._repo.obtener_mensajes(hilo_id, usuario_id)
         return [_mensaje_to_read(m) for m in mensajes]
 
     async def responder(
@@ -108,16 +136,17 @@ class InboxService:
         """
         Agrega un mensaje al hilo.
 
-        Remitente = actor.user_id (anti-spoofing: body no declara remitente_id).
+        Remitente = usuario.id resuelto del JWT (anti-spoofing).
         Raises HiloNoEncontrado si el actor no participa.
         """
-        hilo = await self._repo.obtener_hilo(hilo_id, actor.user_id)
+        usuario_id = await self._resolve_usuario_id(actor)
+        hilo = await self._repo.obtener_hilo(hilo_id, usuario_id)
         if hilo is None:
             raise HiloNoEncontrado("Hilo no encontrado o no eres participante.")
 
         msg = await self._repo.agregar_mensaje(
             hilo_id=hilo_id,
-            remitente_id=actor.user_id,  # SIEMPRE del JWT
+            remitente_id=usuario_id,
             asunto=body.asunto,
             cuerpo=body.cuerpo,
         )
@@ -135,11 +164,9 @@ class InboxService:
 
         Raises DestinatarioInvalido, HiloDuplicado.
         """
-        # Validar que el destinatario sea del mismo tenant
-        # Usamos el repo de usuario para verificar existencia en el tenant
-        from sqlalchemy import select
-        from app.models.usuario import Usuario
+        usuario_id = await self._resolve_usuario_id(actor)
 
+        # Validar que el destinatario sea del mismo tenant
         stmt = select(Usuario).where(
             Usuario.id == body.destinatario_id,
             Usuario.tenant_id == actor.tenant_id,
@@ -154,7 +181,7 @@ class InboxService:
 
         # Validar que no exista hilo 1:1 previo (OQ-3)
         hilo_existente = await self._repo.buscar_hilo_existente(
-            actor.user_id, body.destinatario_id
+            usuario_id, body.destinatario_id
         )
         if hilo_existente is not None:
             raise HiloDuplicado(
@@ -163,7 +190,7 @@ class InboxService:
 
         # Crear hilo + primer mensaje
         _, mensaje = await self._repo.crear_hilo(
-            remitente_id=actor.user_id,
+            remitente_id=usuario_id,
             destinatario_id=body.destinatario_id,
             asunto=body.asunto,
             cuerpo=body.cuerpo,

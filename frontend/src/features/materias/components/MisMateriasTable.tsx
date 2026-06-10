@@ -124,9 +124,9 @@ export default function MisMateriasTable({ items }: Props) {
                       {item.rol}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 font-mono text-gray-700">{shortId(item.materia_id)}</td>
-                  <td className="px-4 py-3 font-mono text-gray-700">{shortId(item.carrera_id)}</td>
-                  <td className="px-4 py-3 font-mono text-gray-700">{shortId(item.cohorte_id)}</td>
+                  <td className="px-4 py-3 text-gray-700">{item.materia_nombre ?? shortId(item.materia_id)}</td>
+                  <td className="px-4 py-3 text-gray-700">{item.carrera_nombre ?? shortId(item.carrera_id)}</td>
+                  <td className="px-4 py-3 text-gray-700">{item.cohorte_nombre ?? shortId(item.cohorte_id)}</td>
                   <td className="px-4 py-3 text-gray-600">
                     {item.comisiones.length > 0 ? item.comisiones.join(', ') : '—'}
                   </td>

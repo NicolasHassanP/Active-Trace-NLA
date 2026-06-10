@@ -8,6 +8,54 @@
       "sessions": 1,
       "memories": 46,
       "prompts": 0
+    },
+    {
+      "id": "cffc6b70",
+      "created_by": "Nico",
+      "created_at": "2026-06-07T01:16:03Z",
+      "sessions": 1,
+      "memories": 2,
+      "prompts": 0
+    },
+    {
+      "id": "aa6ecb20",
+      "created_by": "Nico",
+      "created_at": "2026-06-07T13:38:50Z",
+      "sessions": 0,
+      "memories": 3,
+      "prompts": 0
+    },
+    {
+      "id": "b4a138fe",
+      "created_by": "Nico",
+      "created_at": "2026-06-07T14:16:25Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "3ec2bc7b",
+      "created_by": "Acel",
+      "created_at": "2026-06-07T20:31:50Z",
+      "sessions": 0,
+      "memories": 2,
+      "prompts": 0
+    },
+    {
+      "id": "b5ab5b98",
+      "created_by": "Nico",
+      "created_at": "2026-06-08T21:40:27Z",
+      "sessions": 0,
+      "memories": 4,
+      "prompts": 0
+    },
+    {
+      "id": "6aa4a133",
+      "created_by": "Acel",
+      "created_at": "2026-06-09T16:09:29Z",
+      "sessions": 0,
+      "memories": 17,
+      "prompts": 0
     }
   ]
 }

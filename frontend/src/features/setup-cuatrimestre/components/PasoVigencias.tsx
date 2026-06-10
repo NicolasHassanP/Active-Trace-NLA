@@ -39,7 +39,7 @@ export default function PasoVigencias({ onSuccess, onError }: Props) {
         carrera_id: data.carrera_id,
         cohorte_id: data.cohorte_id,
         desde: data.desde,
-        hasta: data.hasta ?? null,
+        hasta: data.hasta || null,
       })
       onSuccess()
     } catch (err) {

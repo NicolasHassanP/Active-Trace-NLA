@@ -20,7 +20,7 @@ export default function ConvocatoriaForm({ onSubmit, isLoading = false }: Props)
   } = useForm<ConvocatoriaFormValues>({
     resolver: zodResolver(convocatoriaSchema),
     defaultValues: {
-      tipo: 'coloquio',
+      tipo: 'Coloquio',
       dias_disponibles: 1,
       turnos: [{ fecha: '', cupo_total: 1, franja: null }],
     },
@@ -74,9 +74,10 @@ export default function ConvocatoriaForm({ onSubmit, isLoading = false }: Props)
             {...register('tipo')}
             className="mt-1 block w-full rounded border-gray-300 shadow-sm text-sm focus:ring-blue-500"
           >
-            <option value="coloquio">Coloquio</option>
-            <option value="examen">Examen</option>
-            <option value="parcial">Parcial</option>
+            <option value="Coloquio">Coloquio</option>
+            <option value="TP">TP</option>
+            <option value="Parcial">Parcial</option>
+            <option value="Recuperatorio">Recuperatorio</option>
           </select>
         </div>
 
