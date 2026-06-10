@@ -14,7 +14,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '../AuthProvider'
 import { useLogin } from '../useLogin'
 import * as tokenStore from '@/shared/services/tokenStore'
-import apiClient from '@/shared/services/api'
+import apiClient, { __resetRefreshPromiseForTests } from '@/shared/services/api'
 import MockAdapter from 'axios-mock-adapter'
 
 const MOCK_PAYLOAD = { sub: 'u1', tenant_id: 't1', roles: ['ADMIN'], exp: 9999999999, email: 'admin@t.com' }
@@ -40,17 +40,21 @@ describe('useLogin', () => {
   let mockApiClient: MockAdapter
 
   beforeEach(() => {
-    // authService.refresh() uses plain axios → mock to return 401 (no session)
+    // refresh() is coalesced through api.ts's shared refreshPromise, which calls
+    // plain axios under the hood → mock 401 (no session) on plain axios.
     mockAxiosPlain = new MockAdapter(axios)
     mockAxiosPlain.onPost('/api/v1/auth/refresh').reply(401)
     // apiClient mock for login endpoint
     mockApiClient = new MockAdapter(apiClient)
+    // Isolate the module-level coalesced refresh promise between tests.
+    __resetRefreshPromiseForTests()
     tokenStore.clearAll()
   })
 
   afterEach(() => {
     mockAxiosPlain.restore()
     mockApiClient.restore()
+    __resetRefreshPromiseForTests()
     vi.clearAllMocks()
   })
 
@@ -63,6 +67,11 @@ describe('useLogin', () => {
     })
 
     const { result } = renderHook(() => useLogin(), { wrapper: createWrapper() })
+
+    // Wait for AuthProvider's mount rehydrate (refresh → 401 → clearAll) to settle
+    // before logging in. Otherwise its async catch can clear the token AFTER login
+    // stores it, racing the assertion below.
+    await waitFor(() => expect(result.current.isIdle).toBe(true))
 
     await act(async () => {
       result.current.mutate({ email: 'admin@t.com', password: 'pass', tenantId: 'tenant-1' })
