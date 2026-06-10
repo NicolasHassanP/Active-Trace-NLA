@@ -456,6 +456,14 @@
       "sessions": 0,
       "memories": 2,
       "prompts": 0
+    },
+    {
+      "id": "ec9a4360",
+      "created_by": "Nico",
+      "created_at": "2026-06-10T22:11:56Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }
