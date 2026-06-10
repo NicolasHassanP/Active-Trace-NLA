@@ -504,6 +504,14 @@
       "sessions": 0,
       "memories": 1,
       "prompts": 0
+    },
+    {
+      "id": "0e33888e",
+      "created_by": "Nico",
+      "created_at": "2026-06-10T23:11:11Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }
