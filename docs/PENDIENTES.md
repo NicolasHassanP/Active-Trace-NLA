@@ -2,16 +2,21 @@
 
 > Backlog real verificado contra `master` el **2026-06-10**. Todo lo previo (fixes de enums, teardowns de `audit_event`, impersonación RN-41, scope de `listar_instancias`, etc.) ya está mergeado en master y se removió de este doc por ruido. El historial completo vive en Engram.
 
+> ### ✅ Cerrados 2026-06-10 (commits f3bd49b · ec147b4 · 5a8b94e · 670d988)
+> - **M3 — página frontend de asignaciones (F4.3)**: feature `frontend/src/features/asignaciones/` completa + ruta/nav gateadas a COORDINADOR/ADMIN (`equipos:asignar`). 34 tests Vitest.
+> - **RN-11 — jerarquía acíclica de responsable docente**: validación BFS en `usuario_service` (vía `usuario_repository`) que prohíbe auto-referencia y ciclos transitivos en `crear/editar_asignacion`. 7 tests pytest.
+> - **RN-16 — vista previa obligatoria de comunicaciones**: gate `previewConfirmed` en `ComposeComunicacion.tsx` (Encolar deshabilitado hasta previsualizar). Enforcement en frontend por diseño (un flag backend sería inverificable; RN-17 cubre la autorización).
+> - **Fix colateral**: `ComunicacionesPage` volvía a abrir en tab "Historial" por default sin destinatarios, contra C-27/D5 → restaurado "Componer".
+
 ---
 
 ## Vivo (deuda real)
 
 | # | Ítem | Dónde | Prioridad |
 |---|------|-------|-----------|
-| 1 | **M3 — página frontend de asignaciones (F4.3)**. El backend `backend/app/api/v1/routers/asignaciones.py` está 100% listo (GET/POST/PATCH/DELETE bajo `equipos:asignar`); falta la feature `frontend/src/features/asignaciones/` + ruta/nav para COORDINADOR/ADMIN. Receta igual a M1/M2 (guardias/perfil), TDD con Vitest. | `frontend/src/features/asignaciones/` (no existe) | BAJA — ya operable embebido en Setup Cuatrimestre |
-| 2 | **Aprovisionamiento programático de tenants**. El RBAC se siembra solo vía migraciones, que cubren los tenants existentes al migrar. Un tenant creado después no recibe roles/permisos. No hay servicio de onboarding. Bloqueante para multi-tenant real. | `backend/app/` (sin servicio de provisioning) | MEDIA-ALTA cuando se encare multi-tenant productivo; ligado a C-24 |
-| 3 | **RN-11 — jerarquía responsable docente sin validación de ciclo**. `usuario_service` valida que el responsable exista en el tenant, pero no detecta cadenas circulares (A→B→C→A posible) ni `responsable ≠ self`. | `backend/app/services/usuario_service.py`, modelo `Asignacion.responsable_id` | MEDIA |
-| 4 | **RN-16 — vista previa de comunicaciones no forzada**. `preview_static()` existe pero el flujo de encolar no obliga a previsualizar antes. Gap de UX, no bug. | `backend/.../comunicaciones.py` (`/preview` vs `/encolar`) | BAJA |
+| 1 | **Aprovisionamiento programático de tenants**. El RBAC se siembra solo vía migraciones, que cubren los tenants existentes al migrar. Un tenant creado después no recibe roles/permisos. No hay servicio de onboarding. Bloqueante para multi-tenant real. | `backend/app/` (sin servicio de provisioning) | MEDIA-ALTA cuando se encare multi-tenant productivo; ligado a C-24 |
+
+> **Nota**: este único ítem vivo es de governance **CRÍTICO** (multi-tenancy + RBAC) y está atado a **C-24** (diferido por PA-22/23/25). No se codea sin desbloquear esas preguntas y aprobación humana explícita.
 
 ---
 
