@@ -4,6 +4,7 @@ Schemas Pydantic v2 para C-07 usuarios y asignaciones.
 D10, OQ-3:
     - UsuarioCreate/Update/Read
     - AsignacionCreate/Update/Read
+    - UsuarioAsignableRead: schema read-only para combobox de búsqueda (equipos:asignar).
 
 Todos con model_config = ConfigDict(extra='forbid').
 *Read con from_attributes=True.
@@ -12,6 +13,10 @@ Contrato de UsuarioRead (OQ-3 RESUELTA):
     Expone EXACTAMENTE: id, email, nombre, apellidos, legajo, estado,
     asignaciones (resumen), created_at, updated_at.
     NUNCA: dni, cuil, cbu, alias_cbu en texto plano; NUNCA tenant_id ni ciphertext crudo.
+
+Contrato de UsuarioAsignableRead:
+    Expone SOLO campos no-PII: id, nombre, apellidos, email, legajo.
+    NUNCA: dni, cuil, cbu, alias_cbu, tenant_id, ciphertext crudo.
 
 AsignacionRead incluye estado_vigencia computado (D4).
 
@@ -25,6 +30,29 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models.usuario import RolAsignacion, UsuarioEstado
 from app.models.vigencia import EstadoVigencia
+
+
+# ---------------------------------------------------------------------------
+# UsuarioAsignableRead — schema read-only para combobox de búsqueda
+# Gateado a equipos:asignar (COORDINADOR, ADMIN).
+# Solo campos no-PII: NUNCA dni/cuil/cbu/alias_cbu/tenant_id.
+# ---------------------------------------------------------------------------
+
+class UsuarioAsignableRead(BaseModel):
+    """
+    Proyección mínima de Usuario para el combobox de búsqueda de asignaciones.
+
+    Devuelve SOLO campos no-PII: id, nombre, apellidos, email, legajo.
+    Nunca expone: dni, cuil, cbu, alias_cbu, tenant_id, email_hash, ciphertext.
+    from_attributes=True para serializar desde ORM model directamente.
+    """
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: uuid.UUID
+    nombre: str
+    apellidos: str
+    email: str
+    legajo: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

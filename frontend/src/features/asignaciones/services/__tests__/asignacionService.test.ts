@@ -12,8 +12,9 @@ import {
   crearAsignacion,
   editarAsignacion,
   darBajaAsignacion,
+  buscarUsuariosAsignables,
 } from '../asignacionService'
-import type { AsignacionRead, AsignacionCreate, AsignacionUpdate } from '../../types'
+import type { AsignacionRead, AsignacionCreate, AsignacionUpdate, UsuarioAsignable } from '../../types'
 
 let mock: MockAdapter
 
@@ -153,5 +154,48 @@ describe('darBajaAsignacion', () => {
   it('throws DomainError on 403 (sin permiso)', async () => {
     mock.onDelete('/asignaciones/asgn-1').reply(403, { detail: 'sin permiso' })
     await expect(darBajaAsignacion('asgn-1')).rejects.toMatchObject({ status: 403 })
+  })
+})
+
+// ── buscarUsuariosAsignables ─────────────────────────────────────────────────
+
+const sampleUsuario: UsuarioAsignable = {
+  id: 'user-uuid-1',
+  nombre: 'Ana',
+  apellidos: 'García',
+  email: 'ana@test.com',
+  legajo: 'L001',
+}
+
+describe('buscarUsuariosAsignables', () => {
+  it('returns UsuarioAsignable[] on 200 with query', async () => {
+    mock.onGet('/asignaciones/usuarios').reply(200, [sampleUsuario])
+    const result = await buscarUsuariosAsignables('ana')
+    expect(result).toEqual([sampleUsuario])
+  })
+
+  it('sends q as query param when provided', async () => {
+    mock.onGet('/asignaciones/usuarios').reply(200, [sampleUsuario])
+    await buscarUsuariosAsignables('garcia')
+    const sentParams = mock.history.get[0].params as Record<string, string> | undefined
+    expect(sentParams).toEqual({ q: 'garcia' })
+  })
+
+  it('sends no params when q is empty string', async () => {
+    mock.onGet('/asignaciones/usuarios').reply(200, [])
+    await buscarUsuariosAsignables('')
+    const sentParams = mock.history.get[0].params as Record<string, string> | undefined
+    expect(sentParams).toBeUndefined()
+  })
+
+  it('throws DomainError on 403 (sin equipos:asignar)', async () => {
+    mock.onGet('/asignaciones/usuarios').reply(403, { detail: 'sin permiso equipos:asignar' })
+    await expect(buscarUsuariosAsignables('ana')).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('returns empty array on 200 with no matches', async () => {
+    mock.onGet('/asignaciones/usuarios').reply(200, [])
+    const result = await buscarUsuariosAsignables('zzz_no_match')
+    expect(result).toEqual([])
   })
 })

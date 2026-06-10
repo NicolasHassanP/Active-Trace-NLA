@@ -80,6 +80,20 @@ export interface AsignacionFiltros {
   responsable_id?: string | null
 }
 
+/**
+ * UsuarioAsignable — mirrors UsuarioAsignableRead from backend.
+ * Returned by GET /api/v1/asignaciones/usuarios.
+ * Only non-PII fields: id, nombre, apellidos, email, legajo.
+ * NEVER includes dni, cuil, cbu, tenant_id.
+ */
+export interface UsuarioAsignable {
+  id: string
+  nombre: string
+  apellidos: string
+  email: string
+  legajo?: string | null
+}
+
 /** Ordered list of RolAsignacion values for selects. */
 export const ROLES_ASIGNACION: RolAsignacion[] = [
   'PROFESOR',

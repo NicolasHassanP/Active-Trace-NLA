@@ -11,6 +11,7 @@ import {
   crearAsignacion,
   editarAsignacion,
   darBajaAsignacion,
+  buscarUsuariosAsignables,
 } from '../services/asignacionService'
 import type { AsignacionCreate, AsignacionFiltros, AsignacionUpdate } from '../types'
 
@@ -76,5 +77,20 @@ export function useDarBajaAsignacion() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ASIGNACIONES_ROOT })
     },
+  })
+}
+
+/**
+ * Query hook for GET /api/v1/asignaciones/usuarios?q=...
+ * Searches usuarios asignables (non-PII) for the asignacion combobox.
+ * Only enabled when q has at least 1 character after trim.
+ * Uses placeholderData: keepPrevious to avoid flickering between keystrokes.
+ */
+export function useBuscarUsuariosAsignables(q: string) {
+  return useQuery({
+    queryKey: ['asignaciones', 'usuarios', q] as const,
+    queryFn: () => buscarUsuariosAsignables(q),
+    enabled: q.trim().length >= 1,
+    placeholderData: (prev) => prev,
   })
 }

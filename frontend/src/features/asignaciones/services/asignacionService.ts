@@ -17,6 +17,7 @@ import type {
   AsignacionCreate,
   AsignacionUpdate,
   AsignacionFiltros,
+  UsuarioAsignable,
 } from '../types'
 
 /** Builds query params from filtros, omitting null/undefined values. */
@@ -82,6 +83,23 @@ export async function editarAsignacion(
 export async function darBajaAsignacion(id: string): Promise<void> {
   try {
     await apiClient.delete(`/asignaciones/${id}`)
+  } catch (err) {
+    throw parseDomainError(err)
+  }
+}
+
+/**
+ * GET /api/v1/asignaciones/usuarios?q=...
+ * Busca usuarios asignables (no-PII) para el combobox de asignaciones.
+ * Requiere permiso equipos:asignar (COORDINADOR, ADMIN).
+ * Tenant-scoped en el backend — nunca se envía tenant_id en la petición.
+ */
+export async function buscarUsuariosAsignables(q: string): Promise<UsuarioAsignable[]> {
+  try {
+    const response = await apiClient.get<UsuarioAsignable[]>('/asignaciones/usuarios', {
+      params: q.trim() ? { q: q.trim() } : undefined,
+    })
+    return response.data
   } catch (err) {
     throw parseDomainError(err)
   }

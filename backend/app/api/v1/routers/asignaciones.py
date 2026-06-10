@@ -34,6 +34,7 @@ from app.schemas.usuario import (
     AsignacionCreate,
     AsignacionRead,
     AsignacionUpdate,
+    UsuarioAsignableRead,
 )
 from app.services.usuario_service import (
     AsignacionNoEncontrada,
@@ -89,6 +90,40 @@ def _build_asignacion_read(
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
+@router.get("/usuarios", response_model=List[UsuarioAsignableRead])
+async def buscar_usuarios_asignables(
+    q: Optional[str] = Query(default=None),
+    _grant=Depends(require_permission("equipos:asignar")),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> List[UsuarioAsignableRead]:
+    """
+    Búsqueda de usuarios para el combobox de asignaciones.
+
+    Requiere permiso equipos:asignar (COORDINADOR, ADMIN).
+    Tenant SIEMPRE desde el JWT — nunca de query/body.
+    Devuelve solo campos no-PII: id, nombre, apellidos, email, legajo.
+    Excluye soft-deleted. Máximo 20 resultados.
+    """
+    usuario_repo = UsuarioRepository(session=db, tenant_id=current_user.tenant_id)
+    usuarios = await usuario_repo.buscar_asignables(q=q, limit=20)
+
+    # Deserialize email_encrypted to plaintext for the response.
+    # The ORM EncryptedString column handles decryption automatically.
+    result = []
+    for u in usuarios:
+        result.append(
+            UsuarioAsignableRead(
+                id=u.id,
+                nombre=u.nombre,
+                apellidos=u.apellidos,
+                email=u.email_encrypted,  # EncryptedString decrypts on access
+                legajo=u.legajo,
+            )
+        )
+    return result
+
 
 @router.get("", response_model=List[AsignacionRead])
 async def listar_asignaciones(

@@ -2,16 +2,19 @@
  * AsignacionForm — React Hook Form + Zod form for POST and PATCH /api/v1/asignaciones.
  *
  * Handles both create (no initialValues) and edit (initialValues populated from row).
+ * In CREATE mode, usuario_id is selected via UsuarioCombobox (searchable dropdown).
+ * In EDIT mode, usuario_id is not editable (displayed as-is).
  * tenant_id/identity never in the body — resolved from the JWT on the backend.
  * Submit logic lives in the parent page (onSubmit prop). < 200 LOC.
  */
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/shared/components/ui'
 import type { AsignacionCreate, AsignacionUpdate, RolAsignacion } from '../types'
 import { ROLES_ASIGNACION } from '../types'
+import UsuarioCombobox from './UsuarioCombobox'
 
 const ROLES = ROLES_ASIGNACION as [RolAsignacion, ...RolAsignacion[]]
 
@@ -88,6 +91,7 @@ export default function AsignacionForm({
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -137,18 +141,19 @@ export default function AsignacionForm({
       {!isEdit && (
         <div>
           <label className={labelClass} htmlFor="asgn-usuario-id">
-            ID de usuario (UUID)
+            Usuario
           </label>
-          <input
-            id="asgn-usuario-id"
-            {...register('usuario_id')}
-            data-testid="asgn-usuario-id"
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            className={inputClass}
+          <Controller
+            name="usuario_id"
+            control={control}
+            render={({ field }) => (
+              <UsuarioCombobox
+                value={field.value || null}
+                onChange={(id) => field.onChange(id ?? '')}
+                error={errors.usuario_id?.message}
+              />
+            )}
           />
-          {errors.usuario_id && (
-            <p className="mt-1 text-xs text-red-600">{errors.usuario_id.message}</p>
-          )}
         </div>
       )}
 

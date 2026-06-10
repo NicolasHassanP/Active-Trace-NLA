@@ -15,9 +15,10 @@ import {
   useCrearAsignacion,
   useEditarAsignacion,
   useDarBajaAsignacion,
+  useBuscarUsuariosAsignables,
 } from '../asignacionHooks'
 import * as service from '../../services/asignacionService'
-import type { AsignacionRead, AsignacionCreate, AsignacionUpdate } from '../../types'
+import type { AsignacionRead, AsignacionCreate, AsignacionUpdate, UsuarioAsignable } from '../../types'
 
 vi.mock('../../services/asignacionService')
 
@@ -197,6 +198,52 @@ describe('useDarBajaAsignacion', () => {
     await act(async () => {
       result.current.mutate('asgn-1')
     })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+  })
+})
+
+// ── useBuscarUsuariosAsignables ──────────────────────────────────────────────
+
+const sampleUsuario: UsuarioAsignable = {
+  id: 'user-uuid-1',
+  nombre: 'Ana',
+  apellidos: 'García',
+  email: 'ana@test.com',
+}
+
+describe('useBuscarUsuariosAsignables', () => {
+  it('returns data from buscarUsuariosAsignables when q has content', async () => {
+    vi.mocked(service.buscarUsuariosAsignables).mockResolvedValue([sampleUsuario])
+    const { wrapper } = createWrapper()
+    const { result } = renderHook(() => useBuscarUsuariosAsignables('ana'), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toEqual([sampleUsuario])
+    expect(service.buscarUsuariosAsignables).toHaveBeenCalledWith('ana')
+  })
+
+  it('is disabled (not fetching) when q is empty string', async () => {
+    vi.mocked(service.buscarUsuariosAsignables).mockResolvedValue([])
+    const { wrapper } = createWrapper()
+    const { result } = renderHook(() => useBuscarUsuariosAsignables(''), { wrapper })
+    // Give it time to potentially fire
+    await new Promise((r) => setTimeout(r, 50))
+    expect(service.buscarUsuariosAsignables).not.toHaveBeenCalled()
+    expect(result.current.isFetching).toBe(false)
+  })
+
+  it('is disabled when q is whitespace only', async () => {
+    vi.mocked(service.buscarUsuariosAsignables).mockResolvedValue([])
+    const { wrapper } = createWrapper()
+    const { result } = renderHook(() => useBuscarUsuariosAsignables('   '), { wrapper })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(service.buscarUsuariosAsignables).not.toHaveBeenCalled()
+    expect(result.current.isFetching).toBe(false)
+  })
+
+  it('exposes error state when service throws', async () => {
+    vi.mocked(service.buscarUsuariosAsignables).mockRejectedValue({ status: 403, detail: 'sin permiso' })
+    const { wrapper } = createWrapper()
+    const { result } = renderHook(() => useBuscarUsuariosAsignables('test'), { wrapper })
     await waitFor(() => expect(result.current.isError).toBe(true))
   })
 })

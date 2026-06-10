@@ -19,7 +19,7 @@ snake_case; ≤500 LOC. Queries SOLO en repositories (regla dura #11).
 """
 import uuid
 from datetime import date
-from typing import List, Optional, Set
+from typing import List, Optional, Sequence, Set
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -73,6 +73,43 @@ class UsuarioRepository(TenantScopedRepository[Usuario]):
         await self._session.commit()
         await self._session.refresh(obj)
         return obj
+
+    async def buscar_asignables(
+        self,
+        q: Optional[str],
+        limit: int = 20,
+    ) -> Sequence[Usuario]:
+        """
+        Búsqueda de usuarios asignables por nombre o apellidos.
+
+        Retorna usuarios activos (deleted_at IS NULL) del tenant.
+        Si q viene con contenido, filtra con ILIKE case-insensitive en
+        nombre o apellidos.
+        NOTA: email no se puede buscar con ILIKE porque está cifrado en reposo
+        con AES-256-GCM no-determinístico (D2). La búsqueda se limita a
+        nombre/apellidos para el combobox de asignaciones.
+        Ordena por apellidos, nombre. Limita a `limit` resultados.
+        Usado exclusivamente para el combobox de asignaciones.
+        """
+        stmt = (
+            select(Usuario)
+            .where(
+                Usuario.tenant_id == self._tenant_id,
+                Usuario.deleted_at.is_(None),
+            )
+        )
+        if q and q.strip():
+            pattern = f"%{q.strip()}%"
+            from sqlalchemy import or_
+            stmt = stmt.where(
+                or_(
+                    Usuario.nombre.ilike(pattern),
+                    Usuario.apellidos.ilike(pattern),
+                )
+            )
+        stmt = stmt.order_by(Usuario.apellidos, Usuario.nombre).limit(limit)
+        result = await self._session.execute(stmt)
+        return result.scalars().all()
 
     async def get_nombres_por_ids(
         self, ids: List[uuid.UUID]
