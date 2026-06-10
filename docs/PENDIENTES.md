@@ -20,6 +20,21 @@
 
 ---
 
+## Mejoras de UX — reemplazar IDs crudos por selectores (follow-up, BAJA)
+
+> Varias UIs todavía piden UUIDs a mano. Ya construimos la pieza base: el endpoint `GET /asignaciones/usuarios?q=` (gateado `equipos:asignar`, no-PII) + el componente `UsuarioCombobox` (frontend/src/features/asignaciones/components/). El alta de asignaciones (`AsignacionForm`) y su tabla ya usan nombre. Falta replicar el patrón en el resto:
+
+**Campos de USUARIO** → reusar `UsuarioCombobox` (el componente se reusa; el endpoint de búsqueda se gatea según el permiso del contexto):
+- `frontend/src/features/equipos/components/AsignacionMasivaForm.tsx` — "Usuario IDs separados por coma" → combobox **multi-select** (chips). Mismo endpoint `equipos:asignar`.
+- `frontend/src/features/mensajeria/components/NuevoHiloForm.tsx` — "UUID del destinatario" → combobox. **Necesita un endpoint de búsqueda nuevo gateado a `inbox:usar`** (más roles que `equipos:asignar`), no se reusa el de asignaciones.
+- Filtros de Tareas — "ID Docente asignado" → combobox de usuario.
+
+**Campos de MATERIA / CARRERA / COHORTE** → `<select>` por nombre (lista acotada, no hace falta búsqueda). Endpoints ya existen: `admin_estructura` GET `/materias`·`/carreras`·`/cohortes` (listas), `perfil` GET `/mis-asignaciones` y `equipos` GET `/mis-equipos` (contexto del usuario). **Patrón de referencia ya implementado: `frontend/src/features/tareas/components/TareaForm.tsx`** (select de materia por nombre + docente del equipo).
+- `AsignacionForm` y `AsignacionMasivaForm` — campos Materia/Carrera/Cohorte ID a mano.
+- Filtros de Tareas — "ID materia".
+
+---
+
 ## QA manual pendiente (rol COORDINADOR)
 
 > Checklist de verificación manual todavía sin cubrir, heredado de la sesión de testeo del 2026-06-07. Las secciones ya testeadas y los bugs encontrados (toast `undefined filas`, búsqueda por `apellidos`, filtros Comisión/Regional, columnas en Seguimiento) ya están fixeados en master. Credenciales demo en `DEMO_BOOTSTRAP.md`.
