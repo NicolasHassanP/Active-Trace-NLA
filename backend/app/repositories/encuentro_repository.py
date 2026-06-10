@@ -81,24 +81,37 @@ class InstanciaEncuentroRepository(TenantScopedRepository[InstanciaEncuentro]):
     async def list_by_materia(
         self,
         materia_id: Optional[uuid.UUID] = None,
-        scope_materia_ids: Optional[List[uuid.UUID]] = None,
+        scope_asignacion_ids: Optional[List[uuid.UUID]] = None,
     ) -> List[InstanciaEncuentro]:
         """
-        List instances filtered by materia and/or materia scope.
+        List instances filtered by materia and/or asignacion scope.
 
         For COORDINADOR/ADMIN: pass materia_id only (no scope restriction).
-        For PROFESOR: pass scope_materia_ids to restrict to materias where
-        they have an asignacion — filters directly on InstanciaEncuentro.materia_id.
+        For PROFESOR/TUTOR: pass scope_asignacion_ids to restrict to instances
+        belonging to their own asignaciones — joins InstanciaEncuentro.slot_id
+        to SlotEncuentro.asignacion_id (RN-04: scope por asignación propia,
+        no por materia).
+        Both filters combine with AND when both are provided.
         """
         stmt = self._base_query()
 
         if materia_id is not None:
             stmt = stmt.where(InstanciaEncuentro.materia_id == materia_id)
 
-        if scope_materia_ids is not None:
-            stmt = stmt.where(
-                InstanciaEncuentro.materia_id.in_(scope_materia_ids)
+        if scope_asignacion_ids is not None:
+            # Subquery: slot_ids whose asignacion_id is in the allowed set.
+            # Scoped por tenant (RD#9) y soft-delete (RD#13) aunque los
+            # asignacion_ids ya vengan acotados al tenant del actor.
+            slot_subq = (
+                select(SlotEncuentro.id)
+                .where(
+                    SlotEncuentro.tenant_id == self._tenant_id,
+                    SlotEncuentro.asignacion_id.in_(scope_asignacion_ids),
+                    SlotEncuentro.deleted_at.is_(None),
+                )
+                .scalar_subquery()
             )
+            stmt = stmt.where(InstanciaEncuentro.slot_id.in_(slot_subq))
 
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
