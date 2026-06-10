@@ -44,15 +44,17 @@ export default function ComposeComunicacion({ destinatarios, onEncolado }: Props
   const encolar = useEncolarLote()
   const [previewResult, setPreviewResult] = useState<PreviewResponse | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
+  const [previewConfirmed, setPreviewConfirmed] = useState(false)
 
   const asunto = watch('asunto_plantilla')
   const cuerpo = watch('cuerpo_plantilla')
 
-  // Reset preview when template changes
+  // Reset preview gate when template or recipients change — user must re-preview
   useEffect(() => {
     setPreviewResult(null)
     setPreviewError(null)
-  }, [asunto, cuerpo])
+    setPreviewConfirmed(false)
+  }, [asunto, cuerpo, destinatarios])
 
   function handlePreview() {
     if (!destinatarios[0]) {
@@ -63,7 +65,7 @@ export default function ComposeComunicacion({ destinatarios, onEncolado }: Props
     preview.mutate(
       { asunto_plantilla: asunto, cuerpo_plantilla: cuerpo, variables: buildVariables(destinatarios[0]) },
       {
-        onSuccess: (r) => setPreviewResult(r),
+        onSuccess: (r) => { setPreviewResult(r); setPreviewConfirmed(true) },
         onError: (err) => {
           const de = err as unknown as DomainError
           setPreviewError(de.detail ?? 'Error al previsualizar')
@@ -96,7 +98,7 @@ export default function ComposeComunicacion({ destinatarios, onEncolado }: Props
     )
   }
 
-  const canEncolar = !previewError && destinatarios.length > 0
+  const canEncolar = !previewError && previewConfirmed && destinatarios.length > 0
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" data-testid="compose-form">
@@ -150,25 +152,32 @@ export default function ComposeComunicacion({ destinatarios, onEncolado }: Props
         </div>
       )}
 
-      <div className="flex gap-3">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={handlePreview}
-          isLoading={preview.isPending}
-          disabled={preview.isPending || destinatarios.length === 0}
-          data-testid="preview-btn"
-        >
-          Previsualizar
-        </Button>
-        <Button
-          type="submit"
-          isLoading={encolar.isPending}
-          disabled={!canEncolar || encolar.isPending}
-          data-testid="encolar-btn"
-        >
-          Encolar
-        </Button>
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handlePreview}
+            isLoading={preview.isPending}
+            disabled={preview.isPending || destinatarios.length === 0}
+            data-testid="preview-btn"
+          >
+            Previsualizar
+          </Button>
+          <Button
+            type="submit"
+            isLoading={encolar.isPending}
+            disabled={!canEncolar || encolar.isPending}
+            data-testid="encolar-btn"
+          >
+            Encolar
+          </Button>
+        </div>
+        {!previewConfirmed && destinatarios.length > 0 && !previewError && (
+          <p className="text-xs text-gray-500" data-testid="preview-hint">
+            Previsualizá antes de encolar
+          </p>
+        )}
       </div>
     </form>
   )

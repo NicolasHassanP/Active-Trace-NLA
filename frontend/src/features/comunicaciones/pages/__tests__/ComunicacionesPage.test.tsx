@@ -137,21 +137,29 @@ describe('ComunicacionesPage', () => {
   })
 
   it('shows lote bandeja after successful encolar', async () => {
+    vi.mocked(commService.previewComunicacion).mockResolvedValue({ asunto: 'Hola', cuerpo: 'Texto' })
     vi.mocked(commService.encolarLote).mockResolvedValue({ lote_id: 'lote1', total_encolados: 1 })
     vi.mocked(commService.getLote).mockResolvedValue(mockLoteDone)
     render(<ComunicacionesPage />, { wrapper: wrapper('/comunicaciones?destinatarios=a@t.com') })
     fireEvent.change(screen.getByTestId('asunto-input'), { target: { value: 'Hola' } })
     fireEvent.change(screen.getByTestId('cuerpo-input'), { target: { value: 'Texto' } })
+    // RN-16: preview must be confirmed before encolar is enabled
+    fireEvent.click(screen.getByTestId('preview-btn'))
+    await waitFor(() => expect(screen.getByTestId('encolar-btn')).not.toBeDisabled())
     fireEvent.click(screen.getByTestId('encolar-btn'))
     await waitFor(() => expect(screen.getByTestId('lote-bandeja')).toBeInTheDocument())
   })
 
   it('shows aprobacion panel for COORDINADOR after lote is created', async () => {
+    vi.mocked(commService.previewComunicacion).mockResolvedValue({ asunto: 'Hola', cuerpo: 'Texto' })
     vi.mocked(commService.encolarLote).mockResolvedValue({ lote_id: 'lote1', total_encolados: 1 })
     vi.mocked(commService.getLote).mockResolvedValue(mockLoteDone)
     render(<ComunicacionesPage />, { wrapper: wrapper('/comunicaciones?destinatarios=a@t.com') })
     fireEvent.change(screen.getByTestId('asunto-input'), { target: { value: 'Hola' } })
     fireEvent.change(screen.getByTestId('cuerpo-input'), { target: { value: 'Texto' } })
+    // RN-16: preview must be confirmed before encolar is enabled
+    fireEvent.click(screen.getByTestId('preview-btn'))
+    await waitFor(() => expect(screen.getByTestId('encolar-btn')).not.toBeDisabled())
     fireEvent.click(screen.getByTestId('encolar-btn'))
     await waitFor(() => expect(screen.getByTestId('aprobacion-panel')).toBeInTheDocument())
   })
