@@ -21,7 +21,7 @@ import { Button } from '@/shared/components/ui'
 import type { AsignacionCreate, AsignacionUpdate, RolAsignacion } from '../types'
 import { ROLES_ASIGNACION } from '../types'
 import UsuarioCombobox from './UsuarioCombobox'
-import { listarTodasMaterias, listarTodosCohortes } from '@/features/monitores/services/monitoresService'
+import { listarTodasMaterias, listarTodosCohortes, listarTodasCarreras } from '@/features/monitores/services/monitoresService'
 
 const ROLES = ROLES_ASIGNACION as [RolAsignacion, ...RolAsignacion[]]
 
@@ -104,8 +104,14 @@ export default function AsignacionForm({
     queryFn: listarTodosCohortes,
   })
 
+  const carrerasQuery = useQuery({
+    queryKey: ['admin-carreras'],
+    queryFn: listarTodasCarreras,
+  })
+
   const materias = materiasQuery.data ?? []
   const cohortes = cohortesQuery.data ?? []
+  const carreras = carrerasQuery.data ?? []
 
   const {
     register,
@@ -243,19 +249,27 @@ export default function AsignacionForm({
           </select>
         </div>
 
-        {/* Carrera — TODO: select when GET /admin/carreras endpoint is implemented */}
+        {/* Carrera — select by nombre */}
         <div>
           <label className={labelClass} htmlFor="asgn-carrera-id">
-            Carrera ID (opcional)
+            Carrera (opcional)
           </label>
-          {/* TODO: replace with <select> when GET /admin/carreras endpoint exists */}
-          <input
+          <select
             id="asgn-carrera-id"
             {...register('carrera_id')}
             data-testid="asgn-carrera-id"
-            placeholder="UUID"
             className={inputClass}
-          />
+            disabled={carrerasQuery.isLoading}
+          >
+            <option value="">
+              {carrerasQuery.isLoading ? 'Cargando…' : '-- Sin carrera --'}
+            </option>
+            {carreras.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Cohorte — select by nombre */}

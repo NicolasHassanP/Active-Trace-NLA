@@ -2,8 +2,7 @@
  * AsignacionMasivaForm render tests.
  *
  * Verifies:
- *   - materia and cohorte selects are rendered with option labels from the mocked lists
- *   - carrera field remains a plain input (no endpoint)
+ *   - materia, cohorte and carrera selects are rendered with option labels from the mocked lists
  *   - UsuarioMultiCombobox input is rendered (user search combobox)
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -11,12 +10,13 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createElement } from 'react'
 import AsignacionMasivaForm from '../AsignacionMasivaForm'
-import type { MateriaItem, CohorteItem } from '@/features/monitores/types'
+import type { MateriaItem, CohorteItem, CarreraItem } from '@/features/monitores/types'
 
 // Mock the monitoresService to return controlled lists
 vi.mock('@/features/monitores/services/monitoresService', () => ({
   listarTodasMaterias: vi.fn(),
   listarTodosCohortes: vi.fn(),
+  listarTodasCarreras: vi.fn(),
 }))
 
 // Mock the asignacionHooks used by UsuarioMultiCombobox
@@ -36,10 +36,11 @@ vi.mock('../../hooks/equiposHooks', () => ({
   }),
 }))
 
-import { listarTodasMaterias, listarTodosCohortes } from '@/features/monitores/services/monitoresService'
+import { listarTodasMaterias, listarTodosCohortes, listarTodasCarreras } from '@/features/monitores/services/monitoresService'
 
 const mockMaterias = vi.mocked(listarTodasMaterias)
 const mockCohortes = vi.mocked(listarTodosCohortes)
+const mockCarreras = vi.mocked(listarTodasCarreras)
 
 const sampleMaterias: MateriaItem[] = [
   { id: 'mat-1', codigo: 'MAT101', nombre: 'Matemática I', estado: 'activo' },
@@ -51,6 +52,10 @@ const sampleCohortes: CohorteItem[] = [
   { id: 'coh-2', carrera_id: 'car-1', nombre: 'Cohorte 2025', anio: 2025, estado: 'activo' },
 ]
 
+const sampleCarreras: CarreraItem[] = [
+  { id: 'car-1', codigo: 'ING', nombre: 'Ingeniería', estado: 'activo' },
+]
+
 function makeWrapper() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: React.ReactNode }) =>
@@ -60,6 +65,7 @@ function makeWrapper() {
 beforeEach(() => {
   mockMaterias.mockResolvedValue(sampleMaterias)
   mockCohortes.mockResolvedValue(sampleCohortes)
+  mockCarreras.mockResolvedValue(sampleCarreras)
 })
 
 // ── render ──────────────────────────────────────────────────────────────────
@@ -93,11 +99,14 @@ describe('AsignacionMasivaForm — render', () => {
     })
   })
 
-  it('renders carrera as a plain text input (no endpoint yet)', () => {
+  it('renders carrera select with options by nombre', async () => {
     render(<AsignacionMasivaForm />, { wrapper: makeWrapper() })
-    const carreraInput = screen.getByTestId('masiva-carrera-id')
-    // Should be an <input>, not a <select>
-    expect(carreraInput.tagName.toLowerCase()).toBe('input')
+
+    await waitFor(() => {
+      const select = screen.getByTestId('masiva-carrera-id')
+      expect(select.tagName.toLowerCase()).toBe('select')
+      expect(select.textContent).toContain('Ingeniería')
+    })
   })
 
   it('materia options have correct values (UUIDs as option value)', async () => {
