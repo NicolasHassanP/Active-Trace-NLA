@@ -244,6 +244,32 @@ class EncuentroService:
         return [InstanciaEncuentroRead.model_validate(inst) for inst in instancias]
 
     # -----------------------------------------------------------------------
+    # dar_baja_instancia — soft delete (BUG C)
+    # -----------------------------------------------------------------------
+
+    async def dar_baja_instancia(
+        self,
+        instancia_id: uuid.UUID,
+        current_user: CurrentUser,
+    ) -> None:
+        """
+        Soft-delete una InstanciaEncuentro.
+
+        Raises HTTP 404 si la instancia no existe en el tenant.
+        Requiere encuentros:gestionar (enforced en el router).
+        Nunca hard delete (regla dura #13).
+        Identidad desde current_user — nunca del body/URL (regla dura #8).
+        """
+        inst = await self._inst_repo.get_by_id(instancia_id)
+        if inst is None:
+            from fastapi import HTTPException, status as http_status
+            raise HTTPException(
+                status_code=http_status.HTTP_404_NOT_FOUND,
+                detail=f"InstanciaEncuentro {instancia_id} no encontrada",
+            )
+        await self._inst_repo.dar_baja(inst)
+
+    # -----------------------------------------------------------------------
     # Private helpers
     # -----------------------------------------------------------------------
 
