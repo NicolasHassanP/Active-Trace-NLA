@@ -552,6 +552,14 @@
       "sessions": 0,
       "memories": 3,
       "prompts": 0
+    },
+    {
+      "id": "ede5a1d3",
+      "created_by": "Nico",
+      "created_at": "2026-06-11T20:30:12Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }
