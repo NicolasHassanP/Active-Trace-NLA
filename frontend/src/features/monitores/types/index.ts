@@ -51,6 +51,13 @@ export interface CohorteItem {
   estado: string
 }
 
+export interface CarreraItem {
+  id: string
+  codigo: string
+  nombre: string
+  estado: string
+}
+
 // ---------------------------------------------------------------------------
 // Filter / param types
 // ---------------------------------------------------------------------------

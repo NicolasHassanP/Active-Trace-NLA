@@ -6,7 +6,7 @@
  *  - usuario_ids: UsuarioMultiCombobox (replaces raw UUID textarea)
  *  - materia_id:  <select> by nombre (from GET /admin/materias)
  *  - cohorte_id:  <select> by nombre (from GET /admin/cohortes)
- *  - carrera_id:  raw UUID input (TODO: select when /admin/carreras endpoint exists)
+ *  - carrera_id:  <select> by nombre (from GET /admin/carreras)
  */
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -17,7 +17,7 @@ import { useAsignacionMasiva } from '../hooks/equiposHooks'
 import type { RolAsignacion } from '../types'
 import { Button } from '@/shared/components/ui'
 import UsuarioMultiCombobox from '@/features/asignaciones/components/UsuarioMultiCombobox'
-import { listarTodasMaterias, listarTodosCohortes } from '@/features/monitores/services/monitoresService'
+import { listarTodasMaterias, listarTodosCohortes, listarTodasCarreras } from '@/features/monitores/services/monitoresService'
 
 const schema = z.object({
   usuario_ids: z.array(z.string().uuid()).min(1, 'Seleccioná al menos un usuario'),
@@ -46,6 +46,11 @@ export default function AsignacionMasivaForm() {
   const cohortesQuery = useQuery({
     queryKey: ['admin-cohortes'],
     queryFn: listarTodosCohortes,
+  })
+
+  const carrerasQuery = useQuery({
+    queryKey: ['admin-carreras'],
+    queryFn: listarTodasCarreras,
   })
 
   const {
@@ -85,6 +90,7 @@ export default function AsignacionMasivaForm() {
 
   const materias = materiasQuery.data ?? []
   const cohortes = cohortesQuery.data ?? []
+  const carreras = carrerasQuery.data ?? []
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -130,16 +136,24 @@ export default function AsignacionMasivaForm() {
           {errors.materia_id && <p className="mt-1 text-xs text-red-600">{errors.materia_id.message}</p>}
         </div>
 
-        {/* Carrera — TODO: select when /admin/carreras endpoint exists */}
+        {/* Carrera — select by nombre */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Carrera ID</label>
-          {/* TODO: replace with <select> when GET /admin/carreras endpoint is implemented */}
-          <input
+          <label className="block text-sm font-medium text-gray-700 mb-1">Carrera</label>
+          <select
             {...register('carrera_id')}
             className={inputClass}
             data-testid="masiva-carrera-id"
-            placeholder="UUID de carrera"
-          />
+            disabled={carrerasQuery.isLoading}
+          >
+            <option value="">
+              {carrerasQuery.isLoading ? 'Cargando…' : '-- Seleccioná --'}
+            </option>
+            {carreras.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
           {errors.carrera_id && <p className="mt-1 text-xs text-red-600">{errors.carrera_id.message}</p>}
         </div>
 
