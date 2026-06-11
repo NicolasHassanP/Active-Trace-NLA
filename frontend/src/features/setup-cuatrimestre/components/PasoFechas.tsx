@@ -1,6 +1,7 @@
 /**
  * PasoFechas — Step 6: Load academic evaluation dates.
  * Task 7.9. Uses setupCuatrimestreService.crearFechaAcademica + fechaAcademicaCreateSchema.
+ * materia_id / cohorte_id → <select> by nombre (useEstructuraOptions).
  * < 200 LOC.
  */
 import { useForm } from 'react-hook-form'
@@ -13,6 +14,7 @@ import type { FechaAcademicaFormValues } from '../services/setupCuatrimestreServ
 import { parseDomainError } from '@/shared/services/domainError'
 import type { FechaAcademicaTipo } from '../types'
 import { Button } from '@/shared/components/ui'
+import { useEstructuraOptions } from '../hooks/useEstructuraOptions'
 
 const TIPO_OPTIONS: FechaAcademicaTipo[] = [
   'Parcial',
@@ -31,6 +33,8 @@ interface Props {
 }
 
 export default function PasoFechas({ onSuccess, onError }: Props) {
+  const { materias, cohortes, isLoading } = useEstructuraOptions()
+
   const {
     register,
     handleSubmit,
@@ -60,16 +64,47 @@ export default function PasoFechas({ onSuccess, onError }: Props) {
       </p>
 
       <div className="grid grid-cols-2 gap-3">
+        {/* Materia — select by nombre */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Materia</label>
-          <input {...register('materia_id')} className={inputClass} />
+          <select
+            {...register('materia_id')}
+            className={inputClass}
+            data-testid="fechas-materia-id"
+            disabled={isLoading}
+          >
+            <option value="">
+              {isLoading ? 'Cargando…' : '-- Seleccioná --'}
+            </option>
+            {materias.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nombre}
+              </option>
+            ))}
+          </select>
           {errors.materia_id && (
             <p className="mt-1 text-xs text-red-600">{errors.materia_id.message}</p>
           )}
         </div>
+
+        {/* Cohorte — select by nombre */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Cohorte</label>
-          <input {...register('cohorte_id')} className={inputClass} />
+          <select
+            {...register('cohorte_id')}
+            className={inputClass}
+            data-testid="fechas-cohorte-id"
+            disabled={isLoading}
+          >
+            <option value="">
+              {isLoading ? 'Cargando…' : '-- Seleccioná --'}
+            </option>
+            {cohortes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
           {errors.cohorte_id && (
             <p className="mt-1 text-xs text-red-600">{errors.cohorte_id.message}</p>
           )}
