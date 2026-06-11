@@ -1,7 +1,6 @@
-# Pendientes y deuda técnica — handoff
+# Pendientes y deuda técnica
 
-> Backlog de trabajo abierto para atacar en una próxima sesión. Generado al cierre de la sesión del **2026-06-09** sobre la rama `style/design-handoff`.
-> Detalle adicional en Engram (topic_keys citados en cada ítem). Ordenado por prioridad sugerida.
+> Backlog real verificado contra `master` el **2026-06-10**. Todo lo previo (fixes de enums, teardowns de `audit_event`, impersonación RN-41, scope de `listar_instancias`, etc.) ya está mergeado en master y se removió de este doc por ruido. El historial completo vive en Engram.
 
 > ### ✅ Actualización 2026-06-10 (sesión 4) — ADMIN scope global + umbral por-materia implementado
 > Diseño planificado por Nicolás (commit `505483b` en master) implementado con Strict TDD:
@@ -26,106 +25,112 @@ Esta sesión resolvió: C1 (permisos programas/fechas rotos), Setup Cuatrimestre
 
 Lo que queda abierto es lo de abajo.
 
----
-
-## 1. Bugs reales (atacar primero)
-
-### 1.1 `encuentros-coord` envía días en formato inválido — ✅ RESUELTO (revertido por OneDrive → re-aplicar via HANDOFF Tarea A)
-> Se corrigió el enum a `'Lunes'…'Domingo'` (+ se detectó y arregló `InstanciaEncuentroEstado` con `'postergado'` inexistente, y los enums de `coloquios`). Verificado `tsc` 0 errores + vitest verde. Pasos exactos en HANDOFF §Tarea A.
-- **Qué**: `frontend/src/features/encuentros-coord/` usa los valores de `DiaSemana` en minúscula ASCII (`'lunes'`, `'martes'`, `'miercoles'`…), pero el enum real del backend (`backend/app/models/encuentro.py`) es **capitalizado y con acentos**: `'Lunes'`, `'Martes'`, `'Miércoles'`, `'Jueves'`, `'Viernes'`, `'Sábado'`, `'Domingo'`.
-- **Impacto**: la creación/filtrado de encuentros por día puede estar mandando valores que el backend rechaza (422) o que no matchean. Verificar end-to-end.
-- **Dónde**: `frontend/src/features/encuentros-coord/` (types y componentes de selección de día). Referencia del valor correcto: `frontend/src/features/guardias/types/index.ts` (M1 lo dejó bien).
-- **Prioridad**: ALTA (posible bug funcional en producción).
-- **Engram**: `frontend/m1-guardias-page`.
-
-### 1.2 Dos errores de TypeScript pre-existentes — ✅ RESUELTO (revertido por OneDrive → re-aplicar via HANDOFF Tarea A)
-> `EvaluacionTipo`/`ReservaEstado` de coloquios estaban en minúscula (no matcheaban backend) y `onDelegar` quedaba sin usar en tareas (→ botón "Delegar"). `tsc --noEmit` queda en 0 errores.
-- **Qué**: `npx tsc --noEmit` falla con 2 errores ajenos a lo trabajado esta sesión.
-- **Dónde**: `frontend/src/features/coloquios/pages/ColoquiosPage.tsx` y `frontend/src/features/tareas/components/TareasAdminTable.tsx`.
-- **Impacto**: el typecheck del proyecto no pasa limpio; puede romper CI si hay gate de tsc.
-- **Prioridad**: MEDIA.
+> ### ✅ Cerrados 2026-06-10 (commits f3bd49b · ec147b4 · 5a8b94e · 670d988)
+> - **M3 — página frontend de asignaciones (F4.3)**: feature `frontend/src/features/asignaciones/` completa + ruta/nav gateadas a COORDINADOR/ADMIN (`equipos:asignar`). 34 tests Vitest.
+> - **RN-11 — jerarquía acíclica de responsable docente**: validación BFS en `usuario_service` (vía `usuario_repository`) que prohíbe auto-referencia y ciclos transitivos en `crear/editar_asignacion`. 7 tests pytest.
+> - **RN-16 — vista previa obligatoria de comunicaciones**: gate `previewConfirmed` en `ComposeComunicacion.tsx` (Encolar deshabilitado hasta previsualizar). Enforcement en frontend por diseño (un flag backend sería inverificable; RN-17 cubre la autorización).
+> - **Fix colateral**: `ComunicacionesPage` volvía a abrir en tab "Historial" por default sin destinatarios, contra C-27/D5 → restaurado "Componer".
 
 ---
 
-## 2. Deuda de infraestructura de tests
+## Vivo (deuda real)
 
-### 2.1 Teardown de fixtures incompatible con la inmutabilidad de `audit_event` — 🟡 PARCIAL (helper commiteado; migración por-test pendiente)
-> ✅ Commiteado en `conftest.py`: helper `delete_audit_events_for_tenant(session, tenant_id)` que respeta el trigger de inmutabilidad (DISABLE/ENABLE TRIGGER). 🔲 Falta migrar los teardowns de `test_calificaciones`/`_router`, `test_padron`, `test_comunicacion_service`, `test_c27` para que lo usen (se revirtieron) → HANDOFF Tarea B. Engram: `tests/audit-event-teardown-strategy`.
-- **Qué**: ~8 fixtures de test hacen `DELETE FROM audit_event WHERE tenant_id = :tid` en su limpieza. La tabla `audit_event` es append-only (trigger `audit_event_immutable()` instalado por `test_audit_migration.py`). Cuando ese test corre antes en la misma sesión, los `DELETE` fallan → errores de teardown en corridas de suite completa. En aislamiento pasan (el trigger no está instalado).
-- **Síntoma**: `RestrictViolationError: audit_event rows are immutable` y/o `DependentObjectsStillExistError` al dropear `tenants`.
-- **Dónde**: `backend/tests/` — `test_perfil_router.py`, `test_perfil_service.py`, `test_calificaciones*.py`, `test_padron.py`, `test_comunicacion_service.py`, `test_c27_historial_comunicaciones.py`, etc. (grep `DELETE FROM audit_event`).
-- **Enfoque sugerido**: decidir una estrategia única — p.ej. no borrar audit_event en teardown de módulo y confiar en el `drop_all` de fin de sesión (conftest), o un helper de limpieza que respete la inmutabilidad. Es una decisión transversal de infra de tests.
-- **Prioridad**: MEDIA (ruidoso, no rompe aserciones).
+| # | Ítem | Dónde | Prioridad |
+|---|------|-------|-----------|
+| 1 | **Aprovisionamiento programático de tenants**. El RBAC se siembra solo vía migraciones, que cubren los tenants existentes al migrar. Un tenant creado después no recibe roles/permisos. No hay servicio de onboarding. Bloqueante para multi-tenant real. | `backend/app/` (sin servicio de provisioning) | MEDIA-ALTA cuando se encare multi-tenant productivo; ligado a C-24 |
+
+> **Nota**: este único ítem vivo es de governance **CRÍTICO** (multi-tenancy + RBAC) y está atado a **C-24** (diferido por PA-22/23/25). No se codea sin desbloquear esas preguntas y aprobación humana explícita.
 
 ---
 
-## 3. Feature pendiente
+## 🟠 PLANIFICADO (próxima sesión) — ADMIN scope global + umbral por-materia
 
-### 3.1 M3 — Gestión global de asignaciones (F4.3)
-- **Qué**: página frontend dedicada para el ABM/gestión global de asignaciones docentes.
-- **Estado**: backend `backend/app/api/v1/routers/asignaciones.py` 100% listo (GET/POST/PATCH/DELETE bajo `equipos:asignar`). Hoy solo se opera embebido en Setup Cuatrimestre; no hay página dedicada.
-- **Enfoque**: misma receta que M1/M2 — feature `frontend/src/features/asignaciones/` con TDD (Vitest), reusando patrones de `features/equipos`/`features/guardias`. Ruta + nav para COORDINADOR/ADMIN (`equipos:asignar`).
-- **Prioridad**: BAJA (valor bajo — ya existe vía operativa en Setup).
+> Governance **CRÍTICO** (calificaciones + RBAC scope + migración de datos). Diseño aprobado por el usuario el 2026-06-10. NO empezar sin releer esta sección completa. Implementar con **Strict TDD** y **backend primero** (la migración + el contrato son la fuente de verdad), luego frontend.
 
----
+### Problema (diagnóstico verificado)
+El rol **ADMIN** tiene capacidades GLOBALES sobre cátedra (matriz KB §3.3 / PDF `activia-trace-documentacion.pdf`: importar calificaciones, ver atrasados, enviar comunicaciones, configurar umbral — todas **sin** la anotación "(propio)" = scope `global`). Pero las vistas docentes scopean a "la asignación del propio usuario" e ignoran el scope. Síntomas observados con ADMIN logueado:
+- **"Mis materias"** vacío ("No tenés asignaciones") — es `GET /equipos/mis-equipos`, vista docente de *mis* asignaciones; ADMIN no es docente → vacío correcto, pero **no debería ofrecerse** esa vista a ADMIN.
+- **Calificaciones → tab Umbral** tira error crudo `No active asignacion found for user in materia f2000002-...` (`backend/app/api/v1/routers/calificaciones.py:223-227`) porque exige una asignación del propio ADMIN.
 
-## 4. Deuda de arquitectura / seed
+### Decisión tomada
+1. **NO sacarle capacidades a ADMIN.** Mantiene acceso a Calificaciones/Padrón/Atrasados (ejerce el scope global vía el selector de materia que esas páginas ya tienen).
+2. El **umbral** pasa de "solo por-asignación" a **default por-materia/cohorte (config de ADMIN, scope global) + override por-asignación del docente**.
+3. Solo se **oculta "Mis materias" para ADMIN** (es *mis-asignaciones*; no le quita ninguna capacidad).
 
-### 4.1 No hay aprovisionamiento programático de tenants
-- **Qué**: el RBAC es per-tenant y se siembra solo vía migraciones, que cubren los tenants existentes **al momento de migrar**. Un tenant creado después no recibe roles/permisos automáticamente. No existe servicio de onboarding en `backend/app/`.
-- **Impacto**: bloqueante para multi-tenant real; ligado a C-24 (ABM de usuarios/tenants no construido).
-- **Prioridad**: MEDIA-ALTA cuando se encare multi-tenant productivo.
-- **Engram**: `rbac/c20-permisos-seed-produccion`.
+### Lo que YA está bien (no tocar, solo verificar)
+- El patrón de scope-honoring **ya existe**: `backend/app/services/analisis_service.py` (`_es_scope_global(grant)` → `grant.scope == PermisoScope.global_`). `PermissionGrant.scope` viene de `require_permission(...)`.
+- **Atrasados** (`analisis.py`) ya respeta el scope global → ADMIN funciona ahí.
+- **Importar calificaciones** (`calificacion_service.py:168-189`) ya maneja `asignacion_id = None` gracefully (verificar que con scope global no exija asignación).
+- → **El único endpoint realmente roto es el de umbral (GET + PUT).**
 
-### 4.2 Gotcha: bases de dev pre-S2 necesitan re-aplicar grants
-- **Qué**: cualquier base local sembrada antes de S2 no tiene `perfil:editar` para ALUMNO/NEXO/FINANZAS ni `inbox:usar` para NEXO/FINANZAS → 403 al editar perfil como ALUMNO. La base de dev de esta sesión ya fue corregida; **las de los compañeros no**.
-- **Fix**: re-correr `backend/seed_rbac_demo.py` (idempotente) o aplicar migración 018, o SQL directo (`INSERT ... SELECT ... ON CONFLICT ON CONSTRAINT uq_rol_permiso DO NOTHING`). Verificar: `perfil:editar` debe tener 7 roles, `inbox:usar` 6 (sin ALUMNO).
-- **Prioridad**: BAJA (operativo por entorno).
-- **Engram**: `infra/dev-db-grants-perfil-inbox`.
+### Backend — cambios
+1. **Modelo** `backend/app/models/calificacion.py` (`UmbralMateria`, ~líneas 133-183):
+   - `asignacion_id` → **nullable** (NULL = default de materia/cohorte; no-NULL = override del docente).
+   - Nueva FK `cohorte_id` → `cohorte(id)` `ON DELETE RESTRICT`, nullable.
+2. **Migración Alembic** (UNA sola, regla dura; numerar según la última en `backend/alembic/versions/`):
+   - `add_column` `cohorte_id` + FK + índice.
+   - `alter_column` `asignacion_id` → nullable.
+   - **drop** índice único viejo `uq_um_asignacion_materia`.
+   - **create** dos índices únicos **parciales**:
+     - `uq_um_default_materia_cohorte` ON `(tenant_id, materia_id, cohorte_id)` WHERE `asignacion_id IS NULL AND deleted_at IS NULL`.
+     - `uq_um_asignacion_override` ON `(tenant_id, asignacion_id, materia_id)` WHERE `asignacion_id IS NOT NULL AND deleted_at IS NULL`.
+   - Data migration: filas existentes mantienen su `asignacion_id` (se vuelven overrides). Downgrade idempotente (`DROP INDEX IF EXISTS`).
+3. **`UmbralService.get_efectivo`**: resolución por precedencia → **(1) override del docente** (`asignacion_id` + `materia_id`) → **(2) default de materia/cohorte** (`asignacion_id IS NULL` + `materia_id` + `cohorte_id`) → **(3) default sistema (60%)**. Devolver flag `is_default` para que el front sepa si está heredando.
+4. **`UmbralService.configurar`** + **repository** (`calificacion_repository.py`): nuevo `get_umbral_default(materia_id, cohorte_id)`; el setter resuelve si escribe default (asignacion_id NULL) u override según el scope.
+5. **Router `calificaciones.py` GET/PUT `/umbral`**: leer `grant.scope`. Si `global` → operar sobre la materia/cohorte seleccionada **sin exigir asignación** (default de materia). Si `propio` → resolver la asignación del docente (override), como hoy. Tenant SIEMPRE desde JWT. Sumar `cohorte_id` al query/body. Eliminar el `raise 404` con string crudo en inglés → estado manejado.
 
-### 4.3 Permiso `guardias:registrar` sin uso — ✅ RESUELTO como reservado (revertido por OneDrive → re-aplicar via HANDOFF Tarea C)
-> Decisión: documentarlo como RESERVADO en `seed_rbac_demo.py` (sin migración, sin tocar grants). Eliminarlo de raíz exigiría migración sobre RBAC (CRÍTICO) → no se hizo.
-- **Qué**: existe en el catálogo RBAC (migración 003 + seed) pero ningún router lo usa — guardias se gatea con `encuentros:gestionar` (decisión C-13). Es un permiso muerto.
-- **Enfoque**: o se elimina del catálogo, o se documenta como reservado. No urgente.
-- **Prioridad**: BAJA.
+### Frontend — cambios
+1. `frontend/src/features/shell/components/buildNav.ts` — sacar `ADMIN` del item **"Mis materias"** (dejar `['PROFESOR','COORDINADOR']`). NO tocar los demás items de MI CÁTEDRA (ADMIN los sigue usando con scope global).
+2. `frontend/src/features/calificaciones/` — tab **"Umbral" dual** según rol/scope (`useAuth().roles`):
+   - ADMIN → "Umbral por defecto de la materia/cohorte" (setea default; PUT con `asignacion_id: null`).
+   - Docente → "Mi umbral" (override de su asignación; muestra el default heredado cuando `is_default`).
+   - Refactor: `UmbralConfig.tsx` → `UmbralConfigDocente.tsx` + nuevo `UmbralConfigDefault.tsx`; hooks `useUmbralDocente` / `useUmbralDefault` / `useConfigurarUmbral*`.
 
----
+### Strict TDD
+- **Backend (pytest, DB real, `create_usuario_con_identidad`)**: precedencia de `get_efectivo` (override → default materia/cohorte → 60%); ADMIN (scope global) lee/escribe default SIN asignación; docente (scope propio) escribe override; 403 sin el permiso; aislamiento por tenant. Safety net: `pytest backend/tests/test_calificaciones*.py -q` antes de tocar.
+- **Frontend (vitest)**: tab dual renderiza el componente correcto por rol; ADMIN setea default, docente ve override + default heredado; ocultar "Mis materias" para ADMIN.
+- NO correr la suite completa (lento, deja shells en Windows). `tsc --noEmit` 0 errores.
 
-## 5. Decisión de producto — NO tocar
-
-### 5.1 Ítems de nav que llevan a 404 (intencional)
-- **Qué**: `buildNav.ts` expone `/liquidaciones`, `/admin/usuarios`, `/admin/estructura`, `/admin/auditoria`, que no tienen ruta en `App.tsx` → caen en 404.
-- **Decisión tomada**: es deliberado. Quedan como vista placeholder hasta tener las herramientas para implementar esos changes (C-18 liquidaciones, C-24 admin/finanzas). **No gatear ni "arreglar" sin pedido explícito.**
-- **Prioridad**: N/A (decisión cerrada).
-
----
-
-## 6. Gaps de reglas de negocio (del análisis inicial)
-
-Detectados en el análisis comparativo doc-vs-código; revisar si están en scope o diferidos:
-
-- **RN-41 — Impersonación**: solo existe el andamiaje de auditoría (`audit_service.record_impersonation_start/end`, campo `impersonated_user_id`). No hay endpoint, middleware ni swap de sesión que la ejecute; el permiso `impersonacion:usar` no se consume. Dominio CRÍTICO. Confirmar si está diferido a un change futuro.
-- **RN-28 — CSRF**: no implementado. Probablemente N/A si la auth es JWT por header `Authorization` (no cookie). Requiere decisión arquitectónica, no es bug claro.
-- **RN-16 — Vista previa obligatoria de comunicaciones**: `preview_static()` existe pero el flujo no fuerza el preview antes de encolar (confianza media, verificar).
-- **RN-11 — Jerarquía responsable docente**: el modelo `Asignacion.responsable_id` existe y persiste, pero sin lógica de validación de cadena/no-circular.
-
-> Nota: RN-17 (aprobación masiva de comunicaciones) fue reportada como faltante en el análisis inicial pero **está implementada** (`comunicaciones.py` con `/aprobar-lote`, `/aprobar-individual`, etc. bajo `comunicacion:aprobar`). No es un gap.
-
-### 6.5 🐛 `EncuentroService.listar_instancias` no filtra por asignaciones del PROFESOR — BUG REAL (nuevo)
-- **Qué**: un PROFESOR ve instancias de encuentro que no son suyas; `listar_instancias` no aplica el scope propio por sus asignaciones. Lo destapa el test `test_encuentros::test_listar_encuentros_profesor_ve_solo_propios` (rojo legítimo), que antes estaba tapado por un error de FK en el setup.
-- **Dónde**: `backend/app/services/encuentro_service.py`.
-- **Governance**: MEDIO (dominio). Verificar la RN de scope antes de tocar.
-- **Prioridad**: MEDIA-ALTA (fuga de visibilidad entre docentes).
-- **Engram**: `tests/usuario-con-identidad-helper`.
-
-### 6.6 Patrón de tests: usuario de dominio resoluble por JWT (helper ya disponible)
-- **Qué**: para cualquier test de endpoint que necesite que el JWT `sub` resuelva a un `Usuario`, usar `create_usuario_con_identidad()` (ya en `conftest.py`, commiteado). NO setear `auth_identity_id` a mano (viola la FK a `auth_identities`). Invariante C-28: `auth_identity_id ≠ usuario.id`.
-- **Engram**: `tests/usuario-con-identidad-helper`, `tests/c28-residual-buckets`.
+### Decisión abierta menor (resolver al implementar)
+Granularidad del default: se acordó **por (materia, cohorte)**. Confirmar si el `cohorte_id` siempre está disponible en el flujo (la página de Calificaciones ya selecciona materia + cohorte → sí).
 
 ---
 
-## Fuera de scope (justificado, no tocar sin cerrar preguntas)
+## Mejoras de UX — reemplazar IDs crudos por selectores (follow-up, BAJA)
 
-- **C-18 (liquidaciones)** y **C-24 (frontend finanzas/admin)**: pendientes con justificación; bloqueados por preguntas abiertas (PA-22/PA-23 Plus, etc.).
-- Estructura académica / catálogo de materias: bloqueado por **PA-01**, **PA-07**.
-- Rol **NEXO**: semántica completa diferida a **PA-25** (su set base ya está: `avisos:confirmar`, `equipos:ver`, `inbox:usar`, `perfil:editar`).
+> Varias UIs todavía piden UUIDs a mano. Ya construimos la pieza base: el endpoint `GET /asignaciones/usuarios?q=` (gateado `equipos:asignar`, no-PII) + el componente `UsuarioCombobox` (frontend/src/features/asignaciones/components/). El alta de asignaciones (`AsignacionForm`) y su tabla ya usan nombre. Falta replicar el patrón en el resto:
+
+**Campos de USUARIO** → reusar `UsuarioCombobox` (el componente se reusa; el endpoint de búsqueda se gatea según el permiso del contexto):
+- `frontend/src/features/equipos/components/AsignacionMasivaForm.tsx` — "Usuario IDs separados por coma" → combobox **multi-select** (chips). Mismo endpoint `equipos:asignar`.
+- `frontend/src/features/mensajeria/components/NuevoHiloForm.tsx` — "UUID del destinatario" → combobox. **Necesita un endpoint de búsqueda nuevo gateado a `inbox:usar`** (más roles que `equipos:asignar`), no se reusa el de asignaciones.
+- Filtros de Tareas — "ID Docente asignado" → combobox de usuario.
+
+**Campos de MATERIA / CARRERA / COHORTE** → `<select>` por nombre (lista acotada, no hace falta búsqueda). Endpoints ya existen: `admin_estructura` GET `/materias`·`/carreras`·`/cohortes` (listas), `perfil` GET `/mis-asignaciones` y `equipos` GET `/mis-equipos` (contexto del usuario). **Patrón de referencia ya implementado: `frontend/src/features/tareas/components/TareaForm.tsx`** (select de materia por nombre + docente del equipo).
+- `AsignacionForm` y `AsignacionMasivaForm` — campos Materia/Carrera/Cohorte ID a mano.
+- Filtros de Tareas — "ID materia".
+
+---
+
+## QA manual pendiente (rol COORDINADOR)
+
+> Checklist de verificación manual todavía sin cubrir, heredado de la sesión de testeo del 2026-06-07. Las secciones ya testeadas y los bugs encontrados (toast `undefined filas`, búsqueda por `apellidos`, filtros Comisión/Regional, columnas en Seguimiento) ya están fixeados en master. Credenciales demo en `DEMO_BOOTSTRAP.md`.
+
+- **Padrón** (`/padron`): importar CSV real y verificar el conteo del toast; vaciar padrón y confirmar que Seguimiento queda vacío.
+- **Atrasados** (`/atrasados`): con calificaciones cargadas, confirmar que aparecen atrasados; seleccionar alumnos y usar "Comunicar a seleccionados"; filtros por comisión y regional.
+- **Monitor** (`/monitor`): verificar nombre/apellido (misma fix de Seguimiento); filtros de materia, cohorte, estado.
+- **Mensajería** (`/mensajes`): iniciar y responder un hilo; nombre del participante (no UUID); deep link `?hilo=<id>`; badge de campanita suma avisos + mensajes no leídos; animación al recibir mensaje.
+- **Equipos docentes** (`/equipos`): asignar tutor/profesor a una comisión y verificar persistencia tras recargar.
+- **Encuentros** (`/encuentros`): crear, editar y eliminar un encuentro.
+- **Coloquios** (`/coloquios`): crear un coloquio y gestionar inscripciones.
+- **Tareas** (`/tareas`): crear una tarea de seguimiento y marcarla completada.
+- **Setup cuatrimestre** (`/setup-cuatrimestre`): completar el flujo de setup inicial.
+- **Seguridad transversal**: logout + acceso directo a `/padron` → redirige al login; COORDINADOR no accede a rutas `/admin/*`.
+
+---
+
+## Fuera de scope (justificado — no tocar sin cerrar preguntas)
+
+- **C-18 (liquidaciones)** y **C-24 (frontend finanzas/admin)**: diferidos a fin de proyecto, bloqueados por **PA-22/PA-23** (claves de Plus, acumulación) y **PA-25** (semántica NEXO).
+- **Estructura académica / catálogo de materias**: bloqueado por **PA-01**, **PA-07**.
+- **Nav a 404 intencional**: `/liquidaciones`, `/admin/usuarios`, `/admin/estructura`, `/admin/auditoria` son placeholders deliberados hasta C-18/C-24. No gatear ni "arreglar" sin pedido explícito.
+- **RN-28 (CSRF)**: probablemente N/A con auth JWT por header `Authorization` (no cookie). Requiere decisión arquitectónica, no es bug.

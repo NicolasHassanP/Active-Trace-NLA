@@ -259,6 +259,7 @@ class AsignacionService:
     Validaciones:
         - usuario_id debe existir en el mismo tenant.
         - responsable_id, si se provee, debe existir en el mismo tenant.
+        - responsable_id no puede crear un ciclo en la jerarquía (RN-11).
         - materia_id/carrera_id/cohorte_id, si se proveen, deben ser del tenant.
         - Multi-rol: un usuario puede tener múltiples asignaciones con roles distintos.
         - Asignación vencida se conserva (soft delete explícito requerido).
@@ -274,6 +275,48 @@ class AsignacionService:
     ) -> None:
         self._asignaciones = asignacion_repo
         self._usuarios = usuario_repo
+
+    # -----------------------------------------------------------------------
+    # RN-11 — Validación de jerarquía acíclica de responsables
+    # -----------------------------------------------------------------------
+
+    async def _validar_aciclo_responsable(
+        self,
+        usuario_id: uuid.UUID,
+        responsable_id: uuid.UUID,
+    ) -> None:
+        """
+        RN-11: valida que la asignación no forme un ciclo en la jerarquía.
+
+        Detecta auto-referencia (A→A) y ciclos transitivos (A→B→…→A).
+        Traversa la cadena solo sobre asignaciones activas, con scope de tenant.
+        Raises ReferenciaInvalida si detecta ciclo.
+        Soft limit de 1000 nodos como defensa ante datos corruptos.
+        """
+        if usuario_id == responsable_id:
+            raise ReferenciaInvalida(
+                f"Ciclo detectado: el usuario {usuario_id} no puede ser "
+                "su propio responsable (auto-referencia)."
+            )
+
+        visited: set = set()
+        queue = {responsable_id}
+        _LIMIT = 1000
+
+        while queue:
+            if len(visited) >= _LIMIT:
+                break
+            current = queue.pop()
+            if current in visited:
+                continue
+            visited.add(current)
+            ancestors = await self._asignaciones.get_responsables_de_usuario(current)
+            if usuario_id in ancestors:
+                raise ReferenciaInvalida(
+                    f"Ciclo detectado: asignar {responsable_id} como responsable "
+                    f"de {usuario_id} crearía un ciclo en la jerarquía."
+                )
+            queue.update(ancestors - visited)
 
     # -----------------------------------------------------------------------
     # Alta
@@ -310,13 +353,14 @@ class AsignacionService:
                 f"Usuario {usuario_id} no encontrado en este tenant."
             )
 
-        # Validar responsable
+        # Validar responsable: existe en el tenant y no forma ciclo (RN-11)
         if responsable_id is not None:
             responsable = await self._usuarios.get_by_id(responsable_id)
             if responsable is None:
                 raise ReferenciaInvalida(
                     f"Responsable {responsable_id} no encontrado en este tenant."
                 )
+            await self._validar_aciclo_responsable(usuario_id, responsable_id)
 
         asignacion = Asignacion(
             usuario_id=usuario_id,
@@ -376,7 +420,8 @@ class AsignacionService:
         """
         Edita campos de una asignación (PATCH parcial).
 
-        Si se cambia el responsable_id, valida que exista en el tenant.
+        Si se cambia el responsable_id, valida que exista en el tenant
+        y que no forme un ciclo en la jerarquía (RN-11).
         Raises AsignacionNoEncontrada, ReferenciaInvalida.
         """
         asignacion = await self._asignaciones.get_by_id(asignacion_id)
@@ -391,6 +436,8 @@ class AsignacionService:
                 raise ReferenciaInvalida(
                     f"Responsable {responsable_id} no encontrado en este tenant."
                 )
+            # RN-11: validar jerarquía acíclica usando el usuario dueño de la asignación
+            await self._validar_aciclo_responsable(asignacion.usuario_id, responsable_id)
 
         updates: dict = {}
         if rol is not None:

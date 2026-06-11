@@ -24,7 +24,7 @@ Tenant resolution for public endpoints:
     production will also support subdomain resolution.
 """
 import uuid
-from typing import Any, Dict
+from typing import Any, AsyncGenerator, Dict
 
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -72,20 +72,29 @@ async def get_tenant_id_from_header(
 # Dependency: build AuthService from the request context
 # ---------------------------------------------------------------------------
 
-async def get_auth_service(request: Request) -> AuthService:
-    """Build an AuthService scoped to this request's DB session."""
-    session_factory = request.app.state.session_factory
-    session = session_factory()
+async def get_auth_service(request: Request) -> AsyncGenerator[AuthService, None]:
+    """Build an AuthService scoped to this request's DB session.
+
+    Async generator dependency: yields the service and closes the session in
+    `finally` (mirrors `get_db`). A plain `return` leaks one pooled connection
+    per auth request — after pool_size+overflow requests the pool wedges and
+    the whole backend stops responding.
+    """
     from app.repositories.auth_identity_repository import AuthIdentityRepository
     from app.repositories.refresh_session_repository import RefreshSessionRepository
     from app.repositories.recovery_token_repository import RecoveryTokenRepository
 
-    return AuthService(
-        auth_identity_repo=AuthIdentityRepository(session),
-        refresh_session_repo=RefreshSessionRepository(session),
-        recovery_token_repo=RecoveryTokenRepository(session),
-        email_port=None,  # TODO: wire real email port when comms module is ready (post C-03)
-    )
+    session_factory = request.app.state.session_factory
+    session = session_factory()
+    try:
+        yield AuthService(
+            auth_identity_repo=AuthIdentityRepository(session),
+            refresh_session_repo=RefreshSessionRepository(session),
+            recovery_token_repo=RecoveryTokenRepository(session),
+            email_port=None,  # TODO: wire real email port when comms module is ready (post C-03)
+        )
+    finally:
+        await session.close()
 
 
 # ---------------------------------------------------------------------------

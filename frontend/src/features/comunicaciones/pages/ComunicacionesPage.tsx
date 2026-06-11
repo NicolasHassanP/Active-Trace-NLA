@@ -52,7 +52,9 @@ export default function ComunicacionesPage() {
   const canApprove = roles.some((r) => APPROVAL_ROLES.includes(r))
 
   const [loteId, setLoteId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<ActiveTab>(emails.length > 0 ? 'componer' : 'historial')
+  // C-27 / D5: default tab is always "Componer" (preserves pre-tabs behavior),
+  // independent of whether destinatarios were preloaded from URL params.
+  const [activeTab, setActiveTab] = useState<ActiveTab>('componer')
 
   return (
     <div className="space-y-8">

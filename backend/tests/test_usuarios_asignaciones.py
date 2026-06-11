@@ -1260,3 +1260,390 @@ def test_require_permission_no_modificado_en_c07():
     src = inspect.getsource(require_permission)
     # Simplemente verificamos que el módulo existe y es invocable sin C-07 changes
     assert callable(require_permission)
+
+
+# ---------------------------------------------------------------------------
+# TASK 13 — AsignacionRead incluye usuario_nombre / usuario_apellidos (UX fix)
+# ---------------------------------------------------------------------------
+
+
+def test_asignacion_read_tiene_campos_nombre():
+    """RED: AsignacionRead incluye usuario_nombre y usuario_apellidos con default None."""
+    fields = set(AsignacionRead.model_fields.keys())
+    assert "usuario_nombre" in fields, "Falta usuario_nombre en AsignacionRead"
+    assert "usuario_apellidos" in fields, "Falta usuario_apellidos en AsignacionRead"
+
+
+def test_asignacion_read_nombre_default_none():
+    """RED: usuario_nombre y usuario_apellidos son Optional con default None."""
+    a = AsignacionRead(
+        id=uuid.uuid4(),
+        usuario_id=uuid.uuid4(),
+        rol=RolAsignacion.PROFESOR,
+        desde=date.today(),
+        estado_vigencia=EstadoVigencia.vigente,
+        created_at=datetime.datetime.now(),
+        updated_at=datetime.datetime.now(),
+    )
+    assert a.usuario_nombre is None
+    assert a.usuario_apellidos is None
+
+
+def test_asignacion_read_acepta_nombre_poblado():
+    """Triangulación: AsignacionRead acepta nombre y apellidos cuando se proveen."""
+    a = AsignacionRead(
+        id=uuid.uuid4(),
+        usuario_id=uuid.uuid4(),
+        rol=RolAsignacion.TUTOR,
+        desde=date.today(),
+        estado_vigencia=EstadoVigencia.vigente,
+        created_at=datetime.datetime.now(),
+        updated_at=datetime.datetime.now(),
+        usuario_nombre="Ana",
+        usuario_apellidos="García",
+    )
+    assert a.usuario_nombre == "Ana"
+    assert a.usuario_apellidos == "García"
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_listar_asignaciones_devuelve_nombre_usuario(
+    usuario_client, usuario_setup, monkeypatch
+):
+    """RED→GREEN: GET /api/v1/asignaciones devuelve usuario_nombre/usuario_apellidos poblados."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    tid = usuario_setup["tid_a"]
+    user_id = usuario_setup["user_admin_a"]
+    rol = usuario_setup["rol_admin_a"]
+    token = _make_jwt(tid, user_id, roles=[rol])
+
+    # Crear un usuario real en el tenant
+    email = f"nombre_test_{uuid.uuid4().hex[:8]}@test.com"
+    resp_usr = await usuario_client.post(
+        "/api/v1/admin/usuarios",
+        json={"email": email, "nombre": "Lucía", "apellidos": "Fernández"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_usr.status_code == 201
+    nuevo_usuario_id = resp_usr.json()["id"]
+
+    # Crear asignación para ese usuario
+    resp_asgn = await usuario_client.post(
+        "/api/v1/asignaciones",
+        json={
+            "usuario_id": nuevo_usuario_id,
+            "rol": "TUTOR",
+            "desde": str(date.today()),
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_asgn.status_code == 201
+    asgn_data = resp_asgn.json()
+    # POST también debe devolver nombre
+    assert asgn_data["usuario_nombre"] == "Lucía"
+    assert asgn_data["usuario_apellidos"] == "Fernández"
+
+    # GET lista también debe devolver nombre
+    resp_lista = await usuario_client.get(
+        "/api/v1/asignaciones",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_lista.status_code == 200
+    items = resp_lista.json()
+    match = [a for a in items if a["id"] == asgn_data["id"]]
+    assert match, "La asignación creada no aparece en el listado"
+    assert match[0]["usuario_nombre"] == "Lucía"
+    assert match[0]["usuario_apellidos"] == "Fernández"
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_editar_asignacion_devuelve_nombre_usuario(
+    usuario_client, usuario_setup, monkeypatch
+):
+    """Triangulación: PATCH /api/v1/asignaciones/{id} devuelve usuario_nombre/usuario_apellidos."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    tid = usuario_setup["tid_a"]
+    user_id = usuario_setup["user_admin_a"]
+    rol = usuario_setup["rol_admin_a"]
+    token = _make_jwt(tid, user_id, roles=[rol])
+
+    # Crear usuario
+    email = f"patch_nombre_{uuid.uuid4().hex[:8]}@test.com"
+    resp_usr = await usuario_client.post(
+        "/api/v1/admin/usuarios",
+        json={"email": email, "nombre": "Carlos", "apellidos": "López"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_usr.status_code == 201
+    nuevo_usuario_id = resp_usr.json()["id"]
+
+    # Crear asignación
+    resp_asgn = await usuario_client.post(
+        "/api/v1/asignaciones",
+        json={"usuario_id": nuevo_usuario_id, "rol": "PROFESOR", "desde": str(date.today())},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_asgn.status_code == 201
+    asgn_id = resp_asgn.json()["id"]
+
+    # Editar → debe seguir devolviendo el nombre
+    resp_patch = await usuario_client.patch(
+        f"/api/v1/asignaciones/{asgn_id}",
+        json={"rol": "COORDINADOR"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_patch.status_code == 200
+    data = resp_patch.json()
+    assert data["usuario_nombre"] == "Carlos"
+    assert data["usuario_apellidos"] == "López"
+
+
+# ---------------------------------------------------------------------------
+# TASK 14 — buscar_usuarios_asignables: repo + endpoint (combobox)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_buscar_asignables_por_nombre(db_session, create_tables, usuario_setup, monkeypatch):
+    """RED: buscar_asignables filtra por nombre (ILIKE)."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    from tests.conftest import create_usuario_con_identidad
+
+    tid = usuario_setup["tid_a"]
+    repo = UsuarioRepository(session=db_session, tenant_id=tid)
+
+    # Crear dos usuarios con nombres distintos
+    u_alvarez = await create_usuario_con_identidad(
+        db_session, tid, nombre="Laura", apellidos="Álvarez"
+    )
+    u_garcia = await create_usuario_con_identidad(
+        db_session, tid, nombre="Pedro", apellidos="García"
+    )
+
+    # Buscar por nombre parcial
+    resultados = await repo.buscar_asignables(q="laur")
+    ids = {u.id for u in resultados}
+    assert u_alvarez.id in ids, "Debería encontrar 'Laura' buscando 'laur'"
+    assert u_garcia.id not in ids, "No debería encontrar 'Pedro' buscando 'laur'"
+
+    # Cleanup
+    await db_session.delete(u_alvarez)
+    await db_session.delete(u_garcia)
+    await db_session.commit()
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_buscar_asignables_por_apellidos(db_session, create_tables, usuario_setup, monkeypatch):
+    """RED: buscar_asignables filtra por apellidos (ILIKE).
+    NOTA: búsqueda por email no es posible (AES-GCM no-determinístico, D2).
+    El combobox busca solo por nombre y apellidos.
+    """
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    from tests.conftest import create_usuario_con_identidad
+
+    tid = usuario_setup["tid_a"]
+    repo = UsuarioRepository(session=db_session, tenant_id=tid)
+
+    slug = uuid.uuid4().hex[:8]
+    apellido_unico = f"Zcbx{slug}"
+    u = await create_usuario_con_identidad(
+        db_session, tid, nombre="Mariana", apellidos=apellido_unico
+    )
+
+    resultados = await repo.buscar_asignables(q=apellido_unico[:6])
+    ids = {x.id for x in resultados}
+    assert u.id in ids, f"Debería encontrar usuario por apellido '{apellido_unico}'"
+
+    # Triangulación: búsqueda parcial (primeros 6 chars) también funciona
+    resultados2 = await repo.buscar_asignables(q=apellido_unico[:4])
+    ids2 = {x.id for x in resultados2}
+    assert u.id in ids2, "Búsqueda parcial de apellido debe funcionar"
+
+    # Cleanup
+    await db_session.delete(u)
+    await db_session.commit()
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_buscar_asignables_aislamiento_tenant(
+    db_session, create_tables, usuario_setup, monkeypatch
+):
+    """RED: buscar_asignables nunca devuelve usuarios de otro tenant."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    from tests.conftest import create_usuario_con_identidad
+
+    tid_a = usuario_setup["tid_a"]
+    tid_b = usuario_setup["tid_b"]
+
+    repo_a = UsuarioRepository(session=db_session, tenant_id=tid_a)
+
+    slug = uuid.uuid4().hex[:8]
+    u_b = await create_usuario_con_identidad(
+        db_session, tid_b, nombre=f"Xeno{slug}", apellidos="Otro"
+    )
+
+    # Buscar desde tenant A — NO debe ver el usuario de tenant B
+    resultados = await repo_a.buscar_asignables(q=f"Xeno{slug}")
+    ids = {u.id for u in resultados}
+    assert u_b.id not in ids, "No debe devolver usuarios de otro tenant"
+
+    # Cleanup
+    await db_session.delete(u_b)
+    await db_session.commit()
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_buscar_asignables_excluye_soft_deleted(
+    db_session, create_tables, usuario_setup, monkeypatch
+):
+    """RED: buscar_asignables no devuelve usuarios con deleted_at poblado."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    from tests.conftest import create_usuario_con_identidad
+    from datetime import datetime, timezone
+
+    tid = usuario_setup["tid_a"]
+    repo = UsuarioRepository(session=db_session, tenant_id=tid)
+
+    slug = uuid.uuid4().hex[:8]
+    u = await create_usuario_con_identidad(
+        db_session, tid, nombre=f"Borrado{slug}", apellidos="SoftDel"
+    )
+    # Marcar como soft-deleted
+    u.deleted_at = datetime.now(tz=timezone.utc)
+    await db_session.commit()
+
+    resultados = await repo.buscar_asignables(q=f"Borrado{slug}")
+    ids = {x.id for x in resultados}
+    assert u.id not in ids, "No debe devolver usuarios soft-deleted"
+
+    # Cleanup
+    await db_session.delete(u)
+    await db_session.commit()
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_buscar_asignables_sin_q_devuelve_primeros_usuarios(
+    db_session, create_tables, usuario_setup, monkeypatch
+):
+    """Triangulación: sin q devuelve hasta limit usuarios del tenant."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    tid = usuario_setup["tid_a"]
+    repo = UsuarioRepository(session=db_session, tenant_id=tid)
+
+    # Sin q → devuelve hasta limit (20) resultados, no falla
+    resultados = await repo.buscar_asignables(q=None, limit=5)
+    assert len(resultados) <= 5
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_endpoint_buscar_usuarios_sin_permiso_retorna_403(
+    usuario_client, usuario_setup, monkeypatch
+):
+    """RED: GET /api/v1/asignaciones/usuarios sin equipos:asignar → 403."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    tid = usuario_setup["tid_a"]
+    token = _make_jwt(tid, uuid.uuid4(), roles=["SINPERMISO"])
+
+    resp = await usuario_client.get(
+        "/api/v1/asignaciones/usuarios",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_endpoint_buscar_usuarios_con_permiso_retorna_200(
+    usuario_client, usuario_setup, monkeypatch
+):
+    """RED: GET /api/v1/asignaciones/usuarios con equipos:asignar → 200 con lista."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    tid = usuario_setup["tid_a"]
+    user_id = usuario_setup["user_admin_a"]
+    rol = usuario_setup["rol_admin_a"]
+    token = _make_jwt(tid, user_id, roles=[rol])
+
+    resp = await usuario_client.get(
+        "/api/v1/asignaciones/usuarios",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_endpoint_buscar_usuarios_busca_por_nombre(
+    usuario_client, usuario_setup, monkeypatch
+):
+    """RED: GET /api/v1/asignaciones/usuarios?q=nombre filtra por nombre."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    tid = usuario_setup["tid_a"]
+    user_id = usuario_setup["user_admin_a"]
+    rol = usuario_setup["rol_admin_a"]
+    token = _make_jwt(tid, user_id, roles=[rol])
+
+    # Crear usuario con nombre único
+    slug = uuid.uuid4().hex[:8]
+    nombre_unico = f"Zeno{slug}"
+    resp_usr = await usuario_client.post(
+        "/api/v1/admin/usuarios",
+        json={"email": f"{slug}@endpoint_search.com", "nombre": nombre_unico, "apellidos": "Test"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_usr.status_code == 201
+
+    # Buscar por nombre
+    resp = await usuario_client.get(
+        f"/api/v1/asignaciones/usuarios?q={nombre_unico}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) >= 1
+    # Verifica que el resultado tiene los campos no-PII esperados
+    resultado = data[0]
+    assert "id" in resultado
+    assert "nombre" in resultado
+    assert "apellidos" in resultado
+    assert "email" in resultado
+    # NUNCA expone PII financiera
+    assert "dni" not in resultado
+    assert "cuil" not in resultado
+    assert "cbu" not in resultado
+    assert "tenant_id" not in resultado
+    assert "email_hash" not in resultado
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_endpoint_buscar_usuarios_no_expone_pii(
+    usuario_client, usuario_setup, monkeypatch
+):
+    """Triangulación: la respuesta nunca incluye PII financiera ni tenant_id."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    tid = usuario_setup["tid_a"]
+    user_id = usuario_setup["user_admin_a"]
+    rol = usuario_setup["rol_admin_a"]
+    token = _make_jwt(tid, user_id, roles=[rol])
+
+    resp = await usuario_client.get(
+        "/api/v1/asignaciones/usuarios",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    for item in resp.json():
+        assert "dni" not in item
+        assert "cuil" not in item
+        assert "cbu" not in item
+        assert "tenant_id" not in item
+        assert "email_hash" not in item
+        assert "email_encrypted" not in item

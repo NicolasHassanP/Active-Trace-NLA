@@ -12,19 +12,23 @@ AsignacionRepository:
     - Hereda: add, get_by_id, list, delete (soft).
     - Agrega: list(usuario_id=..., rol=..., responsable_id=...) con filtros opcionales.
     - Agrega: update (PATCH parcial).
+    - Agrega: get_responsables_de_usuario (RN-11: travesía de cadena acíclica).
     - C-08 Agrega: list_by_equipo, bulk_add, bulk_update_vigencia.
 
 snake_case; ≤500 LOC. Queries SOLO en repositories (regla dura #11).
 """
 import uuid
 from datetime import date
-from typing import List, Optional
+from typing import List, Optional, Sequence, Set
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.usuario import Asignacion, RolAsignacion, Usuario
 from app.repositories.base import TenantScopedRepository
+
+# Type alias for the nombre/apellidos tuple map used by callers.
+UsuarioNombreMap = dict[uuid.UUID, tuple[Optional[str], Optional[str]]]
 
 
 # ---------------------------------------------------------------------------
@@ -69,6 +73,66 @@ class UsuarioRepository(TenantScopedRepository[Usuario]):
         await self._session.commit()
         await self._session.refresh(obj)
         return obj
+
+    async def buscar_asignables(
+        self,
+        q: Optional[str],
+        limit: int = 20,
+    ) -> Sequence[Usuario]:
+        """
+        Búsqueda de usuarios asignables por nombre o apellidos.
+
+        Retorna usuarios activos (deleted_at IS NULL) del tenant.
+        Si q viene con contenido, filtra con ILIKE case-insensitive en
+        nombre o apellidos.
+        NOTA: email no se puede buscar con ILIKE porque está cifrado en reposo
+        con AES-256-GCM no-determinístico (D2). La búsqueda se limita a
+        nombre/apellidos para el combobox de asignaciones.
+        Ordena por apellidos, nombre. Limita a `limit` resultados.
+        Usado exclusivamente para el combobox de asignaciones.
+        """
+        stmt = (
+            select(Usuario)
+            .where(
+                Usuario.tenant_id == self._tenant_id,
+                Usuario.deleted_at.is_(None),
+            )
+        )
+        if q and q.strip():
+            pattern = f"%{q.strip()}%"
+            from sqlalchemy import or_
+            stmt = stmt.where(
+                or_(
+                    Usuario.nombre.ilike(pattern),
+                    Usuario.apellidos.ilike(pattern),
+                )
+            )
+        stmt = stmt.order_by(Usuario.apellidos, Usuario.nombre).limit(limit)
+        result = await self._session.execute(stmt)
+        return result.scalars().all()
+
+    async def get_nombres_por_ids(
+        self, ids: List[uuid.UUID]
+    ) -> UsuarioNombreMap:
+        """
+        Batch-fetch de nombre y apellidos para un conjunto de usuario_ids.
+
+        Emite un único SELECT con IN, scoped a tenant + soft-delete.
+        Retorna un dict {usuario_id: (nombre, apellidos)}.
+        Los ids no encontrados quedan ausentes del dict.
+        """
+        if not ids:
+            return {}
+        stmt = (
+            select(Usuario.id, Usuario.nombre, Usuario.apellidos)
+            .where(
+                Usuario.tenant_id == self._tenant_id,
+                Usuario.id.in_(ids),
+                Usuario.deleted_at.is_(None),
+            )
+        )
+        result = await self._session.execute(stmt)
+        return {row.id: (row.nombre, row.apellidos) for row in result.fetchall()}
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +186,31 @@ class AsignacionRepository(TenantScopedRepository[Asignacion]):
         await self._session.commit()
         await self._session.refresh(obj)
         return obj
+
+    async def get_responsables_de_usuario(
+        self, usuario_id: uuid.UUID
+    ) -> Set[uuid.UUID]:
+        """
+        Devuelve el conjunto de responsable_id declarados en asignaciones activas
+        (deleted_at IS NULL) del usuario dado, dentro del tenant scope.
+
+        Usado por AsignacionService._validar_aciclo_responsable (RN-11) para
+        recorrer la cadena de supervisión sin query directo desde el service.
+
+        Retorna un set vacío si el usuario no tiene asignaciones con responsable.
+        Excluye responsable_id nulos.
+        """
+        stmt = (
+            select(Asignacion.responsable_id)
+            .where(
+                Asignacion.tenant_id == self._tenant_id,
+                Asignacion.usuario_id == usuario_id,
+                Asignacion.deleted_at.is_(None),
+                Asignacion.responsable_id.is_not(None),
+            )
+        )
+        result = await self._session.execute(stmt)
+        return {row[0] for row in result.fetchall()}
 
     # ------------------------------------------------------------------
     # C-08 — Equipo docente (proyección derivada de Asignacion)

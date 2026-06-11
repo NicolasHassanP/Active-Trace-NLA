@@ -34,6 +34,7 @@ from app.schemas.usuario import (
     AsignacionCreate,
     AsignacionRead,
     AsignacionUpdate,
+    UsuarioAsignableRead,
 )
 from app.services.usuario_service import (
     AsignacionNoEncontrada,
@@ -56,14 +57,22 @@ def _make_service(db: AsyncSession, tenant_id: uuid.UUID) -> AsignacionService:
     )
 
 
-def _build_asignacion_read(asignacion, hoy: Optional[date] = None) -> AsignacionRead:
+def _build_asignacion_read(
+    asignacion,
+    hoy: Optional[date] = None,
+    usuario_nombre: Optional[str] = None,
+    usuario_apellidos: Optional[str] = None,
+) -> AsignacionRead:
     """
     Construye AsignacionRead desde el ORM model.
     Computa estado_vigencia con el helper puro (D4).
+    Acepta nombre/apellidos resueltos externamente (batch o single fetch).
     """
     return AsignacionRead(
         id=asignacion.id,
         usuario_id=asignacion.usuario_id,
+        usuario_nombre=usuario_nombre,
+        usuario_apellidos=usuario_apellidos,
         rol=asignacion.rol,
         desde=asignacion.desde,
         hasta=asignacion.hasta,
@@ -82,6 +91,40 @@ def _build_asignacion_read(asignacion, hoy: Optional[date] = None) -> Asignacion
 # Endpoints
 # ---------------------------------------------------------------------------
 
+@router.get("/usuarios", response_model=List[UsuarioAsignableRead])
+async def buscar_usuarios_asignables(
+    q: Optional[str] = Query(default=None),
+    _grant=Depends(require_permission("equipos:asignar")),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> List[UsuarioAsignableRead]:
+    """
+    Búsqueda de usuarios para el combobox de asignaciones.
+
+    Requiere permiso equipos:asignar (COORDINADOR, ADMIN).
+    Tenant SIEMPRE desde el JWT — nunca de query/body.
+    Devuelve solo campos no-PII: id, nombre, apellidos, email, legajo.
+    Excluye soft-deleted. Máximo 20 resultados.
+    """
+    usuario_repo = UsuarioRepository(session=db, tenant_id=current_user.tenant_id)
+    usuarios = await usuario_repo.buscar_asignables(q=q, limit=20)
+
+    # Deserialize email_encrypted to plaintext for the response.
+    # The ORM EncryptedString column handles decryption automatically.
+    result = []
+    for u in usuarios:
+        result.append(
+            UsuarioAsignableRead(
+                id=u.id,
+                nombre=u.nombre,
+                apellidos=u.apellidos,
+                email=u.email_encrypted,  # EncryptedString decrypts on access
+                legajo=u.legajo,
+            )
+        )
+    return result
+
+
 @router.get("", response_model=List[AsignacionRead])
 async def listar_asignaciones(
     usuario_id: Optional[uuid.UUID] = Query(default=None),
@@ -98,8 +141,20 @@ async def listar_asignaciones(
         rol=rol,
         responsable_id=responsable_id,
     )
+    # Batch-fetch nombres: un único query IN para todos los usuario_id del listado.
+    usuario_repo = UsuarioRepository(session=db, tenant_id=current_user.tenant_id)
+    ids = list({a.usuario_id for a in asignaciones})
+    nombres_map = await usuario_repo.get_nombres_por_ids(ids)
     hoy = date.today()
-    return [_build_asignacion_read(a, hoy) for a in asignaciones]
+    return [
+        _build_asignacion_read(
+            a,
+            hoy,
+            usuario_nombre=nombres_map.get(a.usuario_id, (None, None))[0],
+            usuario_apellidos=nombres_map.get(a.usuario_id, (None, None))[1],
+        )
+        for a in asignaciones
+    ]
 
 
 @router.post("", response_model=AsignacionRead, status_code=status.HTTP_201_CREATED)
@@ -128,7 +183,11 @@ async def crear_asignacion(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
     except ReferenciaInvalida as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
-    return _build_asignacion_read(asignacion)
+    # Single fetch for the assigned user's name.
+    usuario_repo = UsuarioRepository(session=db, tenant_id=current_user.tenant_id)
+    nombres_map = await usuario_repo.get_nombres_por_ids([asignacion.usuario_id])
+    nombre, apellidos = nombres_map.get(asignacion.usuario_id, (None, None))
+    return _build_asignacion_read(asignacion, usuario_nombre=nombre, usuario_apellidos=apellidos)
 
 
 @router.patch("/{asignacion_id}", response_model=AsignacionRead)
@@ -159,7 +218,11 @@ async def editar_asignacion(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except ReferenciaInvalida as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
-    return _build_asignacion_read(asignacion)
+    # Single fetch for the assigned user's name.
+    usuario_repo = UsuarioRepository(session=db, tenant_id=current_user.tenant_id)
+    nombres_map = await usuario_repo.get_nombres_por_ids([asignacion.usuario_id])
+    nombre, apellidos = nombres_map.get(asignacion.usuario_id, (None, None))
+    return _build_asignacion_read(asignacion, usuario_nombre=nombre, usuario_apellidos=apellidos)
 
 
 @router.delete("/{asignacion_id}", status_code=status.HTTP_204_NO_CONTENT)

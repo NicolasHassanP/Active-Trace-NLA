@@ -2,8 +2,7 @@
  * Auth services — wraps backend auth endpoints via the centralized Axios client.
  * No GET /auth/me — identity comes from JWT claims (OQ-1 closed).
  */
-import axios from 'axios'
-import apiClient from '@/shared/services/api'
+import apiClient, { refreshAccessToken } from '@/shared/services/api'
 import * as tokenStore from '@/shared/services/tokenStore'
 import type { AuthTokens, AuthUser } from '../types'
 import { decodeJwtPayload } from './decodeJwtPayload'
@@ -69,26 +68,21 @@ export async function login(
  * Refresh: POST /auth/refresh
  * Used for session rehydration on app mount and by the Axios interceptor.
  * No body needed — the refresh token travels as an httpOnly cookie (withCredentials: true).
- * Uses plain axios (not apiClient) to bypass the retry interceptor — avoids
- * infinite loop when called from AuthProvider on mount.
- * Returns AuthUser hydrated from new access token.
+ * Delegates to the shared coalesced `refreshAccessToken()` so concurrent callers
+ * (e.g. React StrictMode double-invoking the mount effect) collapse into a single
+ * network refresh — otherwise the backend's reuse-detection revokes the token family.
+ * Returns AuthUser hydrated from the new access token.
  */
 export async function refresh(): Promise<{ tokens: AuthTokens; user: AuthUser }> {
-  // No body — the httpOnly cookie is sent automatically via withCredentials.
-  // Use plain axios (not apiClient) to avoid the 401 → doRefresh → 401 loop.
-  const response = await axios.post<AccessTokenResponse>('/api/v1/auth/refresh', undefined, {
-    withCredentials: true,
-  })
+  const accessToken = await refreshAccessToken()
 
   const tokens: AuthTokens = {
-    accessToken: response.data.access_token,
-    tokenType: response.data.token_type,
+    accessToken,
+    tokenType: 'bearer',
   }
 
-  tokenStore.setToken(tokens.accessToken)
-  // Rotated refresh token arrives as a new httpOnly cookie — no JS access needed
-
-  const user = tokenPairToAuthUser(tokens.accessToken)
+  // tokenStore.setToken already done inside refreshAccessToken → doRefresh
+  const user = tokenPairToAuthUser(accessToken)
   if (!user) throw new Error('Invalid access token received from server')
 
   return { tokens, user }

@@ -63,6 +63,14 @@ export const NAV_CATALOG: NavItem[] = [
     group: 'MI CÁTEDRA',
   },
   {
+    // M3 / F4.3 — Gestión global de asignaciones (equipos:asignar → COORDINADOR, ADMIN)
+    label: 'Asignaciones',
+    path: '/asignaciones',
+    roles: ['COORDINADOR', 'ADMIN'],
+    icon: 'users',
+    group: 'MI CÁTEDRA',
+  },
+  {
     label: 'Seguimiento',
     path: '/seguimiento',
     roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
