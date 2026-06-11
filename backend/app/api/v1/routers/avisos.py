@@ -27,7 +27,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.aviso_repository import AcknowledgmentRepository, AvisoRepository
 from app.schemas.aviso import (
@@ -150,9 +150,10 @@ async def listar_feed(
     Cualquier rol autenticado. Audiencia enforced por audience query en repo.
     Retorna avisos ordenados por orden ASC, severidad DESC.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_aviso_service(db, current_user.tenant_id)
     return await svc.listar_feed(
-        usuario_id=current_user.user_id,
+        usuario_id=domain_user_id,
         roles=current_user.roles,
         cohorte_id=cohorte_id,
         actor=current_user,
@@ -177,9 +178,10 @@ async def listar_pendientes(
 
     Cualquier rol autenticado. Solo avisos en ventana activa y sin ack propio.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_aviso_service(db, current_user.tenant_id)
     return await svc.listar_pendientes(
-        usuario_id=current_user.user_id,
+        usuario_id=domain_user_id,
         roles=current_user.roles,
         cohorte_id=cohorte_id,
         actor=current_user,
@@ -237,6 +239,7 @@ async def acknowledger_aviso(
     Retorna 403 si el aviso no está en ventana o inactivo.
     Retorna 404 si el aviso no existe o no pertenece al tenant.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_aviso_service(db, current_user.tenant_id)
-    ack = await svc.acknowledger_aviso(aviso_id, current_user)
+    ack = await svc.acknowledger_aviso(aviso_id, current_user, domain_user_id)
     return AcknowledgmentRead.model_validate(ack)

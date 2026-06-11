@@ -102,18 +102,7 @@ def upgrade() -> None:
     )
 
 
-def _seed_rbac_permissions(conn) -> None:
-    """
-    Seed idempotente de los permisos C-20 en el catálogo RBAC.
-
-    - perfil:editar → otorgado a TODOS los roles (incluyendo ALUMNO). OQ-1.
-    - inbox:usar   → TUTOR/PROFESOR/COORDINADOR/NEXO/ADMIN/FINANZAS. ALUMNO excluido.
-
-    Esta función debe ser llamada después de upgrade() para cada tenant existente,
-    o bien desde un script de seed separado. No se llama automáticamente desde
-    Alembic para no acoplar la migración de schema a datos variables por tenant.
-    """
-    pass  # Implementar en script de seed multi-tenant por tenant_id
+# El seed RBAC de C-20 (perfil:editar + inbox:usar, per-tenant) vive en la migración 018.
 
 
 def downgrade() -> None:

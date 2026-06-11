@@ -65,17 +65,18 @@ class TareaService:
     # Publicar / asignar (D6, D8)
     # -----------------------------------------------------------------------
 
-    async def publicar(self, req: TareaCreate, current_user: CurrentUser) -> Tarea:
+    async def publicar(self, req: TareaCreate, current_user: CurrentUser, domain_user_id: uuid.UUID) -> Tarea:
         """
         Create and assign a new Tarea.
 
         Estado initial = Pendiente (D2).
         tenant_id and asignado_por from current_user (JWT), never from body (D6).
+        domain_user_id: resolved usuario.id (FK target), not auth_identity_id.
         Emits TAREA_ASIGNAR audit (D8).
         """
         tarea = Tarea(
             asignado_a=req.asignado_a,
-            asignado_por=current_user.user_id,
+            asignado_por=domain_user_id,
             descripcion=req.descripcion,
             estado=TareaEstado.Pendiente,
             materia_id=req.materia_id,
@@ -106,6 +107,7 @@ class TareaService:
         tarea_id: uuid.UUID,
         nuevo_estado: TareaEstado,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
         has_gestionar: bool = False,
     ) -> Tarea:
         """
@@ -117,7 +119,7 @@ class TareaService:
         Emits TAREA_CAMBIAR_ESTADO audit on success (D8).
         """
         tarea = await self._get_tarea_or_404(tarea_id)
-        self._enforce_ownership(tarea, current_user, has_gestionar=has_gestionar)
+        self._enforce_ownership(tarea, domain_user_id, has_gestionar=has_gestionar)
 
         # D3: no-op check
         if tarea.estado == nuevo_estado:
@@ -158,6 +160,7 @@ class TareaService:
         tarea_id: uuid.UUID,
         nuevo_asignado_a: uuid.UUID,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> Tarea:
         """
         Delegate a tarea to another user (D5).
@@ -176,7 +179,7 @@ class TareaService:
         tarea = await self._tarea_repo.update_asignacion(
             tarea,
             nuevo_asignado_a=nuevo_asignado_a,
-            nuevo_asignado_por=current_user.user_id,
+            nuevo_asignado_por=domain_user_id,
         )
 
         after_data = {
@@ -196,11 +199,11 @@ class TareaService:
         texto_delegacion = (
             f"Tarea delegada de {before_data['asignado_a']} "
             f"a {after_data['asignado_a']} "
-            f"por {str(current_user.user_id)}"
+            f"por {str(domain_user_id)}"
         )
         await self._comentario_repo.add_comentario(
             tarea_id=tarea.id,
-            autor_id=current_user.user_id,
+            autor_id=domain_user_id,
             cuerpo=texto_delegacion,
             es_sistema=True,
         )
@@ -216,20 +219,21 @@ class TareaService:
         tarea_id: uuid.UUID,
         req: ComentarioTareaCreate,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
         has_gestionar: bool = False,
     ) -> ComentarioTarea:
         """
         Add a human comment to the thread.
 
         Raises HTTP 403 if caller lacks ownership and tareas:gestionar (D7).
-        autor_id from current_user (JWT) — never from body (D6).
+        autor_id from domain_user_id (usuario.id) — never from body (D6).
         """
         tarea = await self._get_tarea_or_404(tarea_id)
-        self._enforce_ownership(tarea, current_user, has_gestionar=has_gestionar)
+        self._enforce_ownership(tarea, domain_user_id, has_gestionar=has_gestionar)
 
         return await self._comentario_repo.add_comentario(
             tarea_id=tarea.id,
-            autor_id=current_user.user_id,
+            autor_id=domain_user_id,
             cuerpo=req.cuerpo,
             es_sistema=False,
         )
@@ -238,14 +242,28 @@ class TareaService:
     # listar_mias (D7)
     # -----------------------------------------------------------------------
 
-    async def listar_mias(self, current_user: CurrentUser) -> List[Tarea]:
+    async def listar_mias(self, domain_user_id: uuid.UUID) -> List[Tarea]:
         """
         Return tareas assigned to the caller (self-service F8.1).
 
         No gestionar permission required — any authenticated user can list their own tasks.
-        tenant_id from current_user.
+        domain_user_id: resolved usuario.id.
         """
-        return await self._tarea_repo.listar_mias(current_user.user_id)
+        return await self._tarea_repo.listar_mias(domain_user_id)
+
+    async def listar_mias_enriquecidas(self, domain_user_id: uuid.UUID) -> list:
+        """
+        Return tareas assigned to the caller with materia_nombre and
+        asignado_por_nombre resolved via JOIN (D12).
+        """
+        return await self._tarea_repo.listar_mias_enriquecidas(domain_user_id)
+
+    async def enriquecer_tarea(self, tarea_id: uuid.UUID) -> Optional[dict]:
+        """
+        Return a single enriched dict for tarea_id (D12), or None if not found.
+        Used by mutation endpoints to build the response after a write operation.
+        """
+        return await self._tarea_repo.get_by_id_enriquecida(tarea_id)
 
     # -----------------------------------------------------------------------
     # listar_admin (D7, D10)
@@ -273,6 +291,27 @@ class TareaService:
             q=q,
         )
 
+    async def listar_admin_enriquecidas(
+        self,
+        current_user: CurrentUser,
+        asignado_a: Optional[uuid.UUID] = None,
+        asignado_por: Optional[uuid.UUID] = None,
+        materia_id: Optional[uuid.UUID] = None,
+        estado: Optional[TareaEstado] = None,
+        q: Optional[str] = None,
+    ) -> list:
+        """
+        Admin global listing with materia_nombre and asignado_por_nombre resolved
+        via JOIN (D12).  Requires tareas:gestionar (enforced by router).
+        """
+        return await self._tarea_repo.listar_admin_enriquecidas(
+            asignado_a=asignado_a,
+            asignado_por=asignado_por,
+            materia_id=materia_id,
+            estado=estado,
+            q=q,
+        )
+
     # -----------------------------------------------------------------------
     # Soft delete
     # -----------------------------------------------------------------------
@@ -290,6 +329,7 @@ class TareaService:
         self,
         tarea_id: uuid.UUID,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
         has_gestionar: bool = False,
     ) -> Tarea:
         """
@@ -298,13 +338,36 @@ class TareaService:
         Raises HTTP 403 if caller lacks ownership and tareas:gestionar (D7).
         """
         tarea = await self._get_tarea_or_404(tarea_id)
-        self._enforce_ownership(tarea, current_user, has_gestionar=has_gestionar)
+        self._enforce_ownership(tarea, domain_user_id, has_gestionar=has_gestionar)
         return tarea
+
+    async def detalle_enriquecido(
+        self,
+        tarea_id: uuid.UUID,
+        current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
+        has_gestionar: bool = False,
+    ) -> dict:
+        """
+        Get tarea detail with materia_nombre and asignado_por_nombre resolved (D12).
+
+        Raises HTTP 403 if caller lacks ownership and tareas:gestionar (D7).
+        """
+        tarea = await self._get_tarea_or_404(tarea_id)
+        self._enforce_ownership(tarea, domain_user_id, has_gestionar=has_gestionar)
+        result = await self._tarea_repo.get_by_id_enriquecida(tarea_id)
+        if result is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tarea no encontrada",
+            )
+        return result
 
     async def listar_comentarios(
         self,
         tarea_id: uuid.UUID,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
         has_gestionar: bool = False,
     ) -> List[ComentarioTarea]:
         """
@@ -313,7 +376,7 @@ class TareaService:
         Same access control as detalle (D7).
         """
         tarea = await self._get_tarea_or_404(tarea_id)
-        self._enforce_ownership(tarea, current_user, has_gestionar=has_gestionar)
+        self._enforce_ownership(tarea, domain_user_id, has_gestionar=has_gestionar)
         return await self._comentario_repo.listar_hilo(tarea_id)
 
     # -----------------------------------------------------------------------
@@ -332,18 +395,19 @@ class TareaService:
     def _enforce_ownership(
         self,
         tarea: Tarea,
-        current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
         has_gestionar: bool = False,
     ) -> None:
         """
         D7: without tareas:gestionar, only asignado_a or asignado_por may access.
 
+        domain_user_id: resolved usuario.id (matches FKs stored in tarea table).
         has_gestionar is resolved by the router via require_permission and passed in.
         Raises HTTP 403 if access is not allowed.
         """
         if has_gestionar:
             return  # full access
-        if current_user.user_id not in (tarea.asignado_a, tarea.asignado_por):
+        if domain_user_id not in (tarea.asignado_a, tarea.asignado_por):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Acceso denegado: no es asignado_a ni asignado_por de esta tarea",

@@ -13,8 +13,9 @@ import {
   cancelarLote,
   aprobarIndividual,
   cancelarIndividual,
+  getMisEnvios,
 } from '../comunicacionService'
-import type { ComunicacionRead, LoteStatusResponse } from '../../types'
+import type { ComunicacionRead, LoteStatusResponse, MisEnviosResponse } from '../../types'
 
 let mock: MockAdapter
 
@@ -22,9 +23,19 @@ beforeEach(() => { mock = new MockAdapter(apiClient) })
 afterEach(() => { mock.reset() })
 
 const sampleMsg: ComunicacionRead = {
-  id: 'msg1', lote_id: 'lote1', destinatario_email: 'a@t.com',
-  asunto: 'Hola', cuerpo: 'Texto', estado: 'Pendiente',
-  creado_en: '2026-06-05', actualizado_en: '2026-06-05',
+  id: 'msg1',
+  tenant_id: 't1',
+  lote_id: 'lote1',
+  destinatario_email: 'a@t.com',
+  asunto: 'Hola',
+  cuerpo: 'Texto',
+  estado: 'Pendiente',
+  enviado_por: null,
+  aprobado_por: null,
+  enviado_at: null,
+  error_detalle: null,
+  creado_en: '2026-06-05',
+  actualizado_en: '2026-06-05',
 }
 
 const sampleLote: LoteStatusResponse = {
@@ -58,9 +69,10 @@ describe('encolarLote', () => {
   it('returns lote_id and total_encolados on 201', async () => {
     mock.onPost('/comunicaciones/encolar').reply(201, { lote_id: 'lote1', total_encolados: 2 })
     const result = await encolarLote({
+      destinatarios: ['a@t.com'],
       asunto_plantilla: 'Hola',
       cuerpo_plantilla: 'Texto',
-      variables_por_destinatario: [{ email: 'a@t.com', variables: {} }],
+      variables_por_destinatario: { 'a@t.com': {} },
     })
     expect(result.lote_id).toBe('lote1')
     expect(result.total_encolados).toBe(2)
@@ -69,25 +81,27 @@ describe('encolarLote', () => {
   it('does NOT include identity or tenant in the request body', async () => {
     mock.onPost('/comunicaciones/encolar').reply(201, { lote_id: 'lote1', total_encolados: 1 })
     await encolarLote({
+      destinatarios: ['a@t.com'],
       asunto_plantilla: 'Hola',
       cuerpo_plantilla: 'Texto',
-      variables_por_destinatario: [{ email: 'a@t.com', variables: {} }],
+      variables_por_destinatario: { 'a@t.com': {} },
     })
     const sentBody = JSON.parse(mock.history.post[0].data as string)
     expect(sentBody).not.toHaveProperty('user_id')
     expect(sentBody).not.toHaveProperty('tenant_id')
     expect(sentBody).not.toHaveProperty('remitente_id')
     expect(Object.keys(sentBody)).toEqual(
-      expect.arrayContaining(['asunto_plantilla', 'cuerpo_plantilla', 'variables_por_destinatario']),
+      expect.arrayContaining(['destinatarios', 'asunto_plantilla', 'cuerpo_plantilla', 'variables_por_destinatario']),
     )
   })
 
   it('throws DomainError on 422', async () => {
     mock.onPost('/comunicaciones/encolar').reply(422, { detail: 'sin destinatarios' })
     await expect(encolarLote({
+      destinatarios: [],
       asunto_plantilla: 'Hola',
       cuerpo_plantilla: 'Texto',
-      variables_por_destinatario: [],
+      variables_por_destinatario: {},
     })).rejects.toMatchObject({ status: 422 })
   })
 })
@@ -129,5 +143,43 @@ describe('aprobarIndividual / cancelarIndividual', () => {
   it('cancelarIndividual throws DomainError on 404', async () => {
     mock.onPost('/comunicaciones/cancelar-individual').reply(404, { detail: 'mensaje no encontrado' })
     await expect(cancelarIndividual('msg1')).rejects.toMatchObject({ status: 404 })
+  })
+})
+
+// C-27 — getMisEnvios
+describe('getMisEnvios', () => {
+  const sampleMisEnvios: MisEnviosResponse = {
+    total: 2,
+    offset: 0,
+    limit: 20,
+    items: [sampleMsg, { ...sampleMsg, id: 'msg2' }],
+  }
+
+  it('returns MisEnviosResponse on 200 without params', async () => {
+    mock.onGet('/comunicaciones/mis-envios').reply(200, sampleMisEnvios)
+    const result = await getMisEnvios()
+    expect(result.total).toBe(2)
+    expect(result.items).toHaveLength(2)
+  })
+
+  it('serializes estado filter as query param', async () => {
+    mock.onGet('/comunicaciones/mis-envios').reply(200, { ...sampleMisEnvios, total: 1, items: [sampleMsg] })
+    const result = await getMisEnvios({ estado: 'Enviado', offset: 0, limit: 20 })
+    expect(result.total).toBe(1)
+    // Verify the params were sent
+    const request = mock.history.get[0]
+    expect(request.params).toMatchObject({ estado: 'Enviado', offset: 0, limit: 20 })
+  })
+
+  it('returns empty list when no envíos', async () => {
+    mock.onGet('/comunicaciones/mis-envios').reply(200, { total: 0, offset: 0, limit: 20, items: [] })
+    const result = await getMisEnvios()
+    expect(result.total).toBe(0)
+    expect(result.items).toEqual([])
+  })
+
+  it('throws DomainError on 403', async () => {
+    mock.onGet('/comunicaciones/mis-envios').reply(403, { detail: 'forbidden' })
+    await expect(getMisEnvios()).rejects.toMatchObject({ status: 403 })
   })
 })

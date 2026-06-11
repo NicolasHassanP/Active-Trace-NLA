@@ -256,6 +256,190 @@
       "sessions": 0,
       "memories": 1,
       "prompts": 0
+    },
+    {
+      "id": "b6d25bb2",
+      "created_by": "Nico",
+      "created_at": "2026-06-07T00:59:46Z",
+      "sessions": 1,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "8aeba4bf",
+      "created_by": "Nico",
+      "created_at": "2026-06-07T01:38:18Z",
+      "sessions": 0,
+      "memories": 2,
+      "prompts": 0
+    },
+    {
+      "id": "00e72abc",
+      "created_by": "Nico",
+      "created_at": "2026-06-07T13:20:30Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "cc1df7d5",
+      "created_by": "Nico",
+      "created_at": "2026-06-07T14:22:31Z",
+      "sessions": 0,
+      "memories": 2,
+      "prompts": 0
+    },
+    {
+      "id": "87c7d08f",
+      "created_by": "Nico",
+      "created_at": "2026-06-07T15:13:16Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "654bdb2c",
+      "created_by": "Nico",
+      "created_at": "2026-06-07T15:15:00Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "b6a69687",
+      "created_by": "Nico",
+      "created_at": "2026-06-08T10:02:25Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "b55e720e",
+      "created_by": "Nico",
+      "created_at": "2026-06-08T21:00:57Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "c890a389",
+      "created_by": "Nico",
+      "created_at": "2026-06-08T21:20:06Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "bd6b07ae",
+      "created_by": "Nico",
+      "created_at": "2026-06-08T21:44:42Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "61c240e6",
+      "created_by": "Nico",
+      "created_at": "2026-06-09T06:47:24Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "3dc25490",
+      "created_by": "Nico",
+      "created_at": "2026-06-09T07:01:49Z",
+      "sessions": 0,
+      "memories": 2,
+      "prompts": 0
+    },
+    {
+      "id": "da5f6276",
+      "created_by": "Nico",
+      "created_at": "2026-06-09T07:24:52Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "f978f80d",
+      "created_by": "Nico",
+      "created_at": "2026-06-09T07:34:14Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "c389f25e",
+      "created_by": "Nico",
+      "created_at": "2026-06-09T07:44:11Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "45e57305",
+      "created_by": "Nico",
+      "created_at": "2026-06-09T07:50:44Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "a42f9af6",
+      "created_by": "Nico",
+      "created_at": "2026-06-09T08:00:01Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "0e6054eb",
+      "created_by": "Nico",
+      "created_at": "2026-06-09T08:04:57Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "53ceae39",
+      "created_by": "Nico",
+      "created_at": "2026-06-09T12:04:48Z",
+      "sessions": 0,
+      "memories": 2,
+      "prompts": 0
+    },
+    {
+      "id": "a511f9d7",
+      "created_by": "Nico",
+      "created_at": "2026-06-09T13:50:26Z",
+      "sessions": 0,
+      "memories": 5,
+      "prompts": 0
+    },
+    {
+      "id": "14a57ef3",
+      "created_by": "Nico",
+      "created_at": "2026-06-09T14:13:34Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "836e60a0",
+      "created_by": "Nico",
+      "created_at": "2026-06-10T00:09:50Z",
+      "sessions": 0,
+      "memories": 4,
+      "prompts": 0
+    },
+    {
+      "id": "86075bf0",
+      "created_by": "Nico",
+      "created_at": "2026-06-10T00:30:43Z",
+      "sessions": 0,
+      "memories": 2,
+      "prompts": 0
     }
   ]
 }

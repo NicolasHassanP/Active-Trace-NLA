@@ -14,6 +14,10 @@ import type { LoteStatusResponse } from '../../types'
 
 vi.mock('../../services/comunicacionService')
 vi.mock('@/features/auth/hooks/useAuth')
+// C-27 — mock ComunicacionesHistorial to avoid rendering real component
+vi.mock('../../components/ComunicacionesHistorial', () => ({
+  default: () => <div data-testid="historial-panel">Historial Mock</div>,
+}))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
 
 const mockUseAuth = vi.mocked(authHook.useAuth)
@@ -34,16 +38,35 @@ const wrapper = (url = '/comunicaciones') => ({ children }: { children: React.Re
 const mockLoteDone: LoteStatusResponse = {
   lote_id: 'lote1',
   mensajes: [
-    { id: 'm1', lote_id: 'lote1', destinatario_email: 'a@t.com', asunto: 'Hola', cuerpo: 'Texto', estado: 'Enviado', creado_en: '', actualizado_en: '' },
+    {
+      id: 'm1',
+      tenant_id: 't1',
+      lote_id: 'lote1',
+      destinatario_email: 'a@t.com',
+      asunto: 'Hola',
+      cuerpo: 'Texto',
+      estado: 'Enviado',
+      enviado_por: null,
+      aprobado_por: null,
+      enviado_at: null,
+      error_detalle: null,
+      creado_en: '',
+      actualizado_en: '',
+    },
   ],
-  pendientes: 0, enviados: 1, fallidos: 0, cancelados: 0,
+  pendientes: 0,
+  enviados: 1,
+  fallidos: 0,
+  cancelados: 0,
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   mockUseAuth.mockReturnValue({
-    user: null, isAuthenticated: true, isInitializing: false, roles: ['COORDINADOR'],
+    user: null, tenantId: null, isAuthenticated: true, isInitializing: false, roles: ['COORDINADOR'],
     login: vi.fn(), logout: vi.fn(),
+    isImpersonating: false, impersonatedName: null,
+    impersonarUsuario: vi.fn(), finalizarImpersonacion: vi.fn(),
   })
 })
 
@@ -53,6 +76,35 @@ describe('ComunicacionesPage', () => {
     expect(screen.getByTestId('compose-form')).toBeInTheDocument()
     expect(screen.getByTestId('asunto-input')).toBeInTheDocument()
     expect(screen.getByTestId('cuerpo-input')).toBeInTheDocument()
+  })
+
+  // C-27 — Tab tests
+  it('shows tab Componer by default', () => {
+    render(<ComunicacionesPage />, { wrapper: wrapper() })
+    expect(screen.getByTestId('tab-componer')).toBeInTheDocument()
+    expect(screen.getByTestId('tab-historial')).toBeInTheDocument()
+    // Compose form visible
+    expect(screen.getByTestId('compose-form')).toBeInTheDocument()
+    // Historial NOT mounted
+    expect(screen.queryByTestId('historial-panel')).not.toBeInTheDocument()
+  })
+
+  it('mounts ComunicacionesHistorial when clicking tab Historial', () => {
+    render(<ComunicacionesPage />, { wrapper: wrapper() })
+    fireEvent.click(screen.getByTestId('tab-historial'))
+    expect(screen.getByTestId('historial-panel')).toBeInTheDocument()
+    expect(screen.queryByTestId('compose-form')).not.toBeInTheDocument()
+  })
+
+  it('restores compose form when switching back to Componer', () => {
+    render(<ComunicacionesPage />, { wrapper: wrapper() })
+    // Go to historial
+    fireEvent.click(screen.getByTestId('tab-historial'))
+    expect(screen.getByTestId('historial-panel')).toBeInTheDocument()
+    // Go back to componer
+    fireEvent.click(screen.getByTestId('tab-componer'))
+    expect(screen.getByTestId('compose-form')).toBeInTheDocument()
+    expect(screen.queryByTestId('historial-panel')).not.toBeInTheDocument()
   })
 
   it('shows preloaded destinatarios count from URL params', () => {

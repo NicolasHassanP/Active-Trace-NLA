@@ -30,7 +30,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.models.tarea import TareaEstado
 
 # ---------------------------------------------------------------------------
@@ -98,9 +98,11 @@ async def crear_tarea(
 
     Requiere tareas:gestionar. tenant_id y asignado_por desde el JWT.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_tarea_service(db, current_user.tenant_id)
-    tarea = await svc.publicar(body, current_user)
-    return TareaRead.model_validate(tarea)
+    tarea = await svc.publicar(body, current_user, domain_user_id)
+    enriched = await svc.enriquecer_tarea(tarea.id)
+    return TareaRead.model_validate(enriched if enriched is not None else tarea)
 
 
 # ---------------------------------------------------------------------------
@@ -123,9 +125,11 @@ async def delegar_tarea(
 
     Requiere tareas:gestionar. Emite TAREA_DELEGAR audit + comentario de sistema.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_tarea_service(db, current_user.tenant_id)
-    tarea = await svc.delegar(tarea_id, body.asignado_a, current_user)
-    return TareaRead.model_validate(tarea)
+    tarea = await svc.delegar(tarea_id, body.asignado_a, current_user, domain_user_id)
+    enriched = await svc.enriquecer_tarea(tarea.id)
+    return TareaRead.model_validate(enriched if enriched is not None else tarea)
 
 
 # ---------------------------------------------------------------------------
@@ -152,7 +156,7 @@ async def listar_admin(
     Requiere tareas:gestionar.
     """
     svc = _make_tarea_service(db, current_user.tenant_id)
-    tareas = await svc.listar_admin(
+    tareas = await svc.listar_admin_enriquecidas(
         current_user=current_user,
         asignado_a=asignado_a,
         asignado_por=asignado_por,
@@ -201,8 +205,9 @@ async def listar_mias(
 
     Cualquier usuario autenticado. No requiere tareas:gestionar.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_tarea_service(db, current_user.tenant_id)
-    tareas = await svc.listar_mias(current_user)
+    tareas = await svc.listar_mias_enriquecidas(domain_user_id)
     return [TareaRead.model_validate(t) for t in tareas]
 
 
@@ -224,9 +229,10 @@ async def detalle_tarea(
     Detalle de una tarea. Ownership enforced by service (D7).
     Users with tareas:gestionar can access any tenant tarea.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_tarea_service(db, current_user.tenant_id)
-    tarea = await svc.detalle(tarea_id, current_user, has_gestionar=has_gestionar)
-    return TareaRead.model_validate(tarea)
+    enriched = await svc.detalle_enriquecido(tarea_id, current_user, domain_user_id, has_gestionar=has_gestionar)
+    return TareaRead.model_validate(enriched)
 
 
 # ---------------------------------------------------------------------------
@@ -249,9 +255,11 @@ async def cambiar_estado(
 
     asignado_a puede avanzar su propia tarea (D7); tareas:gestionar puede cambiar cualquier tarea.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_tarea_service(db, current_user.tenant_id)
-    tarea = await svc.cambiar_estado(tarea_id, body.estado, current_user, has_gestionar=has_gestionar)
-    return TareaRead.model_validate(tarea)
+    tarea = await svc.cambiar_estado(tarea_id, body.estado, current_user, domain_user_id, has_gestionar=has_gestionar)
+    enriched = await svc.enriquecer_tarea(tarea.id)
+    return TareaRead.model_validate(enriched if enriched is not None else tarea)
 
 
 # ---------------------------------------------------------------------------
@@ -273,8 +281,9 @@ async def agregar_comentario(
     """
     Agrega un comentario al hilo de una tarea. Ownership enforced by service.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_tarea_service(db, current_user.tenant_id)
-    comentario = await svc.comentar(tarea_id, body, current_user, has_gestionar=has_gestionar)
+    comentario = await svc.comentar(tarea_id, body, current_user, domain_user_id, has_gestionar=has_gestionar)
     return ComentarioTareaRead.model_validate(comentario)
 
 
@@ -295,6 +304,7 @@ async def listar_comentarios(
     """
     Lista el hilo de comentarios de una tarea. Ownership enforced by service.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_tarea_service(db, current_user.tenant_id)
-    comentarios = await svc.listar_comentarios(tarea_id, current_user, has_gestionar=has_gestionar)
+    comentarios = await svc.listar_comentarios(tarea_id, current_user, domain_user_id, has_gestionar=has_gestionar)
     return [ComentarioTareaRead.model_validate(c) for c in comentarios]

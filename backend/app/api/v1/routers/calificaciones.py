@@ -8,22 +8,29 @@ C-10 Design Decisions D5, D7, D8, D9:
     require_permission("calificaciones:importar") en preview, importar y finalizacion.
     require_permission("calificaciones:configurar-umbral") en umbral PUT/GET.
 
+    Scope umbral (D5 actualizado):
+        grant.scope == 'global' (ADMIN/COORDINADOR) → opera sobre default materia/cohorte.
+            asignacion_id = None; acepta cohorte_id en query/body.
+        grant.scope == 'propio' (PROFESOR) → resuelve asignacion del docente, escribe override.
+            No existe asignación → 404 español limpio.
+
 Endpoints:
     POST /calificaciones/preview      — multipart file; returns PreviewCalificaciones
     POST /calificaciones/importar     — JSON ImportarCalificacionesRequest; returns list[CalificacionRead]
     POST /calificaciones/finalizacion — JSON ReporteFinalizacionRequest; returns list[EntregaSinCorregir]
     PUT  /calificaciones/umbral       — JSON ConfigurarUmbralRequest; returns UmbralMateriaRead
-    GET  /calificaciones/umbral       — query materia_id; returns UmbralMateriaRead
+    GET  /calificaciones/umbral       — query materia_id[, cohorte_id]; returns UmbralMateriaRead
 
 snake_case; ≤500 LOC.
 """
 import uuid
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
+from app.models.rbac import PermisoScope
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.calificacion_repository import CalificacionRepository
 from app.repositories.padron_repository import PadronRepository
@@ -116,8 +123,9 @@ async def importar_calificaciones(
     Retorna la lista de CalificacionRead creadas/actualizadas.
     La identidad del actor viene del JWT — nunca del body.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_cal_service(db, current_user.tenant_id)
-    cals = await svc.importar(req=body, current_user=current_user)
+    cals = await svc.importar(req=body, current_user=current_user, domain_user_id=domain_user_id)
     return cals
 
 
@@ -157,26 +165,46 @@ async def configurar_umbral(
     db: AsyncSession = Depends(get_db),
 ) -> UmbralMateriaRead:
     """
-    Configura el umbral de aprobación para la asignación del docente en una materia.
+    Configura el umbral de aprobación.
 
-    La asignacion_id se resuelve desde current_user + materia_id (D5, regla dura #8/#14).
-    Hace get-or-create upsert sobre UmbralMateria.
+    Scope del grant determina el modo:
+        global (ADMIN/COORDINADOR) → escribe default materia/cohorte (asignacion_id=None).
+        propio (PROFESOR)          → resuelve asignacion del docente, escribe override.
 
+    La asignacion_id se resuelve desde el JWT — nunca del body (regla dura #8/#14).
     Retorna el UmbralMateriaRead actualizado.
-    Identidad del actor desde el JWT — nunca del body.
     """
     svc = _make_umbral_service(db, current_user.tenant_id)
-    try:
+
+    if _grant.scope == PermisoScope.global_:
+        # ADMIN/COORDINADOR: escribe default scope global (asignacion_id=None)
         result = await svc.configurar(
             materia_id=body.materia_id,
             umbral_pct=body.umbral_pct,
             valores_aprobatorios=body.valores_aprobatorios,
             current_user=current_user,
+            asignacion_id=None,
+            cohorte_id=body.cohorte_id,
         )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
+    else:
+        # PROFESOR: scope propio → resolver asignacion del docente
+        try:
+            asignacion_id = await svc._resolve_asignacion(
+                auth_identity_id=current_user.user_id,
+                materia_id=body.materia_id,
+                tenant_id=current_user.tenant_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(exc),
+            )
+        result = await svc.configurar(
+            materia_id=body.materia_id,
+            umbral_pct=body.umbral_pct,
+            valores_aprobatorios=body.valores_aprobatorios,
+            current_user=current_user,
+            asignacion_id=asignacion_id,
         )
     return result
 
@@ -188,43 +216,46 @@ async def configurar_umbral(
 @router.get("/umbral", response_model=UmbralMateriaRead)
 async def get_umbral(
     materia_id: uuid.UUID = Query(...),
+    cohorte_id: Optional[uuid.UUID] = Query(None),
     _grant=Depends(require_permission("calificaciones:configurar-umbral")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> UmbralMateriaRead:
     """
-    Retorna el umbral efectivo para la asignación del docente en una materia.
+    Retorna el umbral efectivo para la materia según el scope del grant.
+
+    Scope del grant determina el modo:
+        global (ADMIN/COORDINADOR) → retorna default materia/cohorte (sin exigir asignación propia).
+        propio (PROFESOR)          → resuelve asignación del docente, aplica precedencia.
 
     Si no hay UmbralMateria configurado, retorna el defecto del sistema (60%).
-    La asignacion_id se resuelve desde current_user + materia_id (D5, regla dura #8/#14).
-    Identidad del actor desde el JWT — nunca del query param.
+    La asignacion_id se resuelve desde el JWT — nunca del query param (regla dura #8/#14).
     """
-    from sqlalchemy import select
-    from app.models.usuario import Asignacion
-
-    # Resolve asignacion_id from current_user + materia_id
-    stmt = (
-        select(Asignacion)
-        .where(
-            Asignacion.tenant_id == current_user.tenant_id,
-            Asignacion.usuario_id == current_user.user_id,
-            Asignacion.materia_id == materia_id,
-            Asignacion.deleted_at.is_(None),
-        )
-        .order_by(Asignacion.desde.desc())
-        .limit(1)
-    )
-    result = await db.execute(stmt)
-    asignacion = result.scalar_one_or_none()
-
-    if asignacion is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No active asignacion found for user in materia {materia_id}",
-        )
-
     svc = _make_umbral_service(db, current_user.tenant_id)
-    return await svc.get_efectivo(
-        asignacion_id=asignacion.id,
-        materia_id=materia_id,
-    )
+
+    if _grant.scope == PermisoScope.global_:
+        # ADMIN/COORDINADOR: retorna el default scope global (asignacion_id=None)
+        # Precedencia: default materia/cohorte → sistema 60%.
+        return await svc.get_efectivo(
+            materia_id=materia_id,
+            asignacion_id=None,
+            cohorte_id=cohorte_id,
+        )
+    else:
+        # PROFESOR: scope propio → resolver asignacion del docente
+        try:
+            asignacion_id = await svc._resolve_asignacion(
+                auth_identity_id=current_user.user_id,
+                materia_id=materia_id,
+                tenant_id=current_user.tenant_id,
+            )
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No existe una asignación activa en esta materia para tu usuario.",
+            )
+        return await svc.get_efectivo(
+            materia_id=materia_id,
+            asignacion_id=asignacion_id,
+            cohorte_id=cohorte_id,
+        )

@@ -6,6 +6,7 @@ import apiClient from '@/shared/services/api'
 import { parseDomainError } from '@/shared/services/domainError'
 import type {
   CalificacionRead,
+  ConfigurarUmbralDefaultRequest,
   ConfigurarUmbralRequest,
   ImportarCalificacionesRequest,
   NotaFinalAlumno,
@@ -84,6 +85,47 @@ export async function getUmbral(materia_id: string): Promise<UmbralMateriaRead> 
  * Saves or updates the approval threshold for the current user's materia.
  */
 export async function configurarUmbral(request: ConfigurarUmbralRequest): Promise<UmbralMateriaRead> {
+  try {
+    const response = await apiClient.put<UmbralMateriaRead>('/calificaciones/umbral', request)
+    return response.data
+  } catch (err) {
+    throw parseDomainError(err)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GET /calificaciones/umbral (default scope global — ADMIN/COORDINADOR)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the default umbral for a materia (scope global ADMIN/COORDINADOR).
+ * Optional cohorte_id filters to a specific cohort default.
+ */
+export async function getUmbralDefault(
+  materia_id: string,
+  cohorte_id?: string | null,
+): Promise<UmbralMateriaRead> {
+  try {
+    const response = await apiClient.get<UmbralMateriaRead>('/calificaciones/umbral', {
+      params: { materia_id, ...(cohorte_id ? { cohorte_id } : {}) },
+    })
+    return response.data
+  } catch (err) {
+    throw parseDomainError(err)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PUT /calificaciones/umbral (default scope global — ADMIN/COORDINADOR)
+// ---------------------------------------------------------------------------
+
+/**
+ * Saves or updates the default umbral for a materia/cohorte (scope global ADMIN).
+ * Sends cohorte_id to associate the default with a specific cohort.
+ */
+export async function configurarUmbralDefault(
+  request: ConfigurarUmbralDefaultRequest,
+): Promise<UmbralMateriaRead> {
   try {
     const response = await apiClient.put<UmbralMateriaRead>('/calificaciones/umbral', request)
     return response.data

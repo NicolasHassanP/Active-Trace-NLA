@@ -13,7 +13,7 @@ import { convocatoriaSchema } from '../convocatoriaSchema'
 const validConvocatoria = {
   materia_id: 'mat-uuid-1',
   cohorte_id: 'coh-uuid-1',
-  tipo: 'coloquio' as const,
+  tipo: 'Coloquio' as const,
   instancia: 'Primera',
   dias_disponibles: 2,
   turnos: [

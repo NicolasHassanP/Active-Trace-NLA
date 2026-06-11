@@ -42,9 +42,11 @@ beforeEach(() => {
 describe('AvisosPage — COORDINADOR', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1' },
+      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['COORDINADOR'], tenantId: 't1', isAuthenticated: true, isInitializing: false,
       login: vi.fn(), logout: vi.fn(),
+      isImpersonating: false, impersonatedName: null,
+      impersonarUsuario: vi.fn(), finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -62,9 +64,11 @@ describe('AvisosPage — COORDINADOR', () => {
 describe('AvisosPage — TUTOR', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u2', email: 'tutor@test.com', roles: ['TUTOR'], tenantId: 't1' },
+      user: { id: 'u2', email: 'tutor@test.com', roles: ['TUTOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['TUTOR'], tenantId: 't1', isAuthenticated: true, isInitializing: false,
       login: vi.fn(), logout: vi.fn(),
+      isImpersonating: false, impersonatedName: null,
+      impersonarUsuario: vi.fn(), finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -83,9 +87,11 @@ describe('AvisosPage — TUTOR', () => {
 describe('AvisosPage — empty feed', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u2', email: 'tutor@test.com', roles: ['TUTOR'], tenantId: 't1' },
+      user: { id: 'u2', email: 'tutor@test.com', roles: ['TUTOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['TUTOR'], tenantId: 't1', isAuthenticated: true, isInitializing: false,
       login: vi.fn(), logout: vi.fn(),
+      isImpersonating: false, impersonatedName: null,
+      impersonarUsuario: vi.fn(), finalizarImpersonacion: vi.fn(),
     })
     vi.mocked(service.listarFeed).mockResolvedValue([])
   })

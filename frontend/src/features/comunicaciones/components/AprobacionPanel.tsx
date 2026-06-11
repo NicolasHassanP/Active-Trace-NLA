@@ -33,7 +33,7 @@ export default function AprobacionPanel({ loteId, mensajes }: Props) {
     aprobarLote.mutate(loteId, {
       onSuccess: () => toast.success('Lote aprobado'),
       onError: (err) => {
-        const de = err as DomainError
+        const de = err as unknown as DomainError
         toast.error(de.detail ?? 'Error al aprobar el lote')
       },
     })
@@ -43,7 +43,7 @@ export default function AprobacionPanel({ loteId, mensajes }: Props) {
     cancelarLote.mutate(loteId, {
       onSuccess: () => toast.success('Lote cancelado'),
       onError: (err) => {
-        const de = err as DomainError
+        const de = err as unknown as DomainError
         if (de.status === 409) {
           toast.error('Transición inválida: algunos mensajes no son cancelables')
         } else {
@@ -56,7 +56,7 @@ export default function AprobacionPanel({ loteId, mensajes }: Props) {
   function handleAprobarIndividual(id: string) {
     aprobarInd.mutate(id, {
       onError: (err) => {
-        const de = err as DomainError
+        const de = err as unknown as DomainError
         toast.error(de.status === 404 ? 'Mensaje no encontrado' : de.detail)
       },
     })
@@ -65,7 +65,7 @@ export default function AprobacionPanel({ loteId, mensajes }: Props) {
   function handleCancelarIndividual(id: string) {
     cancelarInd.mutate(id, {
       onError: (err) => {
-        const de = err as DomainError
+        const de = err as unknown as DomainError
         toast.error(de.status === 404 ? 'Mensaje no encontrado' : de.detail)
       },
     })

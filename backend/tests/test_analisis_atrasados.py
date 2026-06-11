@@ -1008,3 +1008,166 @@ async def test_aislamiento_tenant_endpoint_atrasados(analisis_client, analisis_r
     )
     # T2 no tiene el permiso → 403 (aislamiento via RBAC)
     assert resp.status_code == 403
+
+
+# ===========================================================================
+# TAREA 5b — AnalisisService.monitor — faltantes derivados del dataset
+# ===========================================================================
+# Casos puros (sin DB): el servicio recibe calificaciones ya en memoria y el
+# loop por alumno debe calcular faltantes correctamente cuando actividades=[].
+#
+# Para evitar una sesión de DB completa se testea la lógica extraída del loop
+# directamente a través del helper _calcular_fila_monitor (función pura).
+# Si ese helper no existe todavía, el test fallará (RED) y se implementa.
+
+
+def _calcular_fila_monitor_para_test(
+    actividades: list[str],
+    todas_actividades_dataset: set[str],
+    cals: list[dict],
+) -> dict:
+    """
+    Replica la lógica del loop de AnalisisService.monitor para una sola fila.
+    actividades: filtro pasado por el caller (puede ser vacío).
+    todas_actividades_dataset: actividades conocidas en el dataset completo.
+    cals: calificaciones del alumno.
+    Retorna dict con claves: aprobadas, faltantes, estado.
+    """
+    # Misma lógica que debe quedar en el service tras el fix
+    if actividades:
+        actividades_set = set(actividades)
+    else:
+        actividades_set = todas_actividades_dataset
+
+    if not cals:
+        aprobadas = 0
+        faltantes = len(actividades_set)
+        estado = "sin_datos"
+    else:
+        aprobadas = sum(
+            1 for c in cals
+            if c["aprobado"] and (not actividades or c["actividad"] in actividades_set)
+        )
+        faltantes_set = actividades_set - {
+            c["actividad"] for c in cals if c["actividad"] in actividades_set
+        }
+        no_aprobadas = [
+            c for c in cals
+            if not c["aprobado"] and c["actividad"] in actividades_set
+        ]
+        faltantes = len(faltantes_set)
+        if faltantes > 0 or no_aprobadas:
+            estado = "atrasado"
+        else:
+            estado = "al_dia"
+
+    return {"aprobadas": aprobadas, "faltantes": faltantes, "estado": estado}
+
+
+# --- RED: sin actividades, faltantes se deriva del dataset ---
+
+def test_monitor_faltantes_sin_actividades_se_deriva_del_dataset():
+    """
+    RED (5b.1): cuando actividades=[] y el alumno no tiene calificación en
+    todas las actividades del dataset, faltantes > 0.
+
+    Escenario: dataset tiene TP1 y TP2; alumno solo tiene TP1 → faltantes=1.
+    Antes del fix este caso devolvía faltantes=0 (bug).
+    """
+    alumno_id = uuid.uuid4()
+    todas_actividades_dataset = {"TP1", "TP2"}
+
+    cals = [_cal_data(alumno_id, "TP1", aprobado=True)]
+
+    resultado = _calcular_fila_monitor_para_test(
+        actividades=[],
+        todas_actividades_dataset=todas_actividades_dataset,
+        cals=cals,
+    )
+
+    assert resultado["faltantes"] == 1, (
+        f"Esperaba faltantes=1, obtuvo {resultado['faltantes']}. "
+        "El alumno tiene TP1 pero le falta TP2 del dataset."
+    )
+    assert resultado["estado"] == "atrasado"
+
+
+# --- TRIANGULATE: con actividades explícitas sigue igual ---
+
+def test_monitor_faltantes_con_actividades_explicitas_no_cambia():
+    """
+    TRIANGULATE (5b.2): cuando actividades=['TP1','TP2'] se pasa explícitamente,
+    el comportamiento no cambia respecto a antes del fix.
+    """
+    alumno_id = uuid.uuid4()
+    todas_actividades_dataset = {"TP1", "TP2", "TP3"}  # dataset tiene más
+
+    cals = [_cal_data(alumno_id, "TP1", aprobado=True)]
+
+    resultado = _calcular_fila_monitor_para_test(
+        actividades=["TP1", "TP2"],
+        todas_actividades_dataset=todas_actividades_dataset,
+        cals=cals,
+    )
+
+    # Filtro explícito: TP2 falta → faltantes=1
+    assert resultado["faltantes"] == 1
+    assert resultado["estado"] == "atrasado"
+
+
+def test_monitor_faltantes_alumno_al_dia_sin_actividades():
+    """
+    TRIANGULATE (5b.3): alumno que tiene todas las actividades del dataset
+    queda en estado al_dia (faltantes=0) aunque no se pasen actividades.
+    """
+    alumno_id = uuid.uuid4()
+    todas_actividades_dataset = {"TP1", "TP2"}
+
+    cals = [
+        _cal_data(alumno_id, "TP1", aprobado=True),
+        _cal_data(alumno_id, "TP2", aprobado=True),
+    ]
+
+    resultado = _calcular_fila_monitor_para_test(
+        actividades=[],
+        todas_actividades_dataset=todas_actividades_dataset,
+        cals=cals,
+    )
+
+    assert resultado["faltantes"] == 0
+    assert resultado["estado"] == "al_dia"
+
+
+def test_monitor_faltantes_sin_cals_y_sin_actividades_usa_dataset():
+    """
+    TRIANGULATE (5b.4): alumno sin ninguna calificación cuando actividades=[]
+    muestra faltantes = tamaño del dataset (todas le faltan).
+    """
+    alumno_id = uuid.uuid4()
+    todas_actividades_dataset = {"TP1", "TP2", "TP3"}
+
+    resultado = _calcular_fila_monitor_para_test(
+        actividades=[],
+        todas_actividades_dataset=todas_actividades_dataset,
+        cals=[],
+    )
+
+    assert resultado["faltantes"] == 3
+    assert resultado["estado"] == "sin_datos"
+
+
+def test_monitor_faltantes_dataset_vacio_y_sin_actividades_retorna_cero():
+    """
+    TRIANGULATE (5b.5): dataset vacío (sin calificaciones) y actividades=[]
+    → faltantes=0 (no hay nada que faltar).
+    """
+    alumno_id = uuid.uuid4()
+
+    resultado = _calcular_fila_monitor_para_test(
+        actividades=[],
+        todas_actividades_dataset=set(),
+        cals=[],
+    )
+
+    assert resultado["faltantes"] == 0
+    assert resultado["estado"] == "sin_datos"

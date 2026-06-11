@@ -15,119 +15,171 @@ import type { NavItem } from '../types'
  * ALUMNO and NEXO have no items until their modules exist (C-22+).
  */
 export const NAV_CATALOG: NavItem[] = [
-  // --- PROFESOR ---
+  // ── MI CURSADA (ALUMNO) ──────────────────────────────────
   {
+    label: 'Mi cursada',
+    path: '/mi-cursada',
+    roles: ['ALUMNO'],
+    icon: 'book',
+    group: 'MI CURSADA',
+  },
+  // ── MI CÁTEDRA ──────────────────────────────────────────
+  {
+    // ADMIN usa scope global — no tiene "Mis materias" porque no tiene asignaciones propias.
+    // ADMIN sigue teniendo acceso a Calificaciones, Padrón, Atrasados, etc. con scope global.
     label: 'Mis materias',
     path: '/materias',
-    roles: ['PROFESOR', 'COORDINADOR', 'ADMIN'],
+    roles: ['PROFESOR', 'COORDINADOR'],
     icon: 'book',
+    group: 'MI CÁTEDRA',
   },
   {
     label: 'Calificaciones',
     path: '/calificaciones',
     roles: ['PROFESOR', 'COORDINADOR', 'ADMIN'],
     icon: 'star',
+    group: 'MI CÁTEDRA',
   },
-  // C-22: Padrón — PROFESOR·TUTOR·COORDINADOR·ADMIN
   {
     label: 'Padrón',
     path: '/padron',
-    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
+    // Cargar padrón: PROFESOR/COORDINADOR/ADMIN (C-09 design.md, KB §3.3 F1.3). TUTOR excluido.
+    roles: ['PROFESOR', 'COORDINADOR', 'ADMIN'],
     icon: 'users',
+    group: 'MI CÁTEDRA',
   },
-  // C-22: Atrasados — PROFESOR·TUTOR·COORDINADOR·ADMIN
   {
     label: 'Atrasados',
     path: '/atrasados',
     roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
     icon: 'alert-circle',
+    group: 'MI CÁTEDRA',
   },
-  // --- COORDINADOR ---
   {
     label: 'Equipos docentes',
     path: '/equipos',
     roles: ['COORDINADOR', 'ADMIN'],
     icon: 'users',
+    group: 'MI CÁTEDRA',
   },
+  {
+    label: 'Seguimiento',
+    path: '/seguimiento',
+    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
+    icon: 'eye',
+    group: 'MI CÁTEDRA',
+  },
+  // ── INSTANCIAS ───────────────────────────────────────────
   {
     label: 'Encuentros',
     path: '/encuentros',
-    roles: ['COORDINADOR', 'ADMIN'],
+    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
     icon: 'calendar',
+    group: 'INSTANCIAS',
+  },
+  {
+    label: 'Guardias',
+    path: '/guardias',
+    roles: ['TUTOR', 'PROFESOR', 'COORDINADOR', 'ADMIN'],
+    icon: 'calendar',
+    group: 'INSTANCIAS',
   },
   {
     label: 'Coloquios',
     path: '/coloquios',
     roles: ['COORDINADOR', 'ADMIN'],
     icon: 'clipboard',
+    group: 'INSTANCIAS',
   },
-  // C-23: Avisos — bandeja (PROFESOR·TUTOR·COORDINADOR·ADMIN); gestión inside page
+  {
+    label: 'Mis coloquios',
+    path: '/mis-coloquios',
+    roles: ['ALUMNO'],
+    icon: 'clipboard',
+    group: 'INSTANCIAS',
+  },
+  // ── TRABAJO ──────────────────────────────────────────────
   {
     label: 'Avisos',
     path: '/avisos',
-    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
+    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN', 'ALUMNO', 'FINANZAS'],
     icon: 'bell',
+    group: 'TRABAJO',
   },
-  // C-23: Tareas internas — mis-tareas (TUTOR·PROFESOR·COORDINADOR·ADMIN); admin panel inside page
   {
     label: 'Tareas',
     path: '/tareas',
     roles: ['TUTOR', 'PROFESOR', 'COORDINADOR', 'ADMIN'],
     icon: 'check-square',
+    group: 'TRABAJO',
   },
-  // C-23: Monitor — COORDINADOR·ADMIN only
+  {
+    label: 'Mensajes',
+    path: '/mensajes',
+    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
+    icon: 'mail',
+    group: 'TRABAJO',
+  },
+  {
+    label: 'Comunicaciones',
+    path: '/comunicaciones',
+    roles: ['PROFESOR', 'COORDINADOR', 'ADMIN'],
+    icon: 'mail',
+    group: 'TRABAJO',
+  },
   {
     label: 'Monitor',
     path: '/monitor',
     roles: ['COORDINADOR', 'ADMIN'],
     icon: 'bar-chart-2',
+    group: 'TRABAJO',
   },
-  // C-23: Setup cuatrimestre — COORDINADOR·ADMIN only
   {
     label: 'Setup cuatrimestre',
     path: '/setup-cuatrimestre',
-    roles: ['COORDINADOR', 'ADMIN'],
+    roles: ['ADMIN'],
     icon: 'settings',
+    group: 'TRABAJO',
   },
-  // C-22: Comunicaciones expanded to PROFESOR·TUTOR (comunicacion:enviar)
-  {
-    label: 'Comunicaciones',
-    path: '/comunicaciones',
-    roles: ['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN'],
-    icon: 'mail',
-  },
-  // --- FINANZAS ---
+  // ── FINANZAS ─────────────────────────────────────────────
   {
     label: 'Liquidaciones',
     path: '/liquidaciones',
     roles: ['FINANZAS', 'ADMIN'],
     icon: 'dollar-sign',
+    group: 'FINANZAS',
   },
-  // --- ADMIN ---
+  // ── CUENTA ───────────────────────────────────────────────
+  {
+    // Perfil propio (M2 / F11.1): perfil:editar es universal → visible a todo
+    // usuario autenticado. roles: [] = "visible to all authenticated users".
+    label: 'Mi perfil',
+    path: '/perfil',
+    roles: [],
+    icon: 'users',
+    group: 'CUENTA',
+  },
+  // ── ADMINISTRACIÓN ───────────────────────────────────────
   {
     label: 'Usuarios',
     path: '/admin/usuarios',
     roles: ['ADMIN'],
     icon: 'shield',
+    group: 'ADMINISTRACIÓN',
   },
   {
     label: 'Estructura académica',
     path: '/admin/estructura',
     roles: ['ADMIN'],
     icon: 'database',
+    group: 'ADMINISTRACIÓN',
   },
   {
     label: 'Auditoría',
     path: '/admin/auditoria',
     roles: ['ADMIN'],
     icon: 'activity',
-  },
-  // --- TUTOR ---
-  {
-    label: 'Seguimiento',
-    path: '/seguimiento',
-    roles: ['TUTOR', 'COORDINADOR', 'ADMIN'],
-    icon: 'eye',
+    group: 'ADMINISTRACIÓN',
   },
 ]
 

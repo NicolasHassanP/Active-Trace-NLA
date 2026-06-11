@@ -43,14 +43,24 @@ class PerfilRepository(TenantScopedRepository[Usuario]):
     def __init__(self, session: AsyncSession, tenant_id: uuid.UUID) -> None:
         super().__init__(Usuario, session, tenant_id)
 
-    async def get_self(self, usuario_id: uuid.UUID) -> Optional[Usuario]:
+    async def get_self(self, auth_identity_id: uuid.UUID) -> Optional[Usuario]:
         """
-        Obtiene el usuario por id, scoped al tenant.
+        Obtiene el usuario por auth_identity_id, scoped al tenant.
 
-        Retorna None si no existe o no pertenece al tenant del scope.
-        Equivale a get_by_id pero con semántica de autoservicio.
+        actor.user_id = auth_identities.id (sub del JWT).
+        Busca por Usuario.auth_identity_id, no por Usuario.id.
         """
-        return await self.get_by_id(usuario_id)
+        from sqlalchemy import select as sa_select
+        stmt = (
+            sa_select(Usuario)
+            .where(
+                Usuario.tenant_id == self._tenant_id,
+                Usuario.auth_identity_id == auth_identity_id,
+                Usuario.deleted_at.is_(None),
+            )
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def update_self(self, obj: Usuario, **kwargs) -> Usuario:
         """

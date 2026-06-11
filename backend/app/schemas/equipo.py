@@ -183,9 +183,15 @@ class MisEquiposItem(BaseModel):
     model_config = ConfigDict(extra="forbid", from_attributes=False)
 
     asignacion_id: uuid.UUID
+    usuario_id: uuid.UUID
+    usuario_nombre: Optional[str] = None
+    usuario_apellidos: Optional[str] = None
     materia_id: Optional[uuid.UUID]
     carrera_id: Optional[uuid.UUID]
     cohorte_id: Optional[uuid.UUID]
+    materia_nombre: Optional[str] = None
+    carrera_nombre: Optional[str] = None
+    cohorte_nombre: Optional[str] = None
     rol: RolAsignacion
     desde: date
     hasta: Optional[date]

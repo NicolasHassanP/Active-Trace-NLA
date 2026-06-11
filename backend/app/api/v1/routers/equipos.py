@@ -23,7 +23,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.usuario_repository import AsignacionRepository, UsuarioRepository
 from app.schemas.equipo import (
@@ -72,8 +72,9 @@ async def get_mis_equipos(
     Identidad del actor desde el JWT — nunca del body ni de la URL.
     Requiere permiso equipos:ver.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_equipo_service(db, current_user.tenant_id)
-    return await svc.listar_mis_equipos(current_user)
+    return await svc.listar_mis_equipos(current_user, domain_user_id=domain_user_id)
 
 
 # ---------------------------------------------------------------------------

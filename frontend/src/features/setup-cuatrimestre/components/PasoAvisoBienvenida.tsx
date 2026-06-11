@@ -17,6 +17,7 @@ const schema = z.object({
   inicio_en: z.string().min(1, 'Fecha de inicio obligatoria'),
   fin_en: z.string().min(1, 'Fecha de fin obligatoria'),
   severidad: z.enum(['Info', 'Advertencia', 'Critico']).default('Info'),
+  requiere_ack: z.boolean().default(true),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -37,6 +38,7 @@ export default function PasoAvisoBienvenida({ onSuccess, onError }: Props) {
       titulo: 'Inicio de cuatrimestre',
       cuerpo: 'Bienvenidos al nuevo cuatrimestre. Les informamos el inicio de actividades.',
       severidad: 'Info',
+      requiere_ack: true,
     },
   })
 
@@ -49,7 +51,7 @@ export default function PasoAvisoBienvenida({ onSuccess, onError }: Props) {
         cuerpo: data.cuerpo,
         inicio_en: data.inicio_en,
         fin_en: data.fin_en,
-        requiere_ack: false,
+        requiere_ack: data.requiere_ack,
         activo: true,
       })
       onSuccess()
@@ -117,6 +119,18 @@ export default function PasoAvisoBienvenida({ onSuccess, onError }: Props) {
             <p className="mt-1 text-xs text-red-600">{errors.fin_en.message}</p>
           )}
         </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          {...register('requiere_ack')}
+          id="requiere_ack"
+          type="checkbox"
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-400"
+        />
+        <label htmlFor="requiere_ack" className="text-sm text-gray-700">
+          Requerir confirmación de lectura
+        </label>
       </div>
 
       <Button type="submit" variant="primary" disabled={isSubmitting} isLoading={isSubmitting}>

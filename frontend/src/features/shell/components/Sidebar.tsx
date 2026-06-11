@@ -1,52 +1,100 @@
-/**
- * Sidebar — navigation sidebar built from user roles.
- *
- * Uses buildNav(roles) to filter the NavItem catalog.
- * Consumes useAuth for session roles.
- */
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { buildNav } from './buildNav'
+import { NavIcon } from '@/shared/components/ui/NavIcon'
+import { RoleSwitcher } from './RoleSwitcher'
+import type { NavItem } from '../types'
+
+function groupNavItems(items: NavItem[]): { label: string; items: NavItem[] }[] {
+  const groups: { label: string; items: NavItem[] }[] = []
+  const map = new Map<string, NavItem[]>()
+  for (const item of items) {
+    const key = item.group ?? ''
+    if (!map.has(key)) {
+      const arr: NavItem[] = []
+      map.set(key, arr)
+      groups.push({ label: key, items: arr })
+    }
+    map.get(key)!.push(item)
+  }
+  return groups
+}
 
 export default function Sidebar() {
-  const { roles, isInitializing, isAuthenticated } = useAuth()
+  const { roles, user, isInitializing, isAuthenticated } = useAuth()
 
-  if (isInitializing || !isAuthenticated) {
-    return null
-  }
+  if (isInitializing || !isAuthenticated) return null
 
   const navItems = buildNav(roles)
-
-  if (navItems.length === 0) {
-    return (
-      <aside className="w-56 bg-white border-r border-gray-200 flex flex-col py-4 px-2">
-        <p className="text-xs text-gray-400 px-3">Sin ítems de navegación</p>
-      </aside>
-    )
-  }
+  const groups = groupNavItems(navItems)
 
   return (
-    <aside className="w-56 bg-white border-r border-gray-200 flex flex-col py-4 px-2">
-      <nav aria-label="Navegación principal">
-        <ul className="space-y-1">
-          {navItems.map((item) => (
-            <li key={item.path}>
-              <NavLink
-                to={item.path}
-                className={({ isActive }) =>
-                  `flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+    <aside
+      className="flex flex-col bg-white border-r border-line shrink-0"
+      style={{ width: 252, padding: '22px 14px 16px' }}
+    >
+      {/* Brand */}
+      <div className="flex items-center gap-[10px] mb-[22px] px-[10px]">
+        <div
+          className="w-[30px] h-[30px] rounded-[9px] shrink-0"
+          style={{
+            background: 'linear-gradient(150deg,#6366f1,#4338ca)',
+            boxShadow: '0 3px 8px rgba(67,56,202,.35)',
+          }}
+        />
+        <span className="text-[14.5px] font-extrabold text-ink tracking-[-0.3px]">activia-trace</span>
+      </div>
+
+      {/* Nav */}
+      <nav aria-label="Navegación principal" className="flex-1 overflow-y-auto">
+        {navItems.length === 0 ? (
+          <p className="text-[11px] text-faint px-[10px]">Sin ítems de navegación</p>
+        ) : (
+          groups.map(({ label, items }) => (
+            <div key={label}>
+              {label && (
+                <p className="text-[10.5px] font-bold tracking-[0.6px] uppercase text-faint px-[10px] mt-[14px] mb-[4px]">
+                  {label}
+                </p>
+              )}
+              <ul>
+                {items.map((item) => (
+                  <li key={item.path}>
+                    <NavLink
+                      to={item.path}
+                      className={({ isActive }) =>
+                        [
+                          'flex items-center gap-[11px] px-[10px] py-[7.5px] rounded-[9px] mb-[1px] text-[13.5px] font-semibold cursor-pointer transition-colors',
+                          isActive
+                            ? 'bg-indBg text-ind2'
+                            : 'text-[#4b5563] hover:bg-[#f4f4f8] hover:text-ink',
+                        ].join(' ')
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          {item.icon && (
+                            <NavIcon
+                              name={item.icon}
+                              className={['w-[15px] h-[15px] shrink-0', isActive ? 'text-ind' : ''].join(' ')}
+                            />
+                          )}
+                          {item.label}
+                        </>
+                      )}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        )}
       </nav>
+
+      {/* User card + logout */}
+      {user && (
+        <RoleSwitcher roles={roles} name={user.name} email={user.email} />
+      )}
     </aside>
   )
 }

@@ -50,6 +50,23 @@ const apiClient: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // FastAPI expects repeated keys for array params (actividades=X&actividades=Y),
+  // not the bracket notation Axios uses by default (actividades[]=X&actividades[]=Y).
+  paramsSerializer: {
+    serialize: (params: Record<string, unknown>) => {
+      const parts: string[] = []
+      for (const [key, value] of Object.entries(params)) {
+        if (Array.isArray(value)) {
+          for (const item of value) {
+            parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(item))}`)
+          }
+        } else if (value !== undefined && value !== null) {
+          parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+        }
+      }
+      return parts.join('&')
+    },
+  },
 })
 
 // ---- Request interceptor: attach Bearer token ----

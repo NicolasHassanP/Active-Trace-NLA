@@ -4,7 +4,12 @@ Modelos Calificacion y UmbralMateria para C-10 calificaciones y umbral.
 Design decisions:
     D2 — Calificacion cuelga de EntradaPadron (FK RESTRICT), materia_id desnormalizado.
     D3 — aprobado persistido (BOOLEAN NOT NULL), calculado al importar por derive_aprobado.
-    D5 — UmbralMateria: unicidad por (tenant_id, asignacion_id, materia_id) WHERE deleted_at IS NULL.
+    D5 — UmbralMateria:
+         - asignacion_id nullable (NULL = default por materia/cohorte, scope global ADMIN).
+         - cohorte_id nullable para scope de default por cohorte.
+         - Unicidad por dos índices parciales (migración 019):
+             uq_um_default_materia_cohorte: (tenant_id, materia_id, cohorte_id) WHERE asignacion_id IS NULL
+             uq_um_asignacion_override:     (tenant_id, asignacion_id, materia_id) WHERE asignacion_id IS NOT NULL
     D8 — importado_por: FK→usuario ON DELETE SET NULL; forma parte de la clave única de upsert.
 
 __repr__ NUNCA expone PII (emails, nombres del alumno).
@@ -132,25 +137,38 @@ class Calificacion(Base, TenantScopedBase):
 
 class UmbralMateria(Base, TenantScopedBase):
     """
-    Umbral de aprobación configurado por un docente para una asignación×materia.
+    Umbral de aprobación para asignación×materia (override) o materia/cohorte (default).
 
-    asignacion_id: FK → asignacion (RESTRICT) — el docente que lo configuró.
+    asignacion_id: FK → asignacion (RESTRICT), nullable.
+        NULL  = default por materia/cohorte (scope global ADMIN).
+        NOT NULL = override por docente (scope propio).
+    cohorte_id: FK → cohorte (RESTRICT), nullable.
+        Cuando asignacion_id IS NULL: permite diferenciar defaults por cohorte.
     materia_id: FK → materia (RESTRICT) — la materia sobre la que aplica.
     umbral_pct: porcentaje mínimo aprobatorio para notas numéricas (defecto 60).
     valores_aprobatorios: lista JSONB de valores textuales que cuentan como aprobado.
 
-    Unicidad: (tenant_id, asignacion_id, materia_id) WHERE deleted_at IS NULL
-    asegurada por el índice uq_um_asignacion_materia en la migración 008.
+    Unicidad garantizada por dos índices parciales (migración 019):
+        uq_um_default_materia_cohorte: (tenant_id, materia_id, cohorte_id) WHERE asignacion_id IS NULL
+        uq_um_asignacion_override:     (tenant_id, asignacion_id, materia_id) WHERE asignacion_id IS NOT NULL
 
     __repr__ no expone PII.
     """
     __tablename__ = "umbral_materia"
 
-    # --- FK a asignacion (NOT NULL, RESTRICT) ---
-    asignacion_id: Mapped[uuid.UUID] = mapped_column(
+    # --- FK a asignacion (nullable, RESTRICT) — NULL = default scope global ---
+    asignacion_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("asignacion.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
+    )
+
+    # --- FK a cohorte (nullable, RESTRICT) — para defaults por cohorte ---
+    cohorte_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("cohorte.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
     )
 
     # --- FK a materia (NOT NULL, RESTRICT) ---
@@ -178,6 +196,6 @@ class UmbralMateria(Base, TenantScopedBase):
     def __repr__(self) -> str:  # pragma: no cover
         return (
             f"<UmbralMateria id={self.id} tenant={self.tenant_id} "
-            f"asignacion={self.asignacion_id} materia={self.materia_id} "
-            f"umbral_pct={self.umbral_pct}>"
+            f"asignacion={self.asignacion_id} cohorte={self.cohorte_id} "
+            f"materia={self.materia_id} umbral_pct={self.umbral_pct}>"
         )

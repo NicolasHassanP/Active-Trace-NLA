@@ -1,10 +1,3 @@
-/**
- * Button — shared UI component with variant and size support.
- * Variants: primary | secondary | danger | ghost
- * Sizes: sm | md | lg
- * Supports disabled and isLoading states.
- * < 200 LOC. No `any`. Only Tailwind v3.
- */
 import { type ButtonHTMLAttributes } from 'react'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
@@ -18,19 +11,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary:
-    'bg-indigo-600 text-white hover:bg-indigo-700 border border-indigo-600 focus:ring-indigo-500',
+    'bg-ind2 text-white hover:bg-[#3730a3] border border-ind2 shadow-[0_3px_8px_rgba(67,56,202,.35)]',
   secondary:
-    'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 focus:ring-indigo-500',
+    'bg-white text-[#3a4253] hover:bg-[#f6f7fb] border border-line',
   danger:
-    'bg-red-600 text-white hover:bg-red-700 border border-red-600 focus:ring-red-500',
+    'bg-red-600 text-white hover:bg-red-700 border border-red-600',
   ghost:
-    'bg-transparent text-gray-600 hover:bg-gray-100 border border-transparent focus:ring-gray-400',
+    'bg-transparent text-mut hover:bg-[#f4f4f8] border border-transparent',
 }
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-xs rounded',
-  md: 'px-4 py-2 text-sm rounded',
-  lg: 'px-5 py-2.5 text-base rounded-md',
+  sm: 'px-[11px] py-[7px] text-[12.5px] rounded-[9px]',
+  md: 'px-[14px] py-[9px] text-[13px] rounded-btn',
+  lg: 'px-[18px] py-[11px] text-[13.5px] rounded-btn',
 }
 
 function Spinner() {
@@ -71,7 +64,7 @@ export function Button({
   const isDisabled = disabled || isLoading
 
   const classes = [
-    'inline-flex items-center justify-center font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
+    'inline-flex items-center gap-[7px] font-bold whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ind',
     VARIANT_CLASSES[variant],
     SIZE_CLASSES[size],
     isDisabled ? 'opacity-50 cursor-not-allowed' : '',

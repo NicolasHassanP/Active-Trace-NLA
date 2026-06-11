@@ -18,6 +18,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.mensajeria import HiloMensaje, HiloParticipante, Mensaje
+from app.models.usuario import Usuario
 
 
 class MensajeriaRepository:
@@ -114,12 +115,28 @@ class MensajeriaRepository:
             - hilo_id
             - asunto
             - ultimo_mensaje_at (max created_at de mensajes activos)
+            - otro_participante_nombre (nombre + apellidos del otro usuario en el hilo)
         """
+        # Correlated scalar subquery: nombre completo del otro participante en cada hilo
+        _otro_hp = HiloParticipante.__table__.alias("otro_hp")
+        otro_nombre_sq = (
+            select(func.concat(Usuario.nombre, " ", Usuario.apellidos))
+            .join(_otro_hp, _otro_hp.c.usuario_id == Usuario.id)
+            .where(
+                _otro_hp.c.hilo_id == HiloMensaje.id,
+                _otro_hp.c.usuario_id != usuario_id,
+                _otro_hp.c.tenant_id == self._tenant_id,
+            )
+            .limit(1)
+            .scalar_subquery()
+        )
+
         stmt = (
             select(
                 HiloMensaje.id.label("hilo_id"),
                 HiloMensaje.asunto,
                 func.max(Mensaje.created_at).label("ultimo_mensaje_at"),
+                otro_nombre_sq.label("otro_participante_nombre"),
             )
             .join(HiloParticipante, HiloParticipante.hilo_id == HiloMensaje.id)
             .outerjoin(
@@ -145,6 +162,7 @@ class MensajeriaRepository:
                 "hilo_id": row.hilo_id,
                 "asunto": row.asunto,
                 "ultimo_mensaje_at": row.ultimo_mensaje_at,
+                "otro_participante_nombre": row.otro_participante_nombre,
             }
             for row in rows
         ]

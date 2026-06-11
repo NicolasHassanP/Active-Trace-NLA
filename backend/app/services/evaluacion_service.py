@@ -10,6 +10,7 @@ C-14 Design Decisions:
     D8  — Auditoría en cada operación de gestión y reserva.
 
 Identity ALWAYS from current_user — never from request body.
+domain_user_id resuelto en el router con resolve_domain_user_id (usuario.id ≠ auth_identity_id).
 Queries ONLY via repositories.
 snake_case; ≤500 LOC.
 """
@@ -40,6 +41,7 @@ from app.schemas.evaluacion import (
     ConvocatoriaConTurnosRead,
     ConvocatoriaMetricasRead,
     ConvocatoriaRead,
+    ConvocatoriasAlumnoRead,
     CrearConvocatoriaRequest,
     ImportarCandidatosRequest,
     MetricasRead,
@@ -47,6 +49,7 @@ from app.schemas.evaluacion import (
     ReservaRequest,
     ResultadoRead,
     ResultadoRequest,
+    TurnoConCupoRead,
     TurnoRead,
 )
 
@@ -220,6 +223,7 @@ class EvaluacionService:
         self,
         req: ReservaRequest,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> ReservaRead:
         """
         Reserve a turn for the authenticated ALUMNO.
@@ -232,6 +236,7 @@ class EvaluacionService:
             D7 — closed convocatoria rejects new reservations.
 
         Identity of the alumno ALWAYS from current_user.JWT — never from body.
+        domain_user_id (usuario.id) resolved in the router via resolve_domain_user_id.
         Raises HTTPException 403 (not candidate), 409 (cupo, duplicate, closed).
         """
         # Load and validate evaluacion
@@ -245,16 +250,16 @@ class EvaluacionService:
                 detail="La convocatoria está cerrada y no acepta nuevas reservas.",
             )
 
-        # D5 — candidate gating
-        if not await self._cand_repo.is_candidato(req.evaluacion_id, current_user.user_id):
+        # D5 — candidate gating (domain_user_id = usuario.id, FK en candidato_evaluacion)
+        if not await self._cand_repo.is_candidato(req.evaluacion_id, domain_user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="El alumno no es candidato habilitado en esta convocatoria.",
             )
 
-        # D4 — one active reservation per convocatoria
+        # D4 — one active reservation per convocatoria (domain_user_id = usuario.id)
         count_existing = await self._res_repo.count_activas_por_alumno_convocatoria(
-            current_user.user_id, req.evaluacion_id
+            domain_user_id, req.evaluacion_id
         )
         if count_existing > 0:
             raise HTTPException(
@@ -274,11 +279,11 @@ class EvaluacionService:
                 detail="El turno está lleno (sin cupos disponibles).",
             )
 
-        # Create reservation
+        # Create reservation (domain_user_id = usuario.id, FK en reserva_evaluacion.alumno_id)
         reserva = ReservaEvaluacion(
             turno_id=req.turno_id,
             evaluacion_id=req.evaluacion_id,
-            alumno_id=current_user.user_id,
+            alumno_id=domain_user_id,
             estado=ReservaEstado.Activa,
         )
         reserva = await self._res_repo.add(reserva)
@@ -303,19 +308,22 @@ class EvaluacionService:
         self,
         reserva_id: uuid.UUID,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> ReservaRead:
         """
         Cancel the own reservation (liberates cupo).
 
         Only the owning alumno (from session) can cancel.
         Cancelling sets estado=Cancelada (cupo is recalculated dynamically — D2).
+        domain_user_id (usuario.id) resolved in the router via resolve_domain_user_id.
         Raises 403/404 if reservation not found or belongs to another alumno.
         """
         reserva = await self._res_repo.get_by_id(reserva_id)
         if reserva is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
 
-        if reserva.alumno_id != current_user.user_id:
+        # ownership check: reserva.alumno_id is usuario.id (domain FK)
+        if reserva.alumno_id != domain_user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No puede cancelar la reserva de otro alumno.",
@@ -511,12 +519,34 @@ class EvaluacionService:
         self,
         evaluacion_id: uuid.UUID,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> ResultadoRead:
-        """Return own result (alumno reads only their own nota_final)."""
-        resultado = await self._result_repo.get_by_alumno(evaluacion_id, current_user.user_id)
+        """Return own result (alumno reads only their own nota_final).
+
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
+        """
+        resultado = await self._result_repo.get_by_alumno(evaluacion_id, domain_user_id)
         if resultado is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resultado no encontrado")
         return ResultadoRead.model_validate(resultado)
+
+    # -----------------------------------------------------------------------
+    # 3.7 listar_mis_convocatorias (HU-47 — ALUMNO)
+    # -----------------------------------------------------------------------
+
+    async def listar_mis_convocatorias(
+        self,
+        domain_user_id: uuid.UUID,
+    ) -> List[ConvocatoriasAlumnoRead]:
+        """
+        Lista las convocatorias donde el alumno autenticado es candidato.
+
+        Solo convocatorias no cerradas. Incluye los turnos con cupos derivados.
+        domain_user_id = usuario.id (resuelto en el router con resolve_domain_user_id).
+        Queries delegadas al repository (regla arquitectura).
+        """
+        rows = await self._cand_repo.listar_convocatorias_del_alumno(domain_user_id)
+        return rows
 
     # -----------------------------------------------------------------------
     # Private helpers

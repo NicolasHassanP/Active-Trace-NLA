@@ -20,7 +20,7 @@ const turnoSchema = z.object({
 export const convocatoriaSchema = z.object({
   materia_id: z.string().min(1, 'materia_id es requerido'),
   cohorte_id: z.string().min(1, 'cohorte_id es requerido'),
-  tipo: z.enum(['coloquio', 'examen', 'parcial'], {
+  tipo: z.enum(['Coloquio', 'TP', 'Parcial', 'Recuperatorio'], {
     errorMap: () => ({ message: 'tipo inválido' }),
   }),
   instancia: z.string().min(1, 'La instancia es requerida'),

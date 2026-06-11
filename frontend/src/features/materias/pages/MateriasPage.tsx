@@ -14,7 +14,7 @@ export default function MateriasPage() {
   const items = data ?? []
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 p-6">
+    <div className="space-y-6">
       <PageHeader
         title="Mis materias"
         subtitle="Tus asignaciones como docente: materia, carrera, cohorte, rol y vigencia."

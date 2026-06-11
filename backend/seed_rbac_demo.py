@@ -3,8 +3,10 @@ import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
 
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 TENANT_ID = '8531f634-3f1f-45da-9549-2f801d85c39b'
-DB = 'postgresql+asyncpg://postgres:280502@localhost:5432/activia_trace'
 
 ROLES = ['ALUMNO', 'TUTOR', 'PROFESOR', 'COORDINADOR', 'NEXO', 'ADMIN', 'FINANZAS']
 
@@ -19,6 +21,8 @@ PERMISOS = [
     ('comunicacion:enviar',              'comunicacion',   'enviar'),
     ('comunicacion:aprobar',             'comunicacion',   'aprobar'),
     ('encuentros:gestionar',             'encuentros',     'gestionar'),
+    # RESERVADO — guardias:registrar existe en el catálogo pero ningún router lo consume.
+    # Las guardias se gestionan con encuentros:gestionar (decisión C-13). Reservado para uso futuro.
     ('guardias:registrar',               'guardias',       'registrar'),
     ('tareas:gestionar',                 'tareas',         'gestionar'),
     ('avisos:publicar',                  'avisos',         'publicar'),
@@ -36,24 +40,29 @@ PERMISOS = [
     ('facturas:gestionar',               'facturas',       'gestionar'),
     ('tenant:configurar',                'tenant',         'configurar'),
     ('impersonacion:usar',               'impersonacion',  'usar'),
+    ('inbox:usar',                       'inbox',          'usar'),
+    ('perfil:editar',                    'perfil',         'editar'),
 ]
 
 MATRIZ = [
     # ALUMNO
+    ('ALUMNO', 'perfil:editar',        'propio'),
     ('ALUMNO', 'academico:ver_propio', 'global'),
     ('ALUMNO', 'evaluacion:reservar',  'global'),
     ('ALUMNO', 'avisos:confirmar',     'global'),
     ('ALUMNO', 'coloquios:reservar',   'global'),
     # TUTOR
+    ('TUTOR', 'inbox:usar',               'global'),
+    ('TUTOR', 'perfil:editar',            'propio'),
     ('TUTOR', 'avisos:confirmar',          'global'),
     ('TUTOR', 'atrasados:ver',             'global'),
     ('TUTOR', 'entregas:ver_sin_corregir', 'global'),
     ('TUTOR', 'encuentros:gestionar',      'global'),
     ('TUTOR', 'guardias:registrar',        'propio'),
     ('TUTOR', 'equipos:ver',               'propio'),
-    ('TUTOR', 'padron:cargar',             'global'),
-    ('TUTOR', 'tareas:gestionar',          'global'),
     # PROFESOR
+    ('PROFESOR', 'inbox:usar',                   'global'),
+    ('PROFESOR', 'perfil:editar',                'propio'),
     ('PROFESOR', 'avisos:confirmar',             'global'),
     ('PROFESOR', 'calificaciones:importar',      'propio'),
     ('PROFESOR', 'calificaciones:configurar-umbral', 'propio'),
@@ -67,6 +76,8 @@ MATRIZ = [
     ('PROFESOR', 'padron:cargar',                'global'),
     ('PROFESOR', 'coloquios:gestionar',          'global'),
     # COORDINADOR
+    ('COORDINADOR', 'inbox:usar',                   'global'),
+    ('COORDINADOR', 'perfil:editar',                'propio'),
     ('COORDINADOR', 'avisos:confirmar',             'global'),
     ('COORDINADOR', 'calificaciones:importar',      'global'),
     ('COORDINADOR', 'calificaciones:configurar-umbral', 'global'),
@@ -85,9 +96,13 @@ MATRIZ = [
     ('COORDINADOR', 'padron:gestionar',            'global'),
     ('COORDINADOR', 'coloquios:gestionar',         'global'),
     # NEXO
+    ('NEXO', 'inbox:usar',       'global'),
+    ('NEXO', 'perfil:editar',    'propio'),
     ('NEXO', 'avisos:confirmar', 'global'),
     ('NEXO', 'equipos:ver',      'propio'),
     # ADMIN
+    ('ADMIN', 'inbox:usar',                   'global'),
+    ('ADMIN', 'perfil:editar',                'propio'),
     ('ADMIN', 'avisos:confirmar',             'global'),
     ('ADMIN', 'calificaciones:importar',      'global'),
     ('ADMIN', 'calificaciones:configurar-umbral', 'global'),
@@ -113,6 +128,8 @@ MATRIZ = [
     ('ADMIN', 'padron:gestionar',             'global'),
     ('ADMIN', 'coloquios:gestionar',          'global'),
     # FINANZAS
+    ('FINANZAS', 'inbox:usar',                  'global'),
+    ('FINANZAS', 'perfil:editar',               'propio'),
     ('FINANZAS', 'avisos:confirmar',            'global'),
     ('FINANZAS', 'auditoria:ver',               'global'),
     ('FINANZAS', 'liquidaciones:operar_grilla', 'global'),
@@ -122,7 +139,8 @@ MATRIZ = [
 ]
 
 async def seed():
-    engine = create_async_engine(DB)
+    from app.core.config import Settings
+    engine = create_async_engine(Settings().DATABASE_URL)
     tid = TENANT_ID
     async with engine.begin() as conn:
         for nombre in ROLES:

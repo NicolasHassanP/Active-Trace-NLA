@@ -22,6 +22,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.padron import EntradaPadron, VersionPadron
+from app.models.usuario import Usuario
 from app.repositories.base import TenantScopedRepository
 
 
@@ -131,8 +132,45 @@ class PadronRepository(TenantScopedRepository[VersionPadron]):
         )
         self._session.add(new_version)
 
-        # 3. Insertar entradas via ORM (agrupadas antes del commit)
+        # 3. Batch-lookup Usuario por email_hash para linkear usuario_id
+        # El email en entry_data es plaintext; el email_hash es HMAC-SHA256 del email normalizado.
+        # Solo buscamos usuarios del mismo tenant que no estén soft-deleted.
+        from app.core.security.passwords import email_lookup_hash
+
+        email_to_hash: dict[str, str] = {}
         for entry in entries_data:
+            raw_email = entry.get("email_encrypted", "")
+            if raw_email:
+                normalized = raw_email.strip().lower()
+                email_to_hash[raw_email] = email_lookup_hash(normalized)
+
+        # Construir mapa email_hash → usuario.id en un solo SELECT
+        hash_to_usuario_id: dict[str, uuid.UUID] = {}
+        if email_to_hash:
+            all_hashes = list(email_to_hash.values())
+            stmt_usuarios = (
+                select(Usuario.id, Usuario.email_hash)
+                .where(
+                    Usuario.tenant_id == self._tenant_id,
+                    Usuario.email_hash.in_(all_hashes),
+                    Usuario.deleted_at.is_(None),
+                )
+            )
+            result_usuarios = await self._session.execute(stmt_usuarios)
+            for row in result_usuarios:
+                hash_to_usuario_id[row.email_hash] = row.id
+
+        # 4. Insertar entradas via ORM con usuario_id linkeado donde corresponda
+        for entry in entries_data:
+            raw_email = entry.get("email_encrypted", "")
+            # Resolver usuario_id: primero desde el dict (retrocompatibilidad),
+            # luego desde el lookup por email_hash.
+            resolved_usuario_id = entry.get("usuario_id")
+            if resolved_usuario_id is None and raw_email:
+                email_hash_val = email_to_hash.get(raw_email)
+                if email_hash_val:
+                    resolved_usuario_id = hash_to_usuario_id.get(email_hash_val)
+
             # email_encrypted is stored as plaintext in entry_data;
             # the ORM's EncryptedString TypeDecorator encrypts it on flush.
             ep = EntradaPadron(
@@ -140,10 +178,10 @@ class PadronRepository(TenantScopedRepository[VersionPadron]):
                 version_id=new_version_id,
                 nombre=entry.get("nombre", ""),
                 apellidos=entry.get("apellidos", ""),
-                email_encrypted=entry.get("email_encrypted", ""),
+                email_encrypted=raw_email,
                 comision=entry.get("comision"),
                 regional=entry.get("regional"),
-                usuario_id=entry.get("usuario_id"),
+                usuario_id=resolved_usuario_id,
             )
             self._session.add(ep)
 

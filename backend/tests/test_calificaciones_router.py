@@ -128,19 +128,22 @@ async def _create_router_context(db_session, monkeypatch):
     await db_session.refresh(perm_importar)
     await db_session.refresh(perm_umbral)
 
-    # Grants
+    # Grants — PROFESOR scope='propio' (umbral override), COORDINADOR/ADMIN scope='global'
     for rol_name in ("PROFESOR", "COORDINADOR", "ADMIN"):
+        # calificaciones:importar: all global (import is always scoped by padron/materia)
         db_session.add(RolPermiso(
             tenant_id=tenant.id,
             rol_id=roles[rol_name].id,
             permiso_id=perm_importar.id,
             scope=PermisoScope.global_,
         ))
+        # calificaciones:configurar-umbral: PROFESOR propio, COORDINADOR/ADMIN global
+        umbral_scope = PermisoScope.propio if rol_name == "PROFESOR" else PermisoScope.global_
         db_session.add(RolPermiso(
             tenant_id=tenant.id,
             rol_id=roles[rol_name].id,
             permiso_id=perm_umbral.id,
-            scope=PermisoScope.global_,
+            scope=umbral_scope,
         ))
     await db_session.commit()
 
@@ -177,17 +180,17 @@ async def _create_router_context(db_session, monkeypatch):
     await db_session.commit()
     await db_session.refresh(materia)
 
-    # PROFESOR usuario
+    # PROFESOR usuario — C-28: create with real AuthIdentity so auth_identity_id ≠ usuario.id
+    # Use create_usuario_con_identidad so resolve_domain_user_id and _resolve_asignacion
+    # can look up the Usuario via auth_identity_id from the JWT sub.
+    from tests.conftest import create_usuario_con_identidad
     email_prof = f"profr-{uuid.uuid4().hex[:8]}@router.test"
-    profesor = Usuario(
-        tenant_id=tenant.id,
-        email_encrypted=email_prof,
-        email_hash=email_lookup_hash(email_prof),
+    profesor = await create_usuario_con_identidad(
+        db_session, tenant.id,
+        email=email_prof,
         nombre="Prof Router",
         apellidos="Test",
-        estado=UsuarioEstado.activo,
     )
-    db_session.add(profesor)
     await db_session.commit()
     await db_session.refresh(profesor)
 
@@ -235,8 +238,9 @@ async def _create_router_context(db_session, monkeypatch):
 
 
 async def _cleanup_router(db_session, tenant_id: uuid.UUID):
+    from tests.conftest import delete_audit_events_for_tenant
+    await delete_audit_events_for_tenant(db_session, tenant_id)
     tid = str(tenant_id)
-    await db_session.execute(text("DELETE FROM audit_event WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM calificacion WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM umbral_materia WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM entrada_padron WHERE tenant_id = :tid"), {"tid": tid})
@@ -249,6 +253,7 @@ async def _cleanup_router(db_session, tenant_id: uuid.UUID):
     await db_session.execute(text("DELETE FROM cohorte WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM carrera WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM usuario WHERE tenant_id = :tid"), {"tid": tid})
+    await db_session.execute(text("DELETE FROM auth_identities WHERE tenant_id = :tid"), {"tid": tid})
     await db_session.execute(text("DELETE FROM tenants WHERE id = :tid"), {"tid": tid})
     await db_session.commit()
 
@@ -341,7 +346,8 @@ async def test_importar_endpoint_creates_calificaciones_for_selected(async_clien
     cohorte = ctx["cohorte"]
     email_alum = ctx["email_alum"]
     try:
-        token = _make_jwt(tenant.id, profesor.id, ["PROFESOR"])
+        # C-28: JWT sub must be auth_identity_id so resolve_domain_user_id finds the domain user
+        token = _make_jwt(tenant.id, profesor.auth_identity_id, ["PROFESOR"])
 
         # Build preview filas (simulate what preview returns)
         headers_csv = _IDENTITY + ["Tarea 1 (Real)"]
@@ -388,7 +394,8 @@ async def test_umbral_put_endpoint_creates_umbral(async_client, db_session, monk
     profesor = ctx["profesor"]
     materia = ctx["materia"]
     try:
-        token = _make_jwt(tenant.id, profesor.id, ["PROFESOR"])
+        # C-28: JWT sub must be auth_identity_id so _resolve_asignacion joins correctly
+        token = _make_jwt(tenant.id, profesor.auth_identity_id, ["PROFESOR"])
         payload = {
             "materia_id": str(materia.id),
             "umbral_pct": 70,

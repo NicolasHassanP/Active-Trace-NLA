@@ -96,20 +96,22 @@ class PadronService:
         materia_id: uuid.UUID,
         cohorte_id: uuid.UUID,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> VersionPadron:
         """
         Crea VersionPadron + EntradaPadron y activa la nueva versión.
 
         La versión anterior (si existe) queda inactiva (D2).
         Emite auditoría PADRON_CARGAR (C-05).
-        Identidad del actor desde current_user.user_id (regla dura #8).
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
+        Es obligatorio — nunca cae al auth_identity_id como fallback.
         """
         version_data = {
             "tenant_id": current_user.tenant_id,
             "materia_id": materia_id,
             "cohorte_id": cohorte_id,
             "activa": True,
-            "cargado_por": current_user.user_id,
+            "cargado_por": domain_user_id,
         }
 
         entries_data = [
@@ -153,14 +155,16 @@ class PadronService:
         cohorte_id: uuid.UUID,
         current_user: CurrentUser,
         has_gestionar: bool,
+        domain_user_id: uuid.UUID,
     ) -> None:
         """
         Soft-delete de la versión activa para materia×cohorte.
 
         Scope check (D6, RN-04):
             - Si has_gestionar=True (COORDINADOR/ADMIN): puede vaciar cualquier versión.
-            - Si has_gestionar=False (PROFESOR): solo puede vaciar si cargado_por == current_user.id.
+            - Si has_gestionar=False (PROFESOR): solo puede vaciar si cargado_por == domain_user_id.
 
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         Raises HTTPException(404) si no hay versión activa.
         Raises HTTPException(403) si PROFESOR intenta vaciar versión de otro.
         """
@@ -173,8 +177,8 @@ class PadronService:
                 detail="No hay versión activa del padrón para esta materia y cohorte.",
             )
 
-        # Scope check (D6)
-        if not has_gestionar and version.cargado_por != current_user.user_id:
+        # Scope check (D6) — compare against domain_user_id (usuario.id), not auth_identity_id
+        if not has_gestionar and version.cargado_por != domain_user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(
@@ -197,13 +201,14 @@ class PadronService:
         cohorte_id: uuid.UUID,
         current_user: CurrentUser,
         moodle_client,
+        domain_user_id: uuid.UUID,
     ) -> VersionPadron:
         """
         Sincroniza usuarios matriculados en un curso de Moodle como nueva versión activa.
 
         Mapea Moodle user dicts → PadronRowDTO y llama activar().
         Si el cliente falla con MoodleWSError(502) → re-raise como HTTPException(502).
-        Identidad desde current_user (regla dura #8).
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
         from app.integrations.moodle_ws import MoodleWSError
 
@@ -227,4 +232,4 @@ class PadronService:
             for user in moodle_users
         ]
 
-        return await self.activar(rows, materia_id, cohorte_id, current_user)
+        return await self.activar(rows, materia_id, cohorte_id, current_user, domain_user_id)

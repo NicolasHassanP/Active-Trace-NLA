@@ -26,7 +26,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from fastapi import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.repositories.analisis_repository import AnalisisRepository
 from app.repositories.audit_repository import AuditRepository
 from app.schemas.analisis import (
@@ -74,6 +74,7 @@ async def listar_atrasados(
     Scope global: todas las importaciones del tenant.
     Identidad/tenant SIEMPRE desde el JWT (regla dura #8).
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     return await svc.atrasados(
         materia_id=materia_id,
@@ -81,6 +82,7 @@ async def listar_atrasados(
         actividades=actividades,
         current_user=current_user,
         grant=grant,
+        domain_user_id=domain_user_id,
     )
 
 
@@ -100,12 +102,14 @@ async def listar_ranking(
     Ranking de alumnos por cantidad de actividades aprobadas (RN-09).
     Solo alumnos con al menos 1 aprobada. Ordenado descendente.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     return await svc.ranking(
         materia_id=materia_id,
         actividades=actividades,
         current_user=current_user,
         grant=grant,
+        domain_user_id=domain_user_id,
     )
 
 
@@ -126,6 +130,7 @@ async def obtener_reporte_materia(
     Métricas consolidadas de una materia×cohorte (F2.4).
     sin_datos=True si no hay calificaciones o actividades vacías.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     return await svc.reporte_materia(
         materia_id=materia_id,
@@ -133,6 +138,7 @@ async def obtener_reporte_materia(
         actividades=actividades,
         current_user=current_user,
         grant=grant,
+        domain_user_id=domain_user_id,
     )
 
 
@@ -152,12 +158,14 @@ async def listar_notas_finales(
     Notas finales por alumno (promedio simple de nota_numerica, D7).
     Incluye alumnos sin calificaciones (nota_final=None).
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     return await svc.notas_finales(
         materia_id=materia_id,
         actividades=actividades,
         current_user=current_user,
         grant=grant,
+        domain_user_id=domain_user_id,
     )
 
 
@@ -190,7 +198,9 @@ async def listar_monitor(
     Filtros opcionales: comision, regional, busqueda, rango de fechas por importado_at.
     Rango de fechas inválido → 422 (validado por MonitorFiltros).
     """
-    # Validar rango de fechas (delegado a MonitorFiltros para el 422)
+    # Validar rango de fechas (delegado a MonitorFiltros para el 422).
+    # actividad_busqueda recibe el valor de `actividad` para que el servicio
+    # aplique coincidencia parcial case-insensitive en Python (no SQL IN()).
     filtros = MonitorFiltros(
         materia_id=materia_id,
         cohorte_id=cohorte_id,
@@ -198,17 +208,25 @@ async def listar_monitor(
         regional=regional,
         busqueda=busqueda,
         actividad=actividad,
+        actividad_busqueda=actividad if actividad else None,
         min_cumplidas=min_cumplidas,
         fecha_desde=fecha_desde,
         fecha_hasta=fecha_hasta,
     )
 
+    # `actividades` (lista exacta desde dropdown) se mantiene tal cual para el
+    # filtro SQL IN() del repositorio. El campo libre `actividad` ya va dentro
+    # de filtros.actividad_busqueda y NO se agrega a esta lista.
+    actividades_efectivas = actividades
+
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     return await svc.monitor(
         filtros=filtros,
-        actividades=actividades,
+        actividades=actividades_efectivas,
         current_user=current_user,
         grant=grant,
+        domain_user_id=domain_user_id,
     )
 
 

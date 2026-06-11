@@ -23,6 +23,10 @@ export interface AuthUser {
   tenantId: string
   /** Display name — may be absent in minimal JWT implementations */
   name?: string
+  /** True when an ADMIN is viewing the session as another user */
+  isImpersonating: boolean
+  /** Display name of the impersonated user, or null when not impersonating */
+  impersonatedName: string | null
 }
 
 /**
@@ -38,6 +42,8 @@ export interface AuthTokens {
 /**
  * JWT payload claims decoded from the access token.
  * sub = user_id (UUID), tenant_id, roles, exp (Unix timestamp).
+ * When impersonation is active, the ADMIN's sub is in sub and the target
+ * user info is carried in impersonated_user_id / impersonated_name.
  */
 export interface JwtPayload {
   sub: string
@@ -45,4 +51,8 @@ export interface JwtPayload {
   roles: Role[]
   exp: number
   email?: string
+  /** Present only when an ADMIN is impersonating another user */
+  impersonated_user_id?: string
+  /** Display name of the impersonated user */
+  impersonated_name?: string
 }

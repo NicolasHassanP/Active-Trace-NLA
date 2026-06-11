@@ -97,6 +97,7 @@ class CalificacionService:
         self,
         req: ImportarCalificacionesRequest,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> List[CalificacionRead]:
         """
         Persist Calificacion records for selected activities.
@@ -104,14 +105,16 @@ class CalificacionService:
         Returns list of CalificacionRead for all persisted records.
         Records not in the active padron are silently skipped (not reported in this method).
         Use importar_with_report to get the list of unmatched emails.
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
-        cals, _ = await self.importar_with_report(req=req, current_user=current_user)
+        cals, _ = await self.importar_with_report(req=req, current_user=current_user, domain_user_id=domain_user_id)
         return cals
 
     async def importar_with_report(
         self,
         req: ImportarCalificacionesRequest,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> Tuple[List[CalificacionRead], List[str]]:
         """
         Persist Calificacion records for selected activities, also returning unmatched emails.
@@ -163,7 +166,7 @@ class CalificacionService:
         # 3. Get effective umbral for current user's asignacion
         umbral_svc = UmbralService(repo=self._repo)
         asignacion_id = await self._resolve_asignacion(
-            user_id=current_user.user_id,
+            domain_user_id=domain_user_id,
             materia_id=req.materia_id,
             tenant_id=current_user.tenant_id,
         )
@@ -219,7 +222,7 @@ class CalificacionService:
                     entrada_padron_id=entry.id,
                     materia_id=req.materia_id,
                     actividad=actividad,
-                    importado_por=current_user.user_id,
+                    importado_por=domain_user_id,
                     nota_numerica=nota_numerica,
                     nota_textual=nota_textual,
                     aprobado=aprobado,
@@ -420,11 +423,11 @@ class CalificacionService:
 
     async def _resolve_asignacion(
         self,
-        user_id: uuid.UUID,
+        domain_user_id: uuid.UUID,
         materia_id: uuid.UUID,
         tenant_id: uuid.UUID,
     ) -> Optional[uuid.UUID]:
-        """Resolve asignacion_id for user+materia, or None if not found."""
+        """Resolve asignacion_id for usuario.id (domain_user_id) + materia, or None if not found."""
         from sqlalchemy import select
         from app.models.usuario import Asignacion
 
@@ -432,7 +435,7 @@ class CalificacionService:
             select(Asignacion)
             .where(
                 Asignacion.tenant_id == tenant_id,
-                Asignacion.usuario_id == user_id,
+                Asignacion.usuario_id == domain_user_id,
                 Asignacion.materia_id == materia_id,
                 Asignacion.deleted_at.is_(None),
             )

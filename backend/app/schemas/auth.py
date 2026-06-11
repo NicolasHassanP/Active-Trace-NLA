@@ -95,3 +95,18 @@ class Verify2FARequest(_AuthBase):
 class MessageResponse(_AuthBase):
     """Generic success message — used for endpoints with uniform responses."""
     message: str
+
+
+# ---------------------------------------------------------------------------
+# Impersonation
+# ---------------------------------------------------------------------------
+
+class ImpersonarResponse(_AuthBase):
+    """
+    Response for POST /api/v1/usuarios/{usuario_id}/impersonar.
+
+    Returns a short-lived access token with impersonation claims embedded,
+    plus the display name of the impersonated user for UI feedback.
+    """
+    access_token: str
+    impersonated_name: str

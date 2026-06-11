@@ -36,13 +36,19 @@ C-01 foundation-setup (infra, Docker, FastAPI skel, DB inicial, OTel)
             │   │   ├── C-15 avisos-y-acknowledgment (Aviso, ack, scope, vigencia)
             │   │   ├── C-16 tareas-internas (Tarea, ComentarioTarea, workflow)
             │   │   ├── C-17 programas-y-fechas-academicas (ProgramaMateria, FechaAcademica)
-            │   │   └── C-18 liquidaciones-y-honorarios (SalarioBase/Plus, Liquidacion, Factura)
+            │   │   ├── C-18 liquidaciones-y-honorarios (SalarioBase/Plus, Liquidacion, Factura)
+            │   │   └── C-28 fix-domain-user-id-transversal ──────────────────────────────────────
+            │   │       [FIX TRANSVERSAL: corrige auth_identity_id ≠ usuario.id en C-08..C-20]
+            │   │       (avisos, encuentros, guardias, padrón, análisis, coloquios; 21 tests)
             │   ├── C-19 panel-auditoria-metricas (dashboards de uso, F9.1)
             │   ├── C-20 perfil-y-mensajeria-interna (perfil propio, inbox interno)
             │   └── C-21 frontend-shell-y-auth (SPA shell, login, guard, cliente HTTP)
             │       ├── C-22 frontend-academico-docente (importación, atrasados, comunicaciones)
+            │       │   └── C-27 historial-comunicaciones (historial envíos, tabs componer/historial) [+C-12]
             │       ├── C-23 frontend-coordinacion (equipos, avisos, tareas, monitores)
-            │       └── C-24 frontend-finanzas-y-admin (liquidaciones, facturas, estructura, auditoría)
+            │       ├── C-24 frontend-finanzas-y-admin (liquidaciones, facturas, estructura, auditoría)
+            │       ├── C-25 alumno-portal (estado académico, mi cursada) [+C-10, C-14]
+            │       └── C-26 mensajeria-frontend (inbox interno, hilos) [+C-20]
 ```
 
 ### Paralelismo por fase
@@ -93,6 +99,16 @@ GATE 10: C-21 ✓ + backend de cada dominio ✓       ← capa de presentación
   → C-22 frontend-academico-docente                [Agente C — si C-12 ✓]
   → C-23 frontend-coordinacion                     [Agente C — si C-08, C-15, C-16 ✓]
   → C-24 frontend-finanzas-y-admin                 [Agente C — si C-18, C-19 ✓]
+
+GATE 11: C-22 ✓ + backends C-10, C-14, C-20 ✓    ← extensiones frontend post-GATE 10
+  → C-25 alumno-portal                             [Agente C — si C-10, C-14 ✓]
+  → C-26 mensajeria-frontend                       [Agente C — si C-20 ✓]
+  → C-27 historial-comunicaciones                  [Agente C — si C-22, C-12 ✓]
+
+FIX TRANSVERSAL (aplicar sobre cualquier GATE ≥ 6, una vez que C-07 ✓):
+  → C-28 fix-domain-user-id-transversal            [Agente B — independiente de frontend]
+     Cubre routers y services de C-08..C-20 que usen FKs de dominio.
+     No bloquea ni es bloqueado por ningún change de GATE 11.
 ```
 
 ### Camino crítico (10 changes — mínimo irreducible)
@@ -120,8 +136,10 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
 | 9 | C-14 evaluaciones-y-coloquios | C-11 analisis-atrasados-reportes | C-18 liquidaciones-y-honorarios |
 | 10 | C-19 panel-auditoria-metricas | C-12 comunicaciones-cola-worker | C-22 frontend-academico-docente |
 | 11 | — | C-23 frontend-coordinacion | C-24 frontend-finanzas-y-admin |
+| 12 | — | — | C-25 alumno-portal, C-26 mensajeria-frontend, C-27 historial-comunicaciones |
+| 13 *(fix)* | — | C-28 fix-domain-user-id-transversal | — |
 
-> Los 3 agentes convergen alrededor del paso 10-11. El Agente A queda libre antes y puede tomar `C-19` o adelantar refactors.
+> Los 3 agentes convergen alrededor del paso 10-11. El Agente A queda libre antes y puede tomar `C-19` o adelantar refactors. Los changes C-25/26/27 (GATE 11) son extensiones paralelas independientes entre sí. C-28 es un fix transversal que puede aplicarse desde GATE 6 en adelante, paralelo a cualquier feature.
 
 ---
 
@@ -425,7 +443,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/07_flujos_principales.md` FL-05 (workflow de tareas)
 
 ### [C-18] `liquidaciones-y-honorarios`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[ ]` pendiente — **DIFERIDO a fin de proyecto** (decisión 2026-06-09: PA-22/PA-23 NO se responden; el bloque finanzas queda fuera de alcance hasta cerrar el resto del proyecto).
 - **Scope**:
   - Modelos `SalarioBase` (por rol, vigencia), `SalarioPlus` (grupo × rol, vigencia), `Liquidacion` (base + plus = total, es_nexo, excluido_por_factura, estado Abierta/Cerrada), `Factura`.
   - Cálculo de liquidación del período (FL-08, RN-21): base por rol vigente + plus por grupos. Vista (F10.1), cerrar (F10.2, inmutable RN-22), historial (F10.3).
@@ -516,8 +534,33 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/07_flujos_principales.md` FL-03, FL-05, FL-06, FL-09
 - **⚠️ Follow-up backend de C-15 incluido en este change (OQ-1 resuelta)**: C-15 solo exponía el feed de avisos filtrado por audiencia (`GET /avisos`), sin forma de listar todos los avisos del tenant para el panel de gestión del COORDINADOR. Se agregó el endpoint **`GET /avisos/gestion`** (gateado por `avisos:publicar`, fail-closed, tenant row-level, excluye soft-deleted, devuelve `ack_count`). Cambio aditivo y read-only: sin migración Alembic y sin tocar contratos existentes. Tests: `backend/tests/test_avisos_gestion.py` (9 nuevos, 22 totales en avisos verdes). Delta spec: `specs/avisos-publicacion/` (MODIFIED). La OQ-3 (export del monitor) se resuelve client-side en el apply del frontend, sin tocar backend.
 
+### [C-26] `mensajeria-frontend`
+- **Estado**: `[x]` archivado (2026-06-06)
+- **Scope**:
+  - Feature frontend `features/mensajeria/` completa: types, service, hooks TanStack Query, componentes (`HilosList`, `HiloView`, `NuevoHiloForm`, `ResponderForm`) y página `InboxPage` con layout master-detail.
+  - Consume los 4 endpoints del backend C-20 (`GET /inbox`, `POST /inbox`, `GET /inbox/{hilo_id}`, `POST /inbox/{hilo_id}/responder`).
+  - Ítem "Mensajes" en nav catalog (grupo TRABAJO, roles PROFESOR/TUTOR/COORDINADOR/ADMIN).
+  - Ruta protegida `/mensajes` registrada en App.tsx.
+  - Tests: 35 nuevos tests verdes (service, Zod schemas, buildNav, página con errores de dominio 404/409).
+- **Dependencias**: `C-20` (backend mensajería), `C-21` (shell + auth)
+- **Governance**: BAJO
+- **Spec**: `openspec/specs/mensajeria-frontend/spec.md`
+
+### [C-25] `alumno-portal`
+- **Estado**: `[x]` archivado (2026-06-06)
+- **Scope**:
+  - Backend: endpoint `GET /api/v1/alumno/estado-academico` con `require_permission("academico:ver_propio")`, `AlumnoRepository` dedicado (joins multi-tabla: padrón activo → materia, calificaciones, reservas activas → turno → evaluacion → materia), `AlumnoService` con funciones puras `clasificar_estado_entrega` y `calcular_avance`.
+  - Schemas Pydantic v2: `EstadoEntregaAlumno` enum (aprobada/con_nota/sin_entrega), `CalificacionAlumnoRead`, `MateriaCursadaRead`, `ColoquioReservadoRead`, `EstadoAcademicoRead`.
+  - Frontend: feature `features/mi-cursada/` completa (types, service, hooks TanStack Query, componentes `AvanceKpis`, `MateriasCursadasTable`, `ColoquiosReservadosPanel`, página `MiCursadaPage`).
+  - Ítem "Mi cursada" en nav catalog (grupo MI CURSADA, exclusivo para rol ALUMNO).
+  - Ruta protegida `/mi-cursada` registrada en App.tsx.
+  - Tests: 27 unit backend + 7 repository integration + 5 router integration + 11 frontend verdes.
+- **Dependencias**: `C-10` (calificaciones), `C-14` (evaluaciones/coloquios), `C-21` (shell + auth)
+- **Governance**: BAJO (read-only, sin escritura de datos)
+- **Spec**: `openspec/specs/alumno-portal/spec.md`
+
 ### [C-24] `frontend-finanzas-y-admin`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[ ]` pendiente — **DIFERIDO a fin de proyecto** (depende de C-18, diferido). Los ítems de nav Usuarios/Estructura/Auditoría/Liquidaciones quedan visibles para ADMIN y caen en 404 **adrede** hasta construir este change. No existe usuario demo de FINANZAS, también adrede.
 - **Scope**:
   - Feature FINANZAS: vista de liquidaciones del período con segmentación (general / NEXO / factura) + KPIs, cerrar liquidación, historial, grilla salarial, gestión de facturas.
   - Feature ADMIN: estructura académica (carreras, cohortes, materias), usuarios del tenant, panel de auditoría y métricas, log completo. Consume `C-06`, `C-07`, `C-18`, `C-19`.
@@ -528,16 +571,45 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/06_funcionalidades.md` Épicas 9, 10, 5
   - `knowledge-base/07_flujos_principales.md` FL-08, FL-11, FL-12
 
+### [C-27] `historial-comunicaciones`
+- **Estado**: `[x]` archivado (2026-06-07)
+- **Scope**:
+  - Backend: `GET /comunicaciones/mis-envios` — lista comunicaciones enviadas por el usuario autenticado con filtro de estado y paginación. Nuevo método `list_by_sender` en `ComunicacionRepository`. Índice compuesto `(tenant_id, enviado_por, created_at DESC)` vía migración Alembic.
+  - Frontend: componente `ComunicacionesHistorial` con tabla de envíos y filtro de estado. Actualizar `ComunicacionesPage` con tabs "Componer" | "Historial".
+  - Tests: TDD completo backend + frontend.
+- **Dependencias**: `C-12` (archivado), `C-22` (archivado)
+- **Governance**: BAJO (lectura de datos propios)
+- **Artefactos**: `openspec/changes/c-27-historial-comunicaciones/`
+- **Leer antes**:
+  - `backend/app/repositories/comunicacion_repository.py`
+  - `backend/app/schemas/comunicacion.py`
+  - `frontend/src/features/comunicaciones/pages/ComunicacionesPage.tsx`
+
+### [C-28] `fix-domain-user-id-transversal`
+- **Estado**: `[x]` archivado (2026-06-08)
+- **Scope**:
+  - Corrección sistemática del invariante `CurrentUser.user_id = auth_identities.id` ≠ `usuario.id` en todos los routers y services del backend.
+  - **Bugs corregidos**: `avisos.py`, `encuentros.py`, `guardias.py`, `padron.py`, `coloquios.py`, `analisis.py` — cada endpoint ahora llama `resolve_domain_user_id(current_user, db)`.
+  - **Services endurecidos**: `guardia_service.py`, `encuentro_service.py`, `padron_service.py`, `calificacion_service.py`, `equipo_service.py`, `alumno_service.py`, `analisis_service.py`, `evaluacion_service.py` — parámetro `domain_user_id` requerido, fallbacks eliminados.
+  - Tests: `test_c28_domain_user_id.py` — 21 tests, todos pasando.
+  - **Excluido por diseño**: `auth.py` y `audit.actor_user_id` (usan `auth_identities.id` correctamente, RN-41).
+- **Dependencias**: `C-07`, todos los changes con routers de escritura
+- **Governance**: ALTO — identidad en múltiples módulos
+- **Artefactos**: `openspec/changes/c-28-fix-domain-user-id-transversal/`
+- **Leer antes**:
+  - `backend/app/core/dependencies.py` — `resolve_domain_user_id`
+  - `backend/app/api/v1/routers/tareas.py` — patrón de referencia
+
 ---
 
 ## Resumen
 
 | Métrica | Valor |
 |---------|-------|
-| Total de changes | 24 |
-| Fases | 6 (FASE 0 a FASE 5) |
+| Total de changes | 28 |
+| Fases | 6 (FASE 0 a FASE 5) + fixes transversales |
 | Camino crítico | 10 changes (`C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 → C-12`) |
-| Gates de paralelismo | 11 (GATE 0 a GATE 10) |
+| Gates de paralelismo | 12 (GATE 0 a GATE 11) |
 | Changes CRITICO (governance) | 6 (C-02, C-03, C-04, C-05, C-07, C-18) |
 | Primer fork | GATE 4 (tras C-04, seguridad lista) |
 

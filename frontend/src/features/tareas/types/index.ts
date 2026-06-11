@@ -36,6 +36,11 @@ export interface TareaRead {
   created_at: string        // ISO datetime string
   updated_at: string        // ISO datetime string
   deleted_at: string | null
+  // Enriched fields resolved by JOIN in the repository (D12).
+  // Always present in API responses (null when not resolvable).
+  materia_nombre?: string | null
+  asignado_por_nombre?: string | null
+  asignado_a_nombre?: string | null
 }
 
 /** Mirrors ComentarioTareaRead from backend/app/schemas/tarea.py */

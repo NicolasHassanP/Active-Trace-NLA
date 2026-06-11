@@ -40,7 +40,7 @@ const sampleConvocatoria: ConvocatoriaMetricasRead = {
   id: 'eval-1',
   materia_id: 'mat-1',
   cohorte_id: 'coh-1',
-  tipo: 'coloquio',
+  tipo: 'Coloquio',
   instancia: 'Primera',
   cerrada: false,
   convocados: 10,
@@ -54,7 +54,7 @@ const sampleAgenda: AgendaItemRead = {
   turno_id: 'turno-1',
   fecha_turno: '2024-06-10',
   alumno_id: 'alumno-1',
-  estado: 'activa',
+  estado: 'Activa',
 }
 
 const sampleResultado: ResultadoRead = {
@@ -69,7 +69,7 @@ const sampleConvocatoriaConTurnos: ConvocatoriaConTurnosRead = {
     id: 'eval-1',
     materia_id: 'mat-1',
     cohorte_id: 'coh-1',
-    tipo: 'coloquio',
+    tipo: 'Coloquio',
     instancia: 'Primera',
     dias_disponibles: 2,
     cerrada: false,
@@ -197,7 +197,7 @@ describe('useCrearConvocatoria', () => {
     const body: CrearConvocatoriaRequest = {
       materia_id: 'mat-1',
       cohorte_id: 'coh-1',
-      tipo: 'coloquio',
+      tipo: 'Coloquio',
       instancia: 'Primera',
       dias_disponibles: 2,
       turnos: [{ fecha: '2024-06-10', cupo_total: 10 }],

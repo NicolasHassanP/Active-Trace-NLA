@@ -17,6 +17,7 @@ from app.core.database import build_session_factory
 from app.models.rbac import Permiso, Rol, RolPermiso, PermisoScope
 from app.models.tenant import Tenant, TenantEstado
 from app.models.usuario import Usuario, UsuarioEstado
+from tests.conftest import create_usuario_con_identidad
 
 TEST_SECRET_KEY = "supersecretkeyfortesting1234567890"
 TEST_ENCRYPTION_KEY = "E" * 32
@@ -95,32 +96,25 @@ async def perfil_router_data(test_engine, create_tables):
     ))
     await session.flush()
 
-    uid_con_perm = uuid.uuid4()
-    uid_sin_perm = uuid.uuid4()
-
+    # C-28: use canonical helper — creates AuthIdentity + Usuario with auth_identity_id != usuario.id.
+    # JWT sub = usuario.auth_identity_id (NOT usuario.id).
     email_con_perm = f"con_perm_{tid}@test.com"
     email_sin_perm = f"sin_perm_{tid}@test.com"
     email_otro = f"otro_{tid}@test.com"
 
-    u_con_perm = Usuario(
-        id=uid_con_perm,
-        tenant_id=tid,
-        email_encrypted=email_con_perm,
-        email_hash=email_lookup_hash(email_con_perm),
+    u_con_perm = await create_usuario_con_identidad(
+        session, tid,
+        email=email_con_perm,
         nombre="Con",
         apellidos="Permiso",
-        estado=UsuarioEstado.activo,
     )
-    u_sin_perm = Usuario(
-        id=uid_sin_perm,
-        tenant_id=tid,
-        email_encrypted=email_sin_perm,
-        email_hash=email_lookup_hash(email_sin_perm),
+    u_sin_perm = await create_usuario_con_identidad(
+        session, tid,
+        email=email_sin_perm,
         nombre="Sin",
         apellidos="Permiso",
-        estado=UsuarioEstado.activo,
     )
-    # Usuario extra para test de email duplicado
+    # Usuario extra para test de email duplicado (no necesita autenticarse → sin AuthIdentity)
     u_otro = Usuario(
         tenant_id=tid,
         email_encrypted=email_otro,
@@ -129,13 +123,15 @@ async def perfil_router_data(test_engine, create_tables):
         apellidos="Usuario",
         estado=UsuarioEstado.activo,
     )
-    session.add_all([u_con_perm, u_sin_perm, u_otro])
+    session.add(u_otro)
     await session.commit()
 
     yield {
         "tid": tid,
-        "uid_con_perm": uid_con_perm,
-        "uid_sin_perm": uid_sin_perm,
+        "uid_con_perm": u_con_perm.id,
+        "uid_sin_perm": u_sin_perm.id,
+        "auth_con_perm": u_con_perm.auth_identity_id,
+        "auth_sin_perm": u_sin_perm.auth_identity_id,
         "rol_con_perm": rol_con_perm.nombre,
         "rol_sin_perm": rol_sin_perm.nombre,
         "email_con_perm": email_con_perm,
@@ -146,11 +142,14 @@ async def perfil_router_data(test_engine, create_tables):
     # Cleanup
     from sqlalchemy import delete
     from app.models.audit import AuditEvent
+    from app.models.auth import AuthIdentity
     await session.execute(delete(AuditEvent).where(AuditEvent.tenant_id == tid))
     await session.execute(delete(RolPermiso).where(RolPermiso.tenant_id == tid))
     await session.execute(delete(Permiso).where(Permiso.tenant_id == tid))
     await session.execute(delete(Rol).where(Rol.tenant_id == tid))
     await session.execute(delete(Usuario).where(Usuario.tenant_id == tid))
+    # C-28: delete auth_identities created by create_usuario_con_identidad
+    await session.execute(delete(AuthIdentity).where(AuthIdentity.tenant_id == tid))
     await session.execute(delete(Tenant).where(Tenant.id == tid))
     await session.commit()
     await session.close()
@@ -217,7 +216,7 @@ async def test_get_perfil_sin_jwt_retorna_401(perfil_client):
 async def test_get_perfil_con_jwt_retorna_200_perfil_titular(perfil_client, perfil_router_data):
     """RED: GET /api/v1/perfil con JWT → 200 y devuelve perfil del titular del JWT."""
     data = perfil_router_data
-    token = _make_jwt(data["tid"], data["uid_con_perm"], [data["rol_con_perm"]])
+    token = _make_jwt(data["tid"], data["auth_con_perm"], [data["rol_con_perm"]])
     resp = await perfil_client.get(
         "/api/v1/perfil",
         headers={"Authorization": f"Bearer {token}"},
@@ -231,7 +230,7 @@ async def test_get_perfil_con_jwt_retorna_200_perfil_titular(perfil_client, perf
 async def test_get_perfil_ignora_usuario_id_en_query(perfil_client, perfil_router_data):
     """RED: GET /api/v1/perfil ignora ?usuario_id= y devuelve perfil del titular."""
     data = perfil_router_data
-    token = _make_jwt(data["tid"], data["uid_con_perm"], [data["rol_con_perm"]])
+    token = _make_jwt(data["tid"], data["auth_con_perm"], [data["rol_con_perm"]])
     resp = await perfil_client.get(
         f"/api/v1/perfil?usuario_id={data['uid_sin_perm']}",
         headers={"Authorization": f"Bearer {token}"},
@@ -249,7 +248,7 @@ async def test_get_perfil_ignora_usuario_id_en_query(perfil_client, perfil_route
 async def test_patch_perfil_sin_permiso_retorna_403(perfil_client, perfil_router_data):
     """RED: PATCH /api/v1/perfil sin permil:editar → 403."""
     data = perfil_router_data
-    token = _make_jwt(data["tid"], data["uid_sin_perm"], [data["rol_sin_perm"]])
+    token = _make_jwt(data["tid"], data["auth_sin_perm"], [data["rol_sin_perm"]])
     resp = await perfil_client.patch(
         "/api/v1/perfil",
         json={"banco": "Nuevo Banco"},
@@ -262,7 +261,7 @@ async def test_patch_perfil_sin_permiso_retorna_403(perfil_client, perfil_router
 async def test_patch_perfil_campo_prohibido_retorna_422(perfil_client, perfil_router_data):
     """RED: PATCH /api/v1/perfil con campo no declarado (tenant_id) → 422."""
     data = perfil_router_data
-    token = _make_jwt(data["tid"], data["uid_con_perm"], [data["rol_con_perm"]])
+    token = _make_jwt(data["tid"], data["auth_con_perm"], [data["rol_con_perm"]])
     resp = await perfil_client.patch(
         "/api/v1/perfil",
         json={"tenant_id": str(data["tid"])},
@@ -275,7 +274,7 @@ async def test_patch_perfil_campo_prohibido_retorna_422(perfil_client, perfil_ro
 async def test_patch_perfil_cuil_retorna_422(perfil_client, perfil_router_data):
     """RED: PATCH /api/v1/perfil con cuil → 422 (extra='forbid')."""
     data = perfil_router_data
-    token = _make_jwt(data["tid"], data["uid_con_perm"], [data["rol_con_perm"]])
+    token = _make_jwt(data["tid"], data["auth_con_perm"], [data["rol_con_perm"]])
     resp = await perfil_client.patch(
         "/api/v1/perfil",
         json={"cuil": "20-12345678-1"},
@@ -288,7 +287,7 @@ async def test_patch_perfil_cuil_retorna_422(perfil_client, perfil_router_data):
 async def test_patch_perfil_email_duplicado_retorna_409(perfil_client, perfil_router_data):
     """RED: PATCH /api/v1/perfil con email ya usado → 409."""
     data = perfil_router_data
-    token = _make_jwt(data["tid"], data["uid_con_perm"], [data["rol_con_perm"]])
+    token = _make_jwt(data["tid"], data["auth_con_perm"], [data["rol_con_perm"]])
     resp = await perfil_client.patch(
         "/api/v1/perfil",
         json={"email": data["email_otro"]},
@@ -301,7 +300,7 @@ async def test_patch_perfil_email_duplicado_retorna_409(perfil_client, perfil_ro
 async def test_patch_perfil_happy_path_retorna_200(perfil_client, perfil_router_data):
     """RED: PATCH /api/v1/perfil happy path → 200 con datos actualizados."""
     data = perfil_router_data
-    token = _make_jwt(data["tid"], data["uid_con_perm"], [data["rol_con_perm"]])
+    token = _make_jwt(data["tid"], data["auth_con_perm"], [data["rol_con_perm"]])
     resp = await perfil_client.patch(
         "/api/v1/perfil",
         json={"banco": "Banco Nacional", "regional": "Norte"},
@@ -321,7 +320,7 @@ async def test_patch_perfil_happy_path_retorna_200(perfil_client, perfil_router_
 async def test_patch_perfil_id_en_body_es_ignorado(perfil_client, perfil_router_data):
     """TRIANGULATE: PATCH con id en body → ignorado (extra='forbid' lo rechaza)."""
     data = perfil_router_data
-    token = _make_jwt(data["tid"], data["uid_con_perm"], [data["rol_con_perm"]])
+    token = _make_jwt(data["tid"], data["auth_con_perm"], [data["rol_con_perm"]])
     resp = await perfil_client.patch(
         "/api/v1/perfil",
         json={"id": str(data["uid_sin_perm"])},
@@ -335,7 +334,7 @@ async def test_patch_perfil_id_en_body_es_ignorado(perfil_client, perfil_router_
 async def test_patch_perfil_estado_en_body_retorna_422(perfil_client, perfil_router_data):
     """TRIANGULATE: PATCH con 'estado' en body → 422 (campo no declarado)."""
     data = perfil_router_data
-    token = _make_jwt(data["tid"], data["uid_con_perm"], [data["rol_con_perm"]])
+    token = _make_jwt(data["tid"], data["auth_con_perm"], [data["rol_con_perm"]])
     resp = await perfil_client.patch(
         "/api/v1/perfil",
         json={"estado": "inactivo"},

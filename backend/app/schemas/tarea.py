@@ -92,7 +92,13 @@ class ComentarioTareaCreate(BaseModel):
 # ---------------------------------------------------------------------------
 
 class TareaRead(BaseModel):
-    """Respuesta de lectura de una Tarea."""
+    """Respuesta de lectura de una Tarea.
+
+    materia_nombre y asignado_por_nombre son campos enriquecidos que el
+    repositorio resuelve mediante JOIN.  Son opcionales para mantener
+    compatibilidad hacia atrás: cuando no se pueden resolver (e.g. el
+    registro ya no existe) se devuelve None y el frontend muestra el UUID.
+    """
     model_config = ConfigDict(extra="forbid", from_attributes=True)
 
     id: uuid.UUID
@@ -107,6 +113,10 @@ class TareaRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     deleted_at: Optional[datetime] = None
+    # Campos enriquecidos — resueltos por JOIN en el repositorio
+    materia_nombre: Optional[str] = None
+    asignado_por_nombre: Optional[str] = None
+    asignado_a_nombre: Optional[str] = None
 
 
 class ComentarioTareaRead(BaseModel):

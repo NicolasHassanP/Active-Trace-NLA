@@ -47,18 +47,24 @@ export default function AtrasadosTable({ alumnos, selectedEmails, onToggleSelect
             </tr>
           </thead>
           <tbody>
-            {pageAlumnos.map((alumno) => (
-              <tr key={alumno.alumno_id} className="border-t">
+            {pageAlumnos.map((alumno) => {
+            const toggleKey = alumno.email ?? alumno.entrada_padron_id
+            return (
+              <tr key={alumno.entrada_padron_id} className="border-t">
                 <td className="px-3 py-2">
                   <input
                     type="checkbox"
-                    checked={selectedEmails.has(alumno.email)}
-                    onChange={() => onToggleSelect(alumno.email)}
-                    data-testid={`select-${alumno.alumno_id}`}
+                    checked={selectedEmails.has(toggleKey)}
+                    onChange={() => onToggleSelect(toggleKey)}
+                    data-testid={`select-${alumno.entrada_padron_id}`}
                   />
                 </td>
-                <td className="px-3 py-2">{alumno.apellidos}, {alumno.nombre}</td>
-                <td className="px-3 py-2">{alumno.email}</td>
+                <td className="px-3 py-2">
+                  {alumno.apellidos && alumno.nombre
+                    ? `${alumno.apellidos}, ${alumno.nombre}`
+                    : alumno.nombre ?? alumno.apellidos ?? '—'}
+                </td>
+                <td className="px-3 py-2">{alumno.email ?? '—'}</td>
                 <td className="px-3 py-2">
                   {alumno.actividades_faltantes.length > 0
                     ? alumno.actividades_faltantes.join(', ')
@@ -70,7 +76,8 @@ export default function AtrasadosTable({ alumnos, selectedEmails, onToggleSelect
                     : <span className="text-gray-400">—</span>}
                 </td>
               </tr>
-            ))}
+            )
+          })}
           </tbody>
         </table>
       </div>

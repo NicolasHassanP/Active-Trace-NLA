@@ -49,7 +49,7 @@ export default function PasoAsignaciones({ onSuccess, onError }: Props) {
         cohorte_id: data.cohorte_id,
         rol: data.rol,
         desde: data.desde,
-        hasta: data.hasta ?? null,
+        hasta: data.hasta || null,
       })
       onSuccess()
     } catch (err) {

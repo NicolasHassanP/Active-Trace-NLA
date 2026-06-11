@@ -1,4 +1,5 @@
 import os
+import uuid as _uuid_mod
 import pytest
 import pytest_asyncio
 from dotenv import load_dotenv
@@ -390,6 +391,34 @@ async def _ensure_schema(engine) -> None:
                 await conn.execute(
                     text(f"ALTER TYPE audit_action ADD VALUE '{acad_action}'")
                 )
+        # C-19: umbral_materia scope global — cohorte_id + nullable asignacion_id + new indexes
+        await conn.execute(text(
+            "ALTER TABLE umbral_materia ADD COLUMN IF NOT EXISTS cohorte_id UUID "
+            "REFERENCES cohorte(id) ON DELETE RESTRICT"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_um_cohorte_id ON umbral_materia (cohorte_id)"
+        ))
+        # Make asignacion_id nullable (idempotent)
+        await conn.execute(text(
+            "ALTER TABLE umbral_materia ALTER COLUMN asignacion_id DROP NOT NULL"
+        ))
+        # Drop old unique index (if exists)
+        await conn.execute(text(
+            "DROP INDEX IF EXISTS uq_um_asignacion_materia"
+        ))
+        # Create two partial unique indexes (idempotent via IF NOT EXISTS)
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_um_default_materia_cohorte "
+            "ON umbral_materia(tenant_id, materia_id, cohorte_id) "
+            "WHERE asignacion_id IS NULL AND deleted_at IS NULL"
+        ))
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_um_asignacion_override "
+            "ON umbral_materia(tenant_id, asignacion_id, materia_id) "
+            "WHERE asignacion_id IS NOT NULL AND deleted_at IS NULL"
+        ))
+
         # C-17: partial unique indexes for programa_materia and fecha_academica
         result_pm_idx = await conn.execute(
             text(
@@ -437,6 +466,8 @@ async def create_tables(test_engine):
         from sqlalchemy import text
         # Drop dynamic test tables not tracked in Base.metadata (e.g. C-02 TenantScopedRepository tests).
         await conn.execute(text("DROP TABLE IF EXISTS test_biz_entity_v2 CASCADE"))
+        # C-02: test_notas may have been left by test_base_repository tests
+        await conn.execute(text("DROP TABLE IF EXISTS test_notas CASCADE"))
         # C-09: version_padron and entrada_padron are now in Base.metadata (registered in models/__init__.py)
         # and will be dropped by drop_all in the correct FK order. No explicit drop needed here.
         # C-20: mensajería tables (FK order: participantes → mensajes → hilos)
@@ -509,3 +540,156 @@ async def async_client(test_app) -> AsyncClient:
         transport=ASGITransport(app=test_app), base_url="http://test"
     ) as client:
         yield client
+
+
+# ---------------------------------------------------------------------------
+# Test-only helper: delete audit_event rows for a tenant without tripping the
+# immutability trigger (trg_audit_event_immutable).
+#
+# Strategy: audit_event is append-only in production (D3 trigger blocks DELETE
+# and UPDATE at the DB level).  During test teardown we MUST be able to remove
+# per-tenant data so we can subsequently DELETE the tenant row (the FK is
+# ON DELETE RESTRICT).  Relying solely on the session-scoped drop_all is not
+# enough because individual module fixtures clean up their tenants mid-session.
+#
+# We temporarily disable the row-level trigger for the duration of the DELETE,
+# then immediately re-enable it.  The trigger still exists and still guards
+# production code; this bypass is test-infrastructure only and scoped to the
+# DISABLE/ENABLE block.
+#
+# Usage (in any test module teardown):
+#   await delete_audit_events_for_tenant(session, tenant_id)
+#   # then continue with DELETE FROM tenants ...
+# ---------------------------------------------------------------------------
+
+async def delete_audit_events_for_tenant(session: AsyncSession, tenant_id) -> None:
+    """Remove audit_event rows for *tenant_id* while bypassing the immutability trigger.
+
+    The trigger ``trg_audit_event_immutable`` is a row-level BEFORE trigger, so it
+    fires on every DELETE row.  DISABLE/ENABLE TRIGGER is a DDL statement that
+    bypasses it within this block.  This is safe in tests because the table is
+    dropped entirely at end of session (``create_tables`` teardown).
+
+    The trigger is only installed when alembic migrations run (migration 004).
+    The conftest ``_ensure_schema`` uses ``create_all`` which does NOT install
+    triggers.  We check for the trigger's existence before disabling it so that
+    this helper works in both cases (trigger present or absent).
+
+    Args:
+        session: The active AsyncSession (shared, session-scoped).
+        tenant_id: UUID of the tenant whose audit_event rows should be removed.
+    """
+    from sqlalchemy import text
+
+    tid = str(tenant_id)
+
+    # Check whether the trigger is installed (it is only installed by alembic migration 004,
+    # not by create_all used in _ensure_schema).
+    result = await session.execute(
+        text(
+            "SELECT 1 FROM pg_trigger t "
+            "JOIN pg_class c ON t.tgrelid = c.oid "
+            "WHERE t.tgname = 'trg_audit_event_immutable' AND c.relname = 'audit_event'"
+        )
+    )
+    trigger_exists = result.scalar() is not None
+
+    if trigger_exists:
+        await session.execute(text("ALTER TABLE audit_event DISABLE TRIGGER trg_audit_event_immutable"))
+    await session.execute(
+        text("DELETE FROM audit_event WHERE tenant_id = :tid"),
+        {"tid": tid},
+    )
+    if trigger_exists:
+        await session.execute(text("ALTER TABLE audit_event ENABLE TRIGGER trg_audit_event_immutable"))
+
+
+# ---------------------------------------------------------------------------
+# C-28 invariant helper: create a Usuario with a real AuthIdentity FK parent.
+#
+# WHY this helper exists
+# ----------------------
+# C-28 established the invariant: auth_identity_id ≠ usuario.id.
+# `usuario.auth_identity_id` has a REAL FK → auth_identities.id.
+# Any test that sets auth_identity_id to a random UUID (without creating the
+# corresponding AuthIdentity row) gets a FK violation at INSERT time.
+# Additionally, `resolve_domain_user_id` (dependencies.py) looks up the domain
+# user by `tenant_id + auth_identity_id + deleted_at IS NULL`, so if the
+# auth_identity_id does not match a real AuthIdentity row the endpoint returns
+# 500 "Usuario de dominio no encontrado".
+#
+# This helper is THE canonical way to create a domain user in endpoint tests.
+# It always guarantees auth_identity_id ≠ usuario.id (they are distinct UUIDs).
+#
+# USAGE:
+#   usuario = await create_usuario_con_identidad(session, tid)
+#   token   = _make_jwt(tid, usuario.auth_identity_id, ["SOME_ROL"])
+#   # use usuario.id wherever a domain FK (e.g. remitente_id) is needed
+# ---------------------------------------------------------------------------
+
+async def create_usuario_con_identidad(
+    session: AsyncSession,
+    tenant_id,
+    *,
+    email: str | None = None,
+    nombre: str = "Test",
+    apellidos: str = "User",
+    roles: list | None = None,
+    **extra_campos,
+):
+    """
+    Create an AuthIdentity row and a linked Usuario in a single flush.
+
+    C-28 invariant: auth_identity_id ≠ usuario.id — both are generated
+    independently as separate UUIDs by this helper.
+
+    The caller MUST use ``usuario.auth_identity_id`` as the JWT ``sub``
+    (not ``usuario.id``) so that ``resolve_domain_user_id`` resolves correctly.
+
+    Args:
+        session:     Active AsyncSession (shared or module-scoped).
+        tenant_id:   UUID of the tenant to scope both rows.
+        email:       Optional email string (auto-generated if omitted).
+        nombre:      First name for the Usuario row.
+        apellidos:   Last name for the Usuario row.
+        roles:       Roles list stored in AuthIdentity snapshot (default []).
+        **extra_campos: Additional keyword args forwarded to the Usuario
+                     constructor (e.g. estado, legajo, banco).
+
+    Returns:
+        The Usuario instance after flush (has .id and .auth_identity_id set).
+    """
+    from app.models.auth import AuthIdentity
+    from app.models.usuario import Usuario, UsuarioEstado
+    from app.core.security.passwords import email_lookup_hash, hash_password
+
+    if email is None:
+        email = f"testuser_{_uuid_mod.uuid4().hex[:8]}@conftest.test"
+
+    auth = AuthIdentity(
+        tenant_id=tenant_id,
+        email_encrypted=email,
+        email_hash=email_lookup_hash(email),
+        password_hash=hash_password("TestPass1!"),
+        roles=roles or [],
+        is_active=True,
+    )
+    session.add(auth)
+    await session.flush()  # auth.id is now available
+
+    usuario_kwargs = dict(
+        tenant_id=tenant_id,
+        email_encrypted=email,
+        email_hash=email_lookup_hash(email),
+        nombre=nombre,
+        apellidos=apellidos,
+        estado=UsuarioEstado.activo,
+        auth_identity_id=auth.id,  # C-28: DISTINCT from usuario.id
+    )
+    usuario_kwargs.update(extra_campos)
+
+    usuario = Usuario(**usuario_kwargs)
+    session.add(usuario)
+    await session.flush()  # usuario.id is now available
+
+    return usuario

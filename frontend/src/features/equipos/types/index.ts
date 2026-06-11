@@ -21,9 +21,15 @@ export type EstadoVigencia = 'vigente' | 'vencida' | 'futura'
 /** Ítem de GET /api/v1/equipos/mis-equipos — mirrors MisEquiposItem */
 export interface MisEquiposItem {
   asignacion_id: string
+  usuario_id: string
+  usuario_nombre: string | null
+  usuario_apellidos: string | null
   materia_id: string | null
   carrera_id: string | null
   cohorte_id: string | null
+  materia_nombre: string | null
+  carrera_nombre: string | null
+  cohorte_nombre: string | null
   rol: RolAsignacion
   desde: string          // ISO date string
   hasta: string | null   // ISO date string or null (open-ended)

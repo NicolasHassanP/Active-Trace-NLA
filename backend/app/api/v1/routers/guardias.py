@@ -18,7 +18,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.guardia_repository import GuardiaRepository
 from app.repositories.usuario_repository import AsignacionRepository
@@ -61,8 +61,9 @@ async def registrar_guardia(
     asignacion_id resuelto desde el JWT (current_user) — nunca del body.
     Requiere permiso encuentros:gestionar.
     """
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_guardia_service(db, current_user.tenant_id)
-    return await svc.registrar(body, current_user)
+    return await svc.registrar(body, current_user, domain_user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -118,8 +119,9 @@ async def exportar_guardias(
         dia=dia_enum,
         estado=estado_enum,
     )
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_guardia_service(db, current_user.tenant_id)
-    csv_content = await svc.exportar(filtros, current_user)
+    csv_content = await svc.exportar(filtros, current_user, domain_user_id)
 
     return Response(
         content=csv_content,
@@ -182,5 +184,6 @@ async def listar_guardias(
         dia=dia_enum,
         estado=estado_enum,
     )
+    domain_user_id = await resolve_domain_user_id(current_user, db)
     svc = _make_guardia_service(db, current_user.tenant_id)
-    return await svc.consultar(filtros, current_user)
+    return await svc.consultar(filtros, current_user, domain_user_id)

@@ -29,11 +29,17 @@ def encode_access_token(
     tenant_id: uuid.UUID,
     roles: List[str],
     expires_minutes: int | None = None,
+    impersonated_user_id: uuid.UUID | None = None,
+    impersonated_name: str | None = None,
 ) -> str:
     """
     Encode a short-lived access token JWT (HS256).
 
     Claims: sub, tenant_id, roles, iat, exp, type="access".
+
+    Optional impersonation claims (only present when impersonated_user_id is set):
+        impersonated_user_id — UUID of the user being impersonated.
+        impersonated_name    — display name of the impersonated user.
     """
     settings = _settings()
     if expires_minutes is None:
@@ -49,6 +55,9 @@ def encode_access_token(
         "exp": int(exp.timestamp()),
         "type": "access",
     }
+    if impersonated_user_id is not None:
+        payload["impersonated_user_id"] = str(impersonated_user_id)
+        payload["impersonated_name"] = impersonated_name or ""
     return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
 

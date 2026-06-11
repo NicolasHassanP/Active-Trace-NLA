@@ -38,6 +38,18 @@ const CalificacionesPage = lazy(() => import('@/features/calificaciones/pages/Ca
 // Seguimiento lazy page (F2.8 — Monitor de seguimiento TUTOR/PROFESOR)
 const SeguimientoPage = lazy(() => import('@/features/seguimiento/pages/SeguimientoPage'))
 
+// C-26 lazy pages
+const InboxPage = lazy(() => import('@/features/mensajeria/pages/InboxPage'))
+
+// C-25 lazy pages
+const MiCursadaPage = lazy(() => import('@/features/mi-cursada/pages/MiCursadaPage'))
+
+// Perfil propio (M2 / F11.1) — accesible a TODO usuario autenticado (perfil:editar universal)
+const PerfilPage = lazy(() => import('@/features/perfil/pages/PerfilPage'))
+
+// HU-47 lazy pages
+const MisColoquiosPage = lazy(() => import('@/features/mis-coloquios/pages/MisColoquiosPage'))
+
 // C-23 lazy pages
 const EquiposPage = lazy(() => import('@/features/equipos/pages/EquiposPage'))
 const MateriasPage = lazy(() => import('@/features/materias/pages/MateriasPage'))
@@ -45,6 +57,7 @@ const AvisosPage = lazy(() => import('@/features/avisos/pages/AvisosPage'))
 const TareasPage = lazy(() => import('@/features/tareas/pages/TareasPage'))
 const MonitorPage = lazy(() => import('@/features/monitores/pages/MonitorPage'))
 const EncuentrosPage = lazy(() => import('@/features/encuentros-coord/pages/EncuentrosPage'))
+const GuardiasPage = lazy(() => import('@/features/guardias/pages/GuardiasPage'))
 const ColoquiosPage = lazy(() => import('@/features/coloquios/pages/ColoquiosPage'))
 const SetupCuatrimestrePage = lazy(
   () => import('@/features/setup-cuatrimestre/pages/SetupCuatrimestrePage'),
@@ -72,7 +85,7 @@ const PageFallback = () => (
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Toaster richColors position="top-right" />
+      <Toaster richColors position="top-right" closeButton duration={6000} />
       <BrowserRouter>
         <AuthProvider>
           <Suspense fallback={<PageFallback />}>
@@ -89,7 +102,7 @@ export default function App() {
                   <Route
                     path="/padron"
                     element={
-                      <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}>
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'COORDINADOR', 'ADMIN']}>
                         <PadronPage />
                       </ProtectedRoute>
                     }
@@ -173,29 +186,38 @@ export default function App() {
                       </ProtectedRoute>
                     }
                   />
-                  {/* /encuentros — COORDINADOR/ADMIN only */}
+                  {/* /encuentros — PROFESOR/TUTOR/COORDINADOR/ADMIN */}
                   <Route
                     path="/encuentros"
                     element={
-                      <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN']}>
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}>
                         <EncuentrosPage />
                       </ProtectedRoute>
                     }
                   />
-                  {/* /coloquios — COORDINADOR/ADMIN only */}
+                  {/* /guardias — Registro de guardias: TUTOR/PROFESOR/COORDINADOR/ADMIN (encuentros:gestionar) */}
+                  <Route
+                    path="/guardias"
+                    element={
+                      <ProtectedRoute requiredRoles={['TUTOR', 'PROFESOR', 'COORDINADOR', 'ADMIN']}>
+                        <GuardiasPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* /coloquios — COORDINADOR/ADMIN gestión; ALUMNO reserva (gating inside page) */}
                   <Route
                     path="/coloquios"
                     element={
-                      <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN']}>
+                      <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN', 'ALUMNO']}>
                         <ColoquiosPage />
                       </ProtectedRoute>
                     }
                   />
-                  {/* /setup-cuatrimestre — COORDINADOR/ADMIN only */}
+                  {/* /setup-cuatrimestre — ADMIN only: requiere estructura:gestionar (03_actores_y_roles.md:79) */}
                   <Route
                     path="/setup-cuatrimestre"
                     element={
-                      <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN']}>
+                      <ProtectedRoute requiredRoles={['ADMIN']}>
                         <SetupCuatrimestrePage />
                       </ProtectedRoute>
                     }
@@ -209,6 +231,35 @@ export default function App() {
                       </ProtectedRoute>
                     }
                   />
+                  {/* === C-26 routes === */}
+                  <Route
+                    path="/mensajes"
+                    element={
+                      <ProtectedRoute requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}>
+                        <InboxPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* === C-25 routes === */}
+                  <Route
+                    path="/mi-cursada"
+                    element={
+                      <ProtectedRoute requiredRoles={['ALUMNO']}>
+                        <MiCursadaPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* === HU-47 routes === */}
+                  <Route
+                    path="/mis-coloquios"
+                    element={
+                      <ProtectedRoute requiredRoles={['ALUMNO']}>
+                        <MisColoquiosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* === Perfil propio (M2 / F11.1) — sin requiredRoles: visible a todo autenticado === */}
+                  <Route path="/perfil" element={<PerfilPage />} />
                   {/* === End C-23 routes === */}
                   <Route path="*" element={<NotFound404 />} />
                 </Route>

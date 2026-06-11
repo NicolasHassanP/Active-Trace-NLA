@@ -175,3 +175,34 @@ class MetricasRead(BaseModel):
     alumnos_cargados: int
     reservas_activas: int
     notas_registradas: int
+
+
+# ---------------------------------------------------------------------------
+# HU-47 — schemas para el ALUMNO (mis convocatorias)
+# ---------------------------------------------------------------------------
+
+class TurnoConCupoRead(TurnoRead):
+    """TurnoRead extendido con cupos_disponibles derivados (D2 — nunca denormalizados)."""
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    cupos_disponibles: int
+
+
+class ConvocatoriasAlumnoRead(BaseModel):
+    """
+    Convocatoria disponible para el alumno autenticado.
+
+    materia_nombre y tipo vienen del join Evaluacion→Materia.
+    turnos incluye cupos_disponibles derivados en query.
+    reserva_activa_id: UUID de la ReservaEvaluacion activa del alumno en esta
+        convocatoria (None si aún no reservó). Permite al frontend mostrar
+        "Cancelar reserva" con el ID correcto (D4 garantiza máximo una activa).
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    evaluacion_id: uuid.UUID
+    materia_nombre: str
+    instancia: str
+    tipo: EvaluacionTipo
+    turnos: List[TurnoConCupoRead]
+    reserva_activa_id: Optional[uuid.UUID] = None

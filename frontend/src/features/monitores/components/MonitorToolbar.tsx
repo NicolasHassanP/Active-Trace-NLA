@@ -16,7 +16,7 @@ interface Props {
   exporting?: boolean
 }
 
-export default function MonitorToolbar({ filas, onClear, exporting = false }: Props) {
+export default function MonitorToolbar({ filas, onClear: _onClear, exporting = false }: Props) {
   function handleExport() {
     const blob = exportarMonitorCsv(filas)
     downloadFile(blob, 'monitor.csv')
@@ -24,9 +24,6 @@ export default function MonitorToolbar({ filas, onClear, exporting = false }: Pr
 
   return (
     <div data-testid="monitor-toolbar" className="flex items-center gap-3">
-      <Button variant="secondary" size="sm" onClick={onClear}>
-        Limpiar filtros
-      </Button>
       <Button
         size="sm"
         onClick={handleExport}

@@ -8,13 +8,12 @@ export type EstadoAlumno = 'atrasado' | 'al_dia' | 'sin_datos'
 
 /** A student behind on activities — from GET /analisis/atrasados */
 export interface AlumnoAtrasado {
-  alumno_id: string
-  nombre: string
-  apellidos: string
-  email: string
+  entrada_padron_id: string
+  nombre: string | null
+  apellidos: string | null
+  email: string | null
   actividades_faltantes: string[]
   actividades_no_aprobadas: string[]
-  estado: EstadoAlumno
 }
 
 /** Aggregate metrics for a materia from GET /analisis/reporte-materia */

@@ -84,6 +84,7 @@ class EncuentroService:
         self,
         req: CrearSlotRequest,
         current_user: CurrentUser,
+        domain_user_id: uuid.UUID,
     ) -> CrearSlotResponse:
         """
         Crea un SlotEncuentro y genera sus InstanciaEncuentro.
@@ -95,7 +96,8 @@ class EncuentroService:
         Errores:
             EncuentroValidationError(422) si ambos o ningún modo activo.
 
-        Identidad: asignacion_id resuelto desde current_user + materia_id.
+        Identidad: asignacion_id resuelto desde domain_user_id + materia_id.
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         Auditoría: ENCUENTRO_GESTIONAR con registros_afectados=N instancias.
         """
         modo_recurrente = req.cant_semanas > 0
@@ -111,8 +113,8 @@ class EncuentroService:
                 "Se requiere exactamente un modo: cant_semanas>0 (recurrente) o fecha_unica (único)."
             )
 
-        # Resolve asignacion_id from current_user + materia
-        asig_id = await self._resolver_asignacion(current_user, req.materia_id)
+        # Resolve asignacion_id from domain_user_id + materia
+        asig_id = await self._resolver_asignacion(current_user, req.materia_id, domain_user_id)
 
         # Create slot
         slot = SlotEncuentro(
@@ -212,15 +214,17 @@ class EncuentroService:
     async def listar_instancias(
         self,
         actor: CurrentUser,
+        domain_user_id: uuid.UUID,
         materia_id: Optional[uuid.UUID] = None,
     ) -> List[InstanciaEncuentroRead]:
         """
         Lista instancias de encuentro filtradas por rol del actor (D11).
 
-        COORDINADOR/ADMIN: ven todas las instancias del tenant (asignacion_ids=None).
-        PROFESOR/TUTOR:    ven solo las instancias de sus propios slots
-                           (asignacion_ids = IDs de sus asignaciones).
+        COORDINADOR/ADMIN: ven todas las instancias del tenant (sin restricción de asignación).
+        PROFESOR/TUTOR:    ven SOLO las instancias de SUS propias asignaciones.
+                           # RN-04: scope por asignación propia, no por materia.
 
+        domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         Siempre filtra por tenant (base repo scope).
         """
         es_global = any(r in self._ROLES_GLOBALES for r in actor.roles)
@@ -228,12 +232,13 @@ class EncuentroService:
         if es_global:
             instancias = await self._inst_repo.list_by_materia(materia_id=materia_id)
         else:
-            # Get current user's asignaciones
-            mis_asigs = await self._asig_repo.list(usuario_id=actor.user_id)
-            asig_ids = [a.id for a in mis_asigs]
+            # RN-04: scope por asignación propia, no por materia.
+            # Un docente NO ve los datos de otro docente en la misma materia.
+            mis_asigs = await self._asig_repo.list(usuario_id=domain_user_id)
+            mis_asignacion_ids = [a.id for a in mis_asigs]
             instancias = await self._inst_repo.list_by_materia(
                 materia_id=materia_id,
-                asignacion_ids=asig_ids,
+                scope_asignacion_ids=mis_asignacion_ids,
             )
 
         return [InstanciaEncuentroRead.model_validate(inst) for inst in instancias]
@@ -246,16 +251,18 @@ class EncuentroService:
         self,
         current_user: CurrentUser,
         materia_id: uuid.UUID,
+        domain_user_id: uuid.UUID,
     ) -> uuid.UUID:
         """
-        Resolve the asignacion_id for current_user + materia_id.
+        Resolve the asignacion_id for domain_user_id + materia_id.
 
+        domain_user_id: usuario.id (resolved from auth_identity_id in router).
         Prefers an asignacion matching the exact materia_id.
         Falls back to any asignacion of the user (for COORDINADOR/ADMIN who
         manage slots across materias).
         Raises EncuentroValidationError if the user has no asignacion at all.
         """
-        mis_asigs = await self._asig_repo.list(usuario_id=current_user.user_id)
+        mis_asigs = await self._asig_repo.list(usuario_id=domain_user_id)
         for asig in mis_asigs:
             if asig.materia_id == materia_id:
                 return asig.id
@@ -263,7 +270,7 @@ class EncuentroService:
         if mis_asigs:
             return mis_asigs[0].id
         raise EncuentroValidationError(
-            f"El usuario {current_user.user_id} no tiene ninguna asignación activa. "
+            f"El usuario {domain_user_id} no tiene ninguna asignación activa. "
             "No se puede crear el slot."
         )
 

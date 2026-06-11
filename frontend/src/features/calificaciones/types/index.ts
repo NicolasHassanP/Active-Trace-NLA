@@ -63,10 +63,19 @@ export interface ConfigurarUmbralRequest {
 export interface UmbralMateriaRead {
   id: string | null
   asignacion_id: string | null
+  cohorte_id: string | null
   materia_id: string
   umbral_pct: number
   valores_aprobatorios: string[]
   is_default: boolean
+}
+
+/** Request body for PUT /calificaciones/umbral (default scope global — ADMIN) */
+export interface ConfigurarUmbralDefaultRequest {
+  materia_id: string
+  umbral_pct: number
+  valores_aprobatorios: string[]
+  cohorte_id?: string | null
 }
 
 // ---------------------------------------------------------------------------

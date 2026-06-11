@@ -22,6 +22,14 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
   useAuth: vi.fn(),
 }))
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import type { MateriaItem } from '../../types'
+
+const sampleMateria: MateriaItem = {
+  id: 'materia-uuid-1',
+  codigo: 'MAT001',
+  nombre: 'Matemáticas',
+  estado: 'activa',
+}
 
 // Silence downloadFile in JSDOM (no real anchor/blob support needed)
 vi.mock('@/shared/services/downloadFile', () => ({
@@ -43,11 +51,18 @@ const sampleFila: MonitorFila = {
   estado: 'atrasado',
   aprobadas: 2,
   faltantes: 3,
+  nombre: null,
+  apellidos: null,
+  email: null,
+  comision: null,
+  regional: null,
+  actividades_detalle: [],
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(service.listarMonitor).mockResolvedValue([sampleFila])
+  vi.mocked(service.listarTodasMaterias).mockResolvedValue([sampleMateria])
 })
 
 // ---------------------------------------------------------------------------
@@ -56,13 +71,17 @@ beforeEach(() => {
 describe('MonitorPage — COORDINADOR', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1' },
+      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['COORDINADOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -74,7 +93,7 @@ describe('MonitorPage — COORDINADOR', () => {
   it('renders data rows when API returns results', async () => {
     render(<MonitorPage />, { wrapper: makeWrapper() })
     await waitFor(() => expect(screen.getByTestId('monitor-table')).toBeInTheDocument())
-    expect(screen.getByText('alumno-uuid-1')).toBeInTheDocument()
+    expect(screen.getByText('alumno-u')).toBeInTheDocument()
   })
 })
 
@@ -84,13 +103,17 @@ describe('MonitorPage — COORDINADOR', () => {
 describe('MonitorPage — PROFESOR (non-authorized)', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u2', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1' },
+      user: { id: 'u2', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['PROFESOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -111,13 +134,17 @@ describe('MonitorPage — PROFESOR (non-authorized)', () => {
 describe('MonitorPage — empty state', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1' },
+      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['COORDINADOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
     vi.mocked(service.listarMonitor).mockResolvedValue([])
   })
@@ -134,13 +161,17 @@ describe('MonitorPage — empty state', () => {
 describe('MonitorPage — filter clear', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1' },
+      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['COORDINADOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 

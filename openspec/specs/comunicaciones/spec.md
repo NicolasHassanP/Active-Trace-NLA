@@ -1,5 +1,6 @@
-## ADDED Requirements
-
+## Purpose
+Gestión de comunicaciones salientes multi-tenant: encolado masivo con plantillas, máquina de estados, aprobación humana opcional y worker asíncrono de despacho.
+## Requirements
 ### Requirement: Modelo de comunicación saliente con destinatario cifrado
 El sistema SHALL persistir cada comunicación saliente como un registro `Comunicacion` scoped al tenant, con el `destinatario` (email del alumno) cifrado en reposo con AES-256, y SHALL agrupar los envíos de una misma acción masiva bajo un `lote_id` común. El registro SHALL incluir asunto, cuerpo, estado, materia, usuario que lo originó (`enviado_por`), `enviado_at` (nullable) y detalle de error (nullable). El sistema SHALL aplicar soft delete; NUNCA borrado físico.
 
@@ -183,3 +184,20 @@ El sistema SHALL proveer una tabla `tenant_config` de settings por tenant, model
 #### Scenario: La configuración de un tenant no es visible para otro
 - **WHEN** el tenant A tiene una fila de `tenant_config` y un usuario del tenant B lee la misma clave
 - **THEN** el usuario del tenant B NO obtiene el valor del tenant A
+
+### Requirement: Consulta del historial de envíos propios del remitente
+El sistema SHALL permitir que cualquier usuario con permiso `comunicacion:enviar` consulte las comunicaciones donde él fue el remitente (`enviado_por == usuario.id`), scoped al tenant. La consulta SHALL ser solo lectura y NO SHALL modificar el estado de ninguna comunicación. El sistema SHALL excluir registros con soft delete aplicado (`deleted_at IS NOT NULL`).
+
+#### Scenario: Remitente consulta su propio historial
+- **WHEN** un usuario con permiso `comunicacion:enviar` solicita su historial de envíos
+- **THEN** el sistema retorna únicamente las comunicaciones donde ese usuario es el remitente (`enviado_por`)
+- **AND** el resultado está scoped al tenant del usuario
+
+#### Scenario: El historial no expone comunicaciones de otros remitentes
+- **WHEN** el usuario A solicita su historial
+- **THEN** ningún item del historial tiene `enviado_por` distinto al `usuario.id` de A
+
+#### Scenario: Comunicaciones con soft delete no aparecen en el historial
+- **WHEN** existen comunicaciones del usuario con `deleted_at IS NOT NULL`
+- **THEN** esas comunicaciones NO aparecen en el historial retornado
+

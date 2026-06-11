@@ -18,6 +18,10 @@ export interface SeguimientoFila {
   estado: 'atrasado' | 'al_dia' | 'sin_datos'
   aprobadas: number
   faltantes: number
+  nombre: string | null
+  apellidos: string | null
+  comision: string | null
+  regional: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -29,6 +33,8 @@ export interface SeguimientoFila {
  * All fields are optional; null/undefined values are omitted from the request.
  */
 export interface SeguimientoParams {
+  materia_id?: string | null
+  cohorte_id?: string | null
   busqueda?: string | null
   comision?: string | null
   regional?: string | null

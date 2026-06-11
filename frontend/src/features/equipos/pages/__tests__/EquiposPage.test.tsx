@@ -33,9 +33,15 @@ const makeWrapper = () => {
 
 const sampleItem: MisEquiposItem = {
   asignacion_id: 'asg-1',
+  usuario_id: 'u1',
+  usuario_nombre: null,
+  usuario_apellidos: null,
   materia_id: 'mat-1',
   carrera_id: 'car-1',
   cohorte_id: 'coh-1',
+  materia_nombre: null,
+  carrera_nombre: null,
+  cohorte_nombre: null,
   rol: 'PROFESOR',
   desde: '2024-03-01',
   hasta: null,
@@ -52,13 +58,17 @@ beforeEach(() => {
 describe('EquiposPage — COORDINADOR', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1' },
+      user: { id: 'u1', email: 'coord@test.com', roles: ['COORDINADOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['COORDINADOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -76,13 +86,17 @@ describe('EquiposPage — COORDINADOR', () => {
 describe('EquiposPage — PROFESOR', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u2', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1' },
+      user: { id: 'u2', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['PROFESOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
   })
 
@@ -96,13 +110,17 @@ describe('EquiposPage — PROFESOR', () => {
 describe('EquiposPage — empty state', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u2', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1' },
+      user: { id: 'u2', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['PROFESOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
     vi.mocked(service.listarMisEquipos).mockResolvedValue([])
   })
@@ -116,13 +134,17 @@ describe('EquiposPage — empty state', () => {
 describe('EquiposPage — error state', () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u2', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1' },
+      user: { id: 'u2', email: 'prof@test.com', roles: ['PROFESOR'], tenantId: 't1', isImpersonating: false, impersonatedName: null },
       roles: ['PROFESOR'],
       tenantId: 't1',
       isAuthenticated: true,
       isInitializing: false,
       login: vi.fn(),
       logout: vi.fn(),
+      isImpersonating: false,
+      impersonatedName: null,
+      impersonarUsuario: vi.fn(),
+      finalizarImpersonacion: vi.fn(),
     })
     vi.mocked(service.listarMisEquipos).mockRejectedValue({ status: 403, detail: 'Forbidden' })
   })
