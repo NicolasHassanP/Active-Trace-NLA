@@ -9,6 +9,7 @@ D8 — require_permission("inbox:usar") en todos los endpoints (fail-closed → 
 Endpoints:
     GET    /inbox                        — lista hilos del titular del JWT.
     POST   /inbox                        — inicia un nuevo hilo 1:1.
+    GET    /inbox/usuarios               — búsqueda de usuarios para combobox destinatario.
     GET    /inbox/{hilo_id}              — lee mensajes del hilo (marca leído).
     POST   /inbox/{hilo_id}/responder    — agrega mensaje al hilo.
 
@@ -22,19 +23,21 @@ Sin lógica de negocio en el router (regla dura #11).
 snake_case; ≤500 LOC.
 """
 import uuid
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
 from app.repositories.mensajeria_repository import MensajeriaRepository
+from app.repositories.usuario_repository import UsuarioRepository
 from app.schemas.mensajeria import (
     HiloCreate,
     InboxHiloRead,
     MensajeRead,
     RespuestaCreate,
 )
+from app.schemas.usuario import UsuarioAsignableRead
 from app.services.inbox_service import (
     DestinatarioInvalido,
     HiloDuplicado,
@@ -90,6 +93,39 @@ async def iniciar_hilo(
     except HiloDuplicado as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
     return mensaje
+
+
+@router.get("/usuarios", response_model=List[UsuarioAsignableRead])
+async def buscar_usuarios_inbox(
+    q: Optional[str] = Query(default=None),
+    _grant=Depends(require_permission("inbox:usar")),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> List[UsuarioAsignableRead]:
+    """
+    Búsqueda de usuarios para el combobox de destinatario en NuevoHiloForm.
+
+    Requiere permiso inbox:usar (TODOS los roles que usan mensajería interna).
+    Tenant SIEMPRE desde el JWT — nunca de query/body (regla dura #8).
+    Devuelve solo campos no-PII: id, nombre, apellidos, email, legajo.
+    Excluye soft-deleted. Máximo 20 resultados.
+    Reutiliza UsuarioRepository.buscar_asignables (tenant-scoped por defecto).
+    """
+    usuario_repo = UsuarioRepository(session=db, tenant_id=current_user.tenant_id)
+    usuarios = await usuario_repo.buscar_asignables(q=q, limit=20)
+
+    result = []
+    for u in usuarios:
+        result.append(
+            UsuarioAsignableRead(
+                id=u.id,
+                nombre=u.nombre,
+                apellidos=u.apellidos,
+                email=u.email_encrypted,  # EncryptedString decrypts on access
+                legajo=u.legajo,
+            )
+        )
+    return result
 
 
 @router.get("/{hilo_id}", response_model=List[MensajeRead])
