@@ -247,3 +247,58 @@ describe('UsuarioCombobox — error', () => {
     expect(screen.getByText('Seleccione un usuario')).toBeTruthy()
   })
 })
+
+// ── searchHook injection ──────────────────────────────────────────────────────
+
+describe('UsuarioCombobox — searchHook injection', () => {
+  it('uses injected searchHook results instead of default hook', async () => {
+    const customUsuarios: UsuarioAsignable[] = [
+      { id: 'custom-1', nombre: 'Lucia', apellidos: 'Martínez', email: 'lucia@test.com' },
+    ]
+    const customHook = vi.fn().mockReturnValue({
+      data: customUsuarios,
+      isFetching: false,
+      isLoading: false,
+    })
+
+    const onChange = vi.fn()
+    render(
+      <UsuarioCombobox value={null} onChange={onChange} searchHook={customHook} />,
+      { wrapper: makeWrapper() },
+    )
+
+    const input = screen.getByTestId('usuario-combobox-input')
+    fireEvent.change(input, { target: { value: 'lucia' } })
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('usuario-option-custom-1')).toBeTruthy()
+    })
+
+    // Custom hook was called with the live query
+    expect(customHook).toHaveBeenCalled()
+    // Default mock data (uuid-1/uuid-2) should not appear
+    expect(screen.queryByTestId('usuario-option-uuid-1')).toBeNull()
+  })
+
+  it('works correctly with default hook when searchHook prop is omitted (no regression)', async () => {
+    mockHook.mockReturnValue({
+      data: sampleUsuarios,
+      isFetching: false,
+      isSuccess: true,
+      isError: false,
+    } as unknown as ReturnType<typeof useBuscarUsuariosAsignables>)
+
+    const onChange = vi.fn()
+    // No searchHook prop — uses default
+    render(<UsuarioCombobox value={null} onChange={onChange} />, {
+      wrapper: makeWrapper(),
+    })
+
+    const input = screen.getByTestId('usuario-combobox-input')
+    fireEvent.change(input, { target: { value: 'ana' } })
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('usuario-option-uuid-1')).toBeTruthy()
+    })
+  })
+})

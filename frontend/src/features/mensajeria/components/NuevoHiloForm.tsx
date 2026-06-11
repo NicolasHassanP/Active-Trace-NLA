@@ -1,9 +1,27 @@
+/**
+ * NuevoHiloForm — form to start a new 1:1 messaging thread.
+ * Uses UsuarioCombobox (searchable) for destinatario_id instead of raw UUID input.
+ * The combobox is fed by useBuscarUsuariosInbox (GET /inbox/usuarios?q=).
+ * < 200 LOC. No `any`. PascalCase. Tailwind only.
+ */
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { Button } from '@/shared/components/ui/Button'
-import { nuevoHiloSchema, type NuevoHiloValues } from '../services/mensajeriaService'
-import { useIniciarHilo } from '../hooks/mensajeriaHooks'
+import { nuevoHiloSchema } from '../services/mensajeriaService'
+import { useIniciarHilo, useBuscarUsuariosInbox } from '../hooks/mensajeriaHooks'
+import UsuarioCombobox from '@/features/asignaciones/components/UsuarioCombobox'
+
+// The schema still validates that destinatario_id is a non-empty string.
+// UUID format validation is enforced at the service layer on the backend.
+const formSchema = nuevoHiloSchema.extend({
+  destinatario_id: z
+    .string({ required_error: 'Seleccioná un destinatario' })
+    .min(1, 'Seleccioná un destinatario'),
+})
+
+type NuevoHiloFormValues = z.infer<typeof formSchema>
 
 interface NuevoHiloFormProps {
   onSuccess: () => void
@@ -15,13 +33,14 @@ export function NuevoHiloForm({ onSuccess, onCancel }: NuevoHiloFormProps) {
   const iniciarHilo = useIniciarHilo()
 
   const {
+    control,
     register,
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<NuevoHiloValues>({ resolver: zodResolver(nuevoHiloSchema) })
+  } = useForm<NuevoHiloFormValues>({ resolver: zodResolver(formSchema) })
 
-  const onSubmit = async (values: NuevoHiloValues) => {
+  const onSubmit = async (values: NuevoHiloFormValues) => {
     setDomainError(null)
     try {
       await iniciarHilo.mutateAsync({
@@ -49,16 +68,20 @@ export function NuevoHiloForm({ onSuccess, onCancel }: NuevoHiloFormProps) {
 
       <div className="flex flex-col gap-1">
         <label className="text-[12px] font-bold text-mut uppercase tracking-wide">
-          ID de destinatario <span className="text-warn">*</span>
+          Destinatario <span className="text-warn">*</span>
         </label>
-        <input
-          {...register('destinatario_id')}
-          placeholder="UUID del destinatario"
-          className="w-full rounded-[9px] border border-line px-3 py-2 text-[13px] text-ink focus:outline-none focus:ring-2 focus:ring-ind"
+        <Controller
+          name="destinatario_id"
+          control={control}
+          render={({ field }) => (
+            <UsuarioCombobox
+              value={field.value ?? null}
+              onChange={(id) => field.onChange(id ?? '')}
+              error={errors.destinatario_id?.message}
+              searchHook={useBuscarUsuariosInbox}
+            />
+          )}
         />
-        {errors.destinatario_id && (
-          <p className="text-[11.5px] text-warn">{errors.destinatario_id.message}</p>
-        )}
       </div>
 
       <div className="flex flex-col gap-1">

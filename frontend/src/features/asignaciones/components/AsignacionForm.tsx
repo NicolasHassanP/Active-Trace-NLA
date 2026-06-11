@@ -6,15 +6,22 @@
  * In EDIT mode, usuario_id is not editable (displayed as-is).
  * tenant_id/identity never in the body — resolved from the JWT on the backend.
  * Submit logic lives in the parent page (onSubmit prop). < 200 LOC.
+ *
+ * UX improvements:
+ *  - materia_id: <select> by nombre (from GET /admin/materias)
+ *  - cohorte_id: <select> by nombre (from GET /admin/cohortes)
+ *  - carrera_id: raw UUID input (TODO: select when /admin/carreras endpoint exists)
  */
 import { useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/shared/components/ui'
 import type { AsignacionCreate, AsignacionUpdate, RolAsignacion } from '../types'
 import { ROLES_ASIGNACION } from '../types'
 import UsuarioCombobox from './UsuarioCombobox'
+import { listarTodasMaterias, listarTodosCohortes } from '@/features/monitores/services/monitoresService'
 
 const ROLES = ROLES_ASIGNACION as [RolAsignacion, ...RolAsignacion[]]
 
@@ -86,6 +93,19 @@ export default function AsignacionForm({
   isSubmitting,
 }: Props) {
   const isEdit = initialValues !== undefined
+
+  const materiasQuery = useQuery({
+    queryKey: ['admin-materias'],
+    queryFn: listarTodasMaterias,
+  })
+
+  const cohortesQuery = useQuery({
+    queryKey: ['admin-cohortes'],
+    queryFn: listarTodosCohortes,
+  })
+
+  const materias = materiasQuery.data ?? []
+  const cohortes = cohortesQuery.data ?? []
 
   const {
     register,
@@ -200,23 +220,35 @@ export default function AsignacionForm({
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Materia — select by nombre */}
         <div>
           <label className={labelClass} htmlFor="asgn-materia-id">
-            Materia ID (opcional)
+            Materia (opcional)
           </label>
-          <input
+          <select
             id="asgn-materia-id"
             {...register('materia_id')}
             data-testid="asgn-materia-id"
-            placeholder="UUID"
             className={inputClass}
-          />
+            disabled={materiasQuery.isLoading}
+          >
+            <option value="">
+              {materiasQuery.isLoading ? 'Cargando…' : '-- Sin materia --'}
+            </option>
+            {materias.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nombre}
+              </option>
+            ))}
+          </select>
         </div>
 
+        {/* Carrera — TODO: select when GET /admin/carreras endpoint is implemented */}
         <div>
           <label className={labelClass} htmlFor="asgn-carrera-id">
             Carrera ID (opcional)
           </label>
+          {/* TODO: replace with <select> when GET /admin/carreras endpoint exists */}
           <input
             id="asgn-carrera-id"
             {...register('carrera_id')}
@@ -226,17 +258,27 @@ export default function AsignacionForm({
           />
         </div>
 
+        {/* Cohorte — select by nombre */}
         <div>
           <label className={labelClass} htmlFor="asgn-cohorte-id">
-            Cohorte ID (opcional)
+            Cohorte (opcional)
           </label>
-          <input
+          <select
             id="asgn-cohorte-id"
             {...register('cohorte_id')}
             data-testid="asgn-cohorte-id"
-            placeholder="UUID"
             className={inputClass}
-          />
+            disabled={cohortesQuery.isLoading}
+          >
+            <option value="">
+              {cohortesQuery.isLoading ? 'Cargando…' : '-- Sin cohorte --'}
+            </option>
+            {cohortes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

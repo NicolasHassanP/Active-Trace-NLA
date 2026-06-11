@@ -4,6 +4,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { abrirHilo, iniciarHilo, listarHilos, responder } from '../services/mensajeriaService'
+import { buscarUsuariosInbox } from '../services/inboxUsuariosService'
 import type { HiloCreate, RespuestaCreate } from '../types'
 
 const KEYS = {
@@ -67,5 +68,21 @@ export function useResponder(hiloId: string) {
       void qc.invalidateQueries({ queryKey: KEYS.hilo(hiloId) })
       void qc.invalidateQueries({ queryKey: KEYS.hilos })
     },
+  })
+}
+
+/**
+ * Query hook for GET /api/v1/inbox/usuarios?q=...
+ * Busca usuarios del tenant para el combobox de destinatario en mensajería.
+ * Sólo activo cuando q tiene al menos 1 carácter (trim).
+ * Usa placeholderData: keepPrevious para evitar parpadeo entre keystrokes.
+ * Gateado por inbox:usar — mismo permiso que el inbox en general.
+ */
+export function useBuscarUsuariosInbox(q: string) {
+  return useQuery({
+    queryKey: ['inbox', 'usuarios', q] as const,
+    queryFn: () => buscarUsuariosInbox(q),
+    enabled: q.trim().length >= 1,
+    placeholderData: (prev) => prev,
   })
 }
