@@ -44,6 +44,32 @@ export async function listarTodasCarreras(): Promise<CarreraItem[]> {
 }
 
 // ---------------------------------------------------------------------------
+// crearCohorte — POST /api/v1/admin/cohortes
+// ---------------------------------------------------------------------------
+
+export interface CohorteCreatePayload {
+  carrera_id: string
+  nombre: string
+  anio: number
+  vig_desde: string   // ISO date "YYYY-MM-DD"
+  vig_hasta?: string | null  // ISO date or null (cohorte abierta)
+}
+
+/**
+ * POST /api/v1/admin/cohortes
+ * Creates a new cohorte for the tenant.
+ * Identity/tenant from JWT — never in the request body.
+ */
+export async function crearCohorte(payload: CohorteCreatePayload): Promise<CohorteItem> {
+  try {
+    const response = await apiClient.post<CohorteItem>('/admin/cohortes', payload)
+    return response.data
+  } catch (err) {
+    throw parseDomainError(err)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Task 4.2 — listarMonitor
 // ---------------------------------------------------------------------------
 

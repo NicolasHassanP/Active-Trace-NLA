@@ -125,3 +125,12 @@ class InstanciaEncuentroRepository(TenantScopedRepository[InstanciaEncuentro]):
         for inst in instancias:
             await self._session.refresh(inst)
         return instancias
+
+    async def dar_baja(self, instancia: InstanciaEncuentro) -> None:
+        """
+        Soft-delete una InstanciaEncuentro seteando deleted_at.
+
+        Delega en TenantScopedRepository.delete() para garantizar
+        el patrón soft-delete uniforme (nunca hard delete — regla dura #13).
+        """
+        await self.delete(instancia)

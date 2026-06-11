@@ -140,6 +140,31 @@ async def listar_instancias(
 
 
 # ---------------------------------------------------------------------------
+# DELETE /encuentros/instancias/{instancia_id} — soft-delete instancia
+# ---------------------------------------------------------------------------
+
+@router.delete(
+    "/instancias/{instancia_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def eliminar_instancia(
+    instancia_id: uuid.UUID,
+    _grant=Depends(require_permission("encuentros:gestionar")),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """
+    Soft-delete de una instancia de encuentro.
+
+    Retorna 204 en éxito. Retorna 404 si la instancia no existe en el tenant.
+    Requiere encuentros:gestionar. Identidad del actor desde el JWT.
+    Nunca ejecuta un hard delete — setea deleted_at (regla dura #13).
+    """
+    svc = _make_encuentro_service(db, current_user.tenant_id)
+    await svc.dar_baja_instancia(instancia_id, current_user)
+
+
+# ---------------------------------------------------------------------------
 # GET /encuentros/bloque-html — HTML del aula virtual
 # ---------------------------------------------------------------------------
 

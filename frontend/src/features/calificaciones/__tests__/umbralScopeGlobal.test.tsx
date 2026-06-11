@@ -2,8 +2,8 @@
  * Tests for ADMIN scope global + umbral por-materia feature (frontend).
  *
  * Covers:
- * - Tab Umbral renders UmbralConfigDefault for ADMIN role
- * - Tab Umbral renders UmbralConfigDocente for PROFESOR/COORDINADOR role
+ * - Tab Umbral renders UmbralConfigDefault for ADMIN/COORDINADOR role (scope global)
+ * - Tab Umbral renders UmbralConfigDocente for PROFESOR role (scope propio)
  * - UmbralConfigDocente shows is_default banner when inheriting default
  * - buildNav: "Mis materias" does NOT appear for ADMIN
  *

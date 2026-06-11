@@ -58,33 +58,52 @@ export default function Sidebar() {
                 </p>
               )}
               <ul>
-                {items.map((item) => (
-                  <li key={item.path}>
-                    <NavLink
-                      to={item.path}
-                      className={({ isActive }) =>
-                        [
-                          'flex items-center gap-[11px] px-[10px] py-[7.5px] rounded-[9px] mb-[1px] text-[13.5px] font-semibold cursor-pointer transition-colors',
-                          isActive
-                            ? 'bg-indBg text-ind2'
-                            : 'text-[#4b5563] hover:bg-[#f4f4f8] hover:text-ink',
-                        ].join(' ')
-                      }
-                    >
-                      {({ isActive }) => (
-                        <>
-                          {item.icon && (
-                            <NavIcon
-                              name={item.icon}
-                              className={['w-[15px] h-[15px] shrink-0', isActive ? 'text-ind' : ''].join(' ')}
-                            />
-                          )}
-                          {item.label}
-                        </>
-                      )}
-                    </NavLink>
-                  </li>
-                ))}
+                {items.map((item) =>
+                  item.disabled ? (
+                    /* Disabled nav item — visible but not navigable */
+                    <li key={item.path}>
+                      <span
+                        title="Próximamente"
+                        className="flex items-center gap-[11px] px-[10px] py-[7.5px] rounded-[9px] mb-[1px] text-[13.5px] font-semibold text-[#9ca3af] cursor-not-allowed select-none"
+                        aria-disabled="true"
+                      >
+                        {item.icon && (
+                          <NavIcon name={item.icon} className="w-[15px] h-[15px] shrink-0" />
+                        )}
+                        {item.label}
+                        <span className="ml-auto text-[10px] font-medium bg-gray-100 text-gray-400 rounded px-1.5 py-0.5 leading-tight">
+                          Próximamente
+                        </span>
+                      </span>
+                    </li>
+                  ) : (
+                    <li key={item.path}>
+                      <NavLink
+                        to={item.path}
+                        className={({ isActive }) =>
+                          [
+                            'flex items-center gap-[11px] px-[10px] py-[7.5px] rounded-[9px] mb-[1px] text-[13.5px] font-semibold cursor-pointer transition-colors',
+                            isActive
+                              ? 'bg-indBg text-ind2'
+                              : 'text-[#4b5563] hover:bg-[#f4f4f8] hover:text-ink',
+                          ].join(' ')
+                        }
+                      >
+                        {({ isActive }) => (
+                          <>
+                            {item.icon && (
+                              <NavIcon
+                                name={item.icon}
+                                className={['w-[15px] h-[15px] shrink-0', isActive ? 'text-ind' : ''].join(' ')}
+                              />
+                            )}
+                            {item.label}
+                          </>
+                        )}
+                      </NavLink>
+                    </li>
+                  ),
+                )}
               </ul>
             </div>
           ))

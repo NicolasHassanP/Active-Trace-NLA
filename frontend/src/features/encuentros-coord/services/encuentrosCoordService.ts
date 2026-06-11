@@ -110,6 +110,54 @@ export async function exportarGuardias(params: GuardiaParams): Promise<Blob> {
 }
 
 // ---------------------------------------------------------------------------
+// editarInstancia — PATCH /api/v1/encuentros/instancias/{id}
+// ---------------------------------------------------------------------------
+
+export interface EditarInstanciaPayload {
+  estado?: 'Programado' | 'Realizado' | 'Cancelado' | null
+  meet_url?: string | null
+  video_url?: string | null
+  comentario?: string | null
+}
+
+/**
+ * PATCH /api/v1/encuentros/instancias/{id}
+ * Edits the mutable fields of an instancia. All fields are optional (partial patch).
+ * Identity/tenant from JWT — never in the request body.
+ */
+export async function editarInstancia(
+  id: string,
+  payload: EditarInstanciaPayload,
+): Promise<InstanciaEncuentroRead> {
+  try {
+    const response = await apiClient.patch<InstanciaEncuentroRead>(
+      `/encuentros/instancias/${id}`,
+      payload,
+    )
+    return response.data
+  } catch (err) {
+    throw parseDomainError(err)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// borrarInstancia — DELETE /api/v1/encuentros/instancias/{id}
+// ---------------------------------------------------------------------------
+
+/**
+ * DELETE /api/v1/encuentros/instancias/{id}
+ * Deletes an instancia. Returns 204 on success, 404 if not found.
+ * Identity/tenant from JWT — never in the request body.
+ */
+export async function borrarInstancia(id: string): Promise<void> {
+  try {
+    await apiClient.delete(`/encuentros/instancias/${id}`)
+  } catch (err) {
+    throw parseDomainError(err)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // getBloqueHtml — GET /api/v1/encuentros/bloque-html
 // ---------------------------------------------------------------------------
 

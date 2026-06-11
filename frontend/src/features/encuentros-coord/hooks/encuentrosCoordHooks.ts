@@ -4,7 +4,15 @@
  * Task 5.5.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { crearSlot, listarInstancias, listarGuardias, getBloqueHtml } from '../services/encuentrosCoordService'
+import {
+  crearSlot,
+  listarInstancias,
+  listarGuardias,
+  getBloqueHtml,
+  editarInstancia,
+  borrarInstancia,
+  type EditarInstanciaPayload,
+} from '../services/encuentrosCoordService'
 import type { CrearSlotRequest, InstanciasParams, GuardiaParams } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -67,6 +75,43 @@ export function useGuardias(params: GuardiaParams) {
   return useQuery({
     queryKey: guardiasKey(params),
     queryFn: () => listarGuardias(params),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// useEditarInstancia — PATCH /api/v1/encuentros/instancias/{id}
+// ---------------------------------------------------------------------------
+
+/**
+ * Mutation hook for PATCH /api/v1/encuentros/instancias/{id}.
+ * On success invalidates the instancias query so the table refreshes.
+ */
+export function useEditarInstancia() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: EditarInstanciaPayload }) =>
+      editarInstancia(id, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['encuentros-instancias'] })
+    },
+  })
+}
+
+// ---------------------------------------------------------------------------
+// useBorrarInstancia — DELETE /api/v1/encuentros/instancias/{id}
+// ---------------------------------------------------------------------------
+
+/**
+ * Mutation hook for DELETE /api/v1/encuentros/instancias/{id}.
+ * On success invalidates the instancias query so the table refreshes.
+ */
+export function useBorrarInstancia() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => borrarInstancia(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['encuentros-instancias'] })
+    },
   })
 }
 

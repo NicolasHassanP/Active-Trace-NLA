@@ -8,7 +8,8 @@ Endpoints bajo /api/v1/admin/:
     /cohortes  — GET, POST, PATCH /{id}, DELETE /{id}
     /materias  — GET, POST, PATCH /{id}, DELETE /{id}
 
-Todas las rutas requieren require_permission("estructura:gestionar") → 403 sin permiso (fail-closed).
+GET (lectura de catálogos) requieren require_permission("estructura:ver");
+POST/PATCH/DELETE requieren require_permission("estructura:gestionar") → 403 sin permiso (fail-closed).
 tenant_id se deriva del JWT (get_current_user), nunca del body.
 
 Mapeo de excepciones del service:
@@ -71,7 +72,7 @@ def _make_service(db: AsyncSession, tenant_id: uuid.UUID) -> EstructuraService:
 
 @router.get("/carreras", response_model=List[CarreraRead])
 async def listar_carreras(
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("estructura:ver")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[CarreraRead]:
@@ -144,7 +145,7 @@ async def dar_baja_carrera(
 
 @router.get("/materias", response_model=List[MateriaRead])
 async def listar_materias(
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("estructura:ver")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[MateriaRead]:
@@ -216,7 +217,7 @@ async def dar_baja_materia(
 @router.get("/cohortes", response_model=List[CohorteRead])
 async def listar_cohortes(
     carrera_id: Optional[uuid.UUID] = Query(default=None),
-    _grant=Depends(require_permission("estructura:gestionar")),
+    _grant=Depends(require_permission("estructura:ver")),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[CohorteRead]:

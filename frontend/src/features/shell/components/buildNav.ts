@@ -151,11 +151,14 @@ export const NAV_CATALOG: NavItem[] = [
   },
   // ── FINANZAS ─────────────────────────────────────────────
   {
+    // C-18 is deferred — show the item as disabled ("Próximamente") so FINANZAS/ADMIN
+    // users can see it exists but cannot navigate to it. Remove `disabled` when C-18 ships.
     label: 'Liquidaciones',
     path: '/liquidaciones',
     roles: ['FINANZAS', 'ADMIN'],
     icon: 'dollar-sign',
     group: 'FINANZAS',
+    disabled: true,
   },
   // ── CUENTA ───────────────────────────────────────────────
   {
