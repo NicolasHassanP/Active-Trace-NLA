@@ -7,6 +7,8 @@ Design decisions:
     D6  — Identity (tenant_id, asignado_por, autor_id) ALWAYS from current_user (JWT).
     D7  — Ownership: without tareas:gestionar, only asignado_a or asignado_por can access.
     D8  — AuditAction: TAREA_ASIGNAR, TAREA_DELEGAR, TAREA_CAMBIAR_ESTADO.
+    D9  — Notificación al asignado_a vía mensajería interna (campanita por hilo no leído).
+          Auto-asignación (asignado_a == asignado_por) → no notificar.
 
 Identity ALWAYS from current_user — never from request body.
 Queries ONLY via repositories.
@@ -21,6 +23,7 @@ from app.core.dependencies import CurrentUser
 from app.models.audit import AuditAction, AuditResultado
 from app.models.tarea import ComentarioTarea, Tarea, TareaEstado
 from app.repositories.audit_repository import AuditRepository
+from app.repositories.mensajeria_repository import MensajeriaRepository
 from app.repositories.tarea_repository import ComentarioTareaRepository, TareaRepository
 from app.schemas.tarea import (
     ComentarioTareaCreate,
@@ -56,10 +59,12 @@ class TareaService:
         tarea_repo: TareaRepository,
         comentario_repo: ComentarioTareaRepository,
         audit_repo: AuditRepository,
+        mensajeria_repo: MensajeriaRepository,
     ) -> None:
         self._tarea_repo = tarea_repo
         self._comentario_repo = comentario_repo
         self._audit_repo = audit_repo
+        self._mensajeria_repo = mensajeria_repo
 
     # -----------------------------------------------------------------------
     # Publicar / asignar (D6, D8)
@@ -96,6 +101,15 @@ class TareaService:
                 "estado": tarea.estado.value,
             },
         )
+
+        await self._notificar_asignado(
+            tarea=tarea,
+            asignado_a=tarea.asignado_a,
+            asignado_por=domain_user_id,
+            descripcion=req.descripcion,
+            es_reasignacion=False,
+        )
+
         return tarea
 
     # -----------------------------------------------------------------------
@@ -206,6 +220,15 @@ class TareaService:
             autor_id=domain_user_id,
             cuerpo=texto_delegacion,
             es_sistema=True,
+        )
+
+        # D9: notificar al NUEVO asignado_a vía mensajería (campanita)
+        await self._notificar_asignado(
+            tarea=tarea,
+            asignado_a=nuevo_asignado_a,
+            asignado_por=domain_user_id,
+            descripcion=texto_delegacion,
+            es_reasignacion=True,
         )
 
         return tarea
@@ -411,6 +434,46 @@ class TareaService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Acceso denegado: no es asignado_a ni asignado_por de esta tarea",
+            )
+
+    async def _notificar_asignado(
+        self,
+        tarea: Tarea,
+        asignado_a: uuid.UUID,
+        asignado_por: uuid.UUID,
+        descripcion: str,
+        es_reasignacion: bool = False,
+    ) -> None:
+        """
+        Notifica al asignado_a vía mensajería interna (D9).
+
+        Crea o reutiliza el hilo 1:1 entre asignado_por (remitente) y
+        asignado_a (destinatario) y agrega un mensaje con el detalle de la tarea.
+        El hilo no leído incrementa el conteo de la campanita del asignado_a.
+
+        Auto-asignación (asignado_a == asignado_por) → no enviar mensaje.
+        """
+        if asignado_a == asignado_por:
+            return  # auto-asignación: no mensaje a sí mismo
+
+        prefijo = "Se te reasignó la tarea" if es_reasignacion else "Se te asignó la tarea"
+        cuerpo = f"{prefijo}: {descripcion[:300]} (Tarea ID: {tarea.id})"
+        asunto = prefijo
+
+        hilo_id = await self._mensajeria_repo.buscar_hilo_existente(asignado_por, asignado_a)
+        if hilo_id is None:
+            await self._mensajeria_repo.crear_hilo(
+                remitente_id=asignado_por,
+                destinatario_id=asignado_a,
+                asunto=asunto,
+                cuerpo=cuerpo,
+            )
+        else:
+            await self._mensajeria_repo.agregar_mensaje(
+                hilo_id=hilo_id,
+                remitente_id=asignado_por,
+                asunto=asunto,
+                cuerpo=cuerpo,
             )
 
     async def _emit_audit(

@@ -52,6 +52,7 @@ async def _check_gestionar_optional(
     except Exception:
         return False
 from app.repositories.audit_repository import AuditRepository
+from app.repositories.mensajeria_repository import MensajeriaRepository
 from app.repositories.tarea_repository import ComentarioTareaRepository, TareaRepository
 from app.schemas.tarea import (
     ComentarioTareaCreate,
@@ -75,6 +76,7 @@ def _make_tarea_service(db: AsyncSession, tenant_id: uuid.UUID) -> TareaService:
         tarea_repo=TareaRepository(session=db, tenant_id=tenant_id),
         comentario_repo=ComentarioTareaRepository(session=db, tenant_id=tenant_id),
         audit_repo=AuditRepository(session=db, tenant_id=tenant_id),
+        mensajeria_repo=MensajeriaRepository(session=db, tenant_id=tenant_id),
     )
 
 

@@ -144,11 +144,13 @@ def _actor_docente(tid, uid):
 def _make_service(session, tid):
     from app.repositories.tarea_repository import TareaRepository, ComentarioTareaRepository
     from app.repositories.audit_repository import AuditRepository
+    from app.repositories.mensajeria_repository import MensajeriaRepository
     from app.services.tarea_service import TareaService
     return TareaService(
         tarea_repo=TareaRepository(session=session, tenant_id=tid),
         comentario_repo=ComentarioTareaRepository(session=session, tenant_id=tid),
         audit_repo=AuditRepository(session=session, tenant_id=tid),
+        mensajeria_repo=MensajeriaRepository(session=session, tenant_id=tid),
     )
 
 
