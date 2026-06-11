@@ -25,9 +25,11 @@ export const NAV_CATALOG: NavItem[] = [
   },
   // ── MI CÁTEDRA ──────────────────────────────────────────
   {
+    // ADMIN usa scope global — no tiene "Mis materias" porque no tiene asignaciones propias.
+    // ADMIN sigue teniendo acceso a Calificaciones, Padrón, Atrasados, etc. con scope global.
     label: 'Mis materias',
     path: '/materias',
-    roles: ['PROFESOR', 'COORDINADOR', 'ADMIN'],
+    roles: ['PROFESOR', 'COORDINADOR'],
     icon: 'book',
     group: 'MI CÁTEDRA',
   },

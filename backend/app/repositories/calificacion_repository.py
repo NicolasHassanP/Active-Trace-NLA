@@ -2,7 +2,10 @@
 calificacion_repository.py — Repository tenant-scoped para Calificacion y UmbralMateria.
 
 C-10 Design Decisions:
-    D5 — UmbralMateria: get_umbral(asignacion_id, materia_id) → UmbralMateria | None.
+    D5 — UmbralMateria:
+         get_umbral(asignacion_id, materia_id)              → UmbralMateria | None (override por docente).
+         get_umbral_default(materia_id, cohorte_id)         → UmbralMateria | None (default scope global).
+         upsert_umbral(asignacion_id|None, materia_id, ...) → UmbralMateria.
     D8 — Upsert Calificacion por (tenant, entrada_padron, materia, actividad, importado_por).
 
 Queries SOLO en repositories (regla dura #11).
@@ -46,7 +49,8 @@ class CalificacionRepository(TenantScopedRepository[Calificacion]):
         materia_id: uuid.UUID,
     ) -> Optional[UmbralMateria]:
         """
-        Retorna el UmbralMateria para (tenant_id, asignacion_id, materia_id).
+        Retorna el UmbralMateria override para (tenant_id, asignacion_id, materia_id).
+        asignacion_id NOT NULL — busca el registro de override del docente.
         Returns None si no existe.
         """
         stmt = (
@@ -62,26 +66,56 @@ class CalificacionRepository(TenantScopedRepository[Calificacion]):
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_umbral_default(
+        self,
+        materia_id: uuid.UUID,
+        cohorte_id: Optional[uuid.UUID],
+    ) -> Optional[UmbralMateria]:
+        """
+        Retorna el UmbralMateria default para (tenant_id, materia_id, cohorte_id).
+        asignacion_id IS NULL — busca el registro de default scope global (ADMIN).
+        Returns None si no existe.
+        """
+        stmt = (
+            select(UmbralMateria)
+            .where(
+                UmbralMateria.tenant_id == self._tenant_id,
+                UmbralMateria.materia_id == materia_id,
+                UmbralMateria.cohorte_id == cohorte_id,
+                UmbralMateria.asignacion_id.is_(None),
+                UmbralMateria.deleted_at.is_(None),
+            )
+            .limit(1)
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
     # -----------------------------------------------------------------------
     # UmbralMateria — escritura (upsert D5)
     # -----------------------------------------------------------------------
 
     async def upsert_umbral(
         self,
-        asignacion_id: uuid.UUID,
+        asignacion_id: Optional[uuid.UUID],
         materia_id: uuid.UUID,
         umbral_pct: int,
         valores_aprobatorios: List[str],
+        cohorte_id: Optional[uuid.UUID] = None,
     ) -> UmbralMateria:
         """
-        Get-or-create UmbralMateria para (tenant, asignacion, materia).
+        Get-or-create UmbralMateria para (tenant, asignacion|None, materia).
 
+        Si asignacion_id is None → opera sobre el default scope global (materia/cohorte).
+        Si asignacion_id is not None → opera sobre el override del docente.
         Si existe, actualiza umbral_pct y valores_aprobatorios.
         Si no existe, crea uno nuevo.
 
         Returns the UmbralMateria (created or updated).
         """
-        existing = await self.get_umbral(asignacion_id, materia_id)
+        if asignacion_id is None:
+            existing = await self.get_umbral_default(materia_id, cohorte_id)
+        else:
+            existing = await self.get_umbral(asignacion_id, materia_id)
 
         if existing is not None:
             existing.umbral_pct = umbral_pct
@@ -94,6 +128,7 @@ class CalificacionRepository(TenantScopedRepository[Calificacion]):
         umbral = UmbralMateria(
             tenant_id=self._tenant_id,
             asignacion_id=asignacion_id,
+            cohorte_id=cohorte_id,
             materia_id=materia_id,
             umbral_pct=umbral_pct,
             valores_aprobatorios=valores_aprobatorios,

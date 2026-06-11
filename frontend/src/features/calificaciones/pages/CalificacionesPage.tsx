@@ -4,6 +4,8 @@
  * Tabs:
  *   1. Importar      — upload + preview + activity selection + confirm (F1.1)
  *   2. Umbral        — configure approval threshold per materia (F2.1)
+ *                      ADMIN → UmbralConfigDefault (scope global, sets default materia/cohorte)
+ *                      PROFESOR/COORDINADOR → UmbralConfigDocente (scope propio, override)
  *   3. Ranking       — approved activities ranking table (F2.3)
  *   4. Reporte       — quick metrics for materia×cohorte (F2.4)
  *   5. Notas finales — grouped final grades, exportable (F2.5)
@@ -11,9 +13,11 @@
  * Materia/cohorte context is entered once at the top and shared across all tabs.
  */
 import { useState } from 'react'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import SelectorMateriaCohorte from '../components/SelectorMateriaCohorte'
 import ImportarCalificacionesForm from '../components/ImportarCalificacionesForm'
-import UmbralConfig from '../components/UmbralConfig'
+import UmbralConfigDefault from '../components/UmbralConfigDefault'
+import UmbralConfigDocente from '../components/UmbralConfigDocente'
 import RankingTable from '../components/RankingTable'
 import ReporteMateriaPanel from '../components/ReporteMateria'
 import NotasFinalesTable from '../components/NotasFinalesTable'
@@ -30,12 +34,16 @@ const TABS: { id: Tab; label: string }[] = [
 ]
 
 export default function CalificacionesPage() {
+  const { roles } = useAuth()
   const [materiaId, setMateriaId] = useState('')
   const [cohorteId, setCohorteId] = useState('')
   const [activeTab, setActiveTab] = useState<Tab>('importar')
 
   const hasContext = materiaId.trim() !== '' && cohorteId.trim() !== ''
   const hasMateriaOnly = materiaId.trim() !== ''
+
+  // ADMIN uses scope global → default component; others use override (docente) component
+  const isAdmin = roles.includes('ADMIN')
 
   return (
     <div className="space-y-6">
@@ -89,7 +97,14 @@ export default function CalificacionesPage() {
                   Umbral de aprobación
                 </h2>
                 {hasMateriaOnly ? (
-                  <UmbralConfig materia_id={materiaId} />
+                  isAdmin ? (
+                    <UmbralConfigDefault
+                      materia_id={materiaId}
+                      cohorte_id={cohorteId || undefined}
+                    />
+                  ) : (
+                    <UmbralConfigDocente materia_id={materiaId} />
+                  )
                 ) : (
                   <p className="text-sm text-gray-500 italic">Ingresá una materia para configurar el umbral.</p>
                 )}

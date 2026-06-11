@@ -128,19 +128,22 @@ async def _create_router_context(db_session, monkeypatch):
     await db_session.refresh(perm_importar)
     await db_session.refresh(perm_umbral)
 
-    # Grants
+    # Grants — PROFESOR scope='propio' (umbral override), COORDINADOR/ADMIN scope='global'
     for rol_name in ("PROFESOR", "COORDINADOR", "ADMIN"):
+        # calificaciones:importar: all global (import is always scoped by padron/materia)
         db_session.add(RolPermiso(
             tenant_id=tenant.id,
             rol_id=roles[rol_name].id,
             permiso_id=perm_importar.id,
             scope=PermisoScope.global_,
         ))
+        # calificaciones:configurar-umbral: PROFESOR propio, COORDINADOR/ADMIN global
+        umbral_scope = PermisoScope.propio if rol_name == "PROFESOR" else PermisoScope.global_
         db_session.add(RolPermiso(
             tenant_id=tenant.id,
             rol_id=roles[rol_name].id,
             permiso_id=perm_umbral.id,
-            scope=PermisoScope.global_,
+            scope=umbral_scope,
         ))
     await db_session.commit()
 

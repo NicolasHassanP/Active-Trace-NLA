@@ -3,6 +3,11 @@
 > Backlog de trabajo abierto para atacar en una próxima sesión. Generado al cierre de la sesión del **2026-06-09** sobre la rama `style/design-handoff`.
 > Detalle adicional en Engram (topic_keys citados en cada ítem). Ordenado por prioridad sugerida.
 
+> ### ✅ Actualización 2026-06-10 (sesión 4) — ADMIN scope global + umbral por-materia implementado
+> Diseño planificado por Nicolás (commit `505483b` en master) implementado con Strict TDD:
+> - **Backend**: `UmbralMateria.asignacion_id` nullable + nueva col `cohorte_id`, migración `019_umbral_materia_scope_global.py` (partial indexes `uq_um_default_materia_cohorte` + `uq_um_asignacion_override`), `UmbralService.get_efectivo` con precedencia 3 niveles, router GET/PUT `/umbral` scope-aware (global → default materia/cohorte sin asignación; propio → override docente). 14 tests nuevos, 7/7 router previos.
+> - **Frontend**: `buildNav.ts` saca ADMIN de "Mis materias"; tab Umbral dual → `UmbralConfigDefault` (ADMIN, info azul) + `UmbralConfigDocente` (docente, banner amarillo si hereda). 8 tests nuevos, tsc 0 errores.
+>
 > ### ✅ Actualización 2026-06-09 (sesión 3) — pendientes cerrados
 > Tras `git pull` (compañero: impersonación RN-41 backend+frontend, enums coloquios, design assets) se cerraron y commitearon:
 > - **Tarea B completa** (`66fa1a8` + `549e723`): teardowns `audit_event` migrados al helper de inmutabilidad en los 5 tests + 4 endpoint tests reescritos con `create_usuario_con_identidad` (patrón AuthIdentity-FK). Causa raíz del 500: el helper hacía `flush` sin `commit`, la sesión del endpoint no veía `auth_identities`. test_padron 25/25, test_calificaciones_router 7/7.

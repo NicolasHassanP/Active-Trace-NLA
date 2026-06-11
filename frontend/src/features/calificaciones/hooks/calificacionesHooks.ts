@@ -4,14 +4,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   configurarUmbral,
+  configurarUmbralDefault,
   getNotasFinales,
   getRanking,
   getReporteMateria,
   getUmbral,
+  getUmbralDefault,
   importarCalificaciones,
   previewCalificaciones,
 } from '../services/calificacionesService'
-import type { ConfigurarUmbralRequest, ImportarCalificacionesRequest } from '../types'
+import type {
+  ConfigurarUmbralDefaultRequest,
+  ConfigurarUmbralRequest,
+  ImportarCalificacionesRequest,
+} from '../types'
 
 // ---------------------------------------------------------------------------
 // Calificaciones mutations
@@ -52,12 +58,39 @@ export function useUmbral(materia_id: string) {
   })
 }
 
-/** Mutation: save or update approval threshold */
+/** Mutation: save or update approval threshold (docente scope propio — override) */
 export function useConfigurarUmbral() {
   return useMutation({
     mutationFn: (request: ConfigurarUmbralRequest) => configurarUmbral(request),
   })
 }
+
+/** Query: get default umbral for a materia (scope global ADMIN/COORDINADOR) */
+export function useUmbralDefault(materia_id: string, cohorte_id?: string | null) {
+  return useQuery({
+    queryKey: ['umbral-default', materia_id, cohorte_id ?? null],
+    queryFn: () => getUmbralDefault(materia_id, cohorte_id),
+    enabled: materia_id.trim() !== '',
+  })
+}
+
+/** Mutation: save or update default umbral (scope global ADMIN/COORDINADOR) */
+export function useConfigurarUmbralDefault() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (request: ConfigurarUmbralDefaultRequest) => configurarUmbralDefault(request),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['umbral-default'] })
+      void qc.invalidateQueries({ queryKey: ['umbral'] })
+    },
+  })
+}
+
+// Backward-compat re-exports for docente scope
+/** @alias useUmbral — hook for docente (scope propio) umbral */
+export { useUmbral as useUmbralDocente }
+/** @alias useConfigurarUmbral — mutation for docente override */
+export { useConfigurarUmbral as useConfigurarUmbralDocente }
 
 // ---------------------------------------------------------------------------
 // Analisis queries

@@ -116,14 +116,18 @@ class ConfigurarUmbralRequest(BaseModel):
     materia_id: materia a configurar.
     umbral_pct: porcentaje mínimo aprobatorio (0–100 inclusive).
     valores_aprobatorios: valores textuales que se consideran aprobados.
+    cohorte_id: (opcional) para defaults scope global ADMIN: limita el default a una cohorte.
+        Si None con scope global → default aplica a la materia en todas las cohortes.
 
     La asignacion_id se resuelve desde current_user + materia (D5, regla dura #8/#14).
+    NUNCA enviar asignacion_id en el body.
     """
     model_config = ConfigDict(extra="forbid")
 
     materia_id: uuid.UUID
     umbral_pct: int
     valores_aprobatorios: List[str]
+    cohorte_id: Optional[uuid.UUID] = None
 
     @field_validator("umbral_pct")
     @classmethod
@@ -139,16 +143,19 @@ class ConfigurarUmbralRequest(BaseModel):
 
 class UmbralMateriaRead(BaseModel):
     """
-    Representación pública del umbral efectivo de una asignación×materia.
+    Representación pública del umbral efectivo de una asignación×materia o default.
 
     Omite tenant_id (no se expone en respuestas).
     from_attributes=True para mapeo desde ORM.
-    is_default indica si se está devolviendo el defecto del tenant (sin registro en DB).
+    is_default=True cuando se retorna el default del tenant o el default materia/cohorte.
+    asignacion_id=None → default scope global (ADMIN).
+    cohorte_id: presente cuando el default es específico de una cohorte.
     """
     model_config = ConfigDict(extra="forbid", from_attributes=True)
 
     id: Optional[uuid.UUID] = None
     asignacion_id: Optional[uuid.UUID] = None
+    cohorte_id: Optional[uuid.UUID] = None
     materia_id: uuid.UUID
     umbral_pct: int
     valores_aprobatorios: List[str]

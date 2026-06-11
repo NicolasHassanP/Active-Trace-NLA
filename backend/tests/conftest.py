@@ -391,6 +391,34 @@ async def _ensure_schema(engine) -> None:
                 await conn.execute(
                     text(f"ALTER TYPE audit_action ADD VALUE '{acad_action}'")
                 )
+        # C-19: umbral_materia scope global — cohorte_id + nullable asignacion_id + new indexes
+        await conn.execute(text(
+            "ALTER TABLE umbral_materia ADD COLUMN IF NOT EXISTS cohorte_id UUID "
+            "REFERENCES cohorte(id) ON DELETE RESTRICT"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_um_cohorte_id ON umbral_materia (cohorte_id)"
+        ))
+        # Make asignacion_id nullable (idempotent)
+        await conn.execute(text(
+            "ALTER TABLE umbral_materia ALTER COLUMN asignacion_id DROP NOT NULL"
+        ))
+        # Drop old unique index (if exists)
+        await conn.execute(text(
+            "DROP INDEX IF EXISTS uq_um_asignacion_materia"
+        ))
+        # Create two partial unique indexes (idempotent via IF NOT EXISTS)
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_um_default_materia_cohorte "
+            "ON umbral_materia(tenant_id, materia_id, cohorte_id) "
+            "WHERE asignacion_id IS NULL AND deleted_at IS NULL"
+        ))
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_um_asignacion_override "
+            "ON umbral_materia(tenant_id, asignacion_id, materia_id) "
+            "WHERE asignacion_id IS NOT NULL AND deleted_at IS NULL"
+        ))
+
         # C-17: partial unique indexes for programa_materia and fecha_academica
         result_pm_idx = await conn.execute(
             text(
@@ -438,6 +466,8 @@ async def create_tables(test_engine):
         from sqlalchemy import text
         # Drop dynamic test tables not tracked in Base.metadata (e.g. C-02 TenantScopedRepository tests).
         await conn.execute(text("DROP TABLE IF EXISTS test_biz_entity_v2 CASCADE"))
+        # C-02: test_notas may have been left by test_base_repository tests
+        await conn.execute(text("DROP TABLE IF EXISTS test_notas CASCADE"))
         # C-09: version_padron and entrada_padron are now in Base.metadata (registered in models/__init__.py)
         # and will be dropped by drop_all in the correct FK order. No explicit drop needed here.
         # C-20: mensajería tables (FK order: participantes → mensajes → hilos)
