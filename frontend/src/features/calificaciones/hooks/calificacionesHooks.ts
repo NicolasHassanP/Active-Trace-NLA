@@ -60,8 +60,12 @@ export function useUmbral(materia_id: string) {
 
 /** Mutation: save or update approval threshold (docente scope propio — override) */
 export function useConfigurarUmbral() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: (request: ConfigurarUmbralRequest) => configurarUmbral(request),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['umbral'] })
+    },
   })
 }
 

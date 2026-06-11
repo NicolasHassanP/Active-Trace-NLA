@@ -4,8 +4,8 @@
  * Tabs:
  *   1. Importar      — upload + preview + activity selection + confirm (F1.1)
  *   2. Umbral        — configure approval threshold per materia (F2.1)
- *                      ADMIN → UmbralConfigDefault (scope global, sets default materia/cohorte)
- *                      PROFESOR/COORDINADOR → UmbralConfigDocente (scope propio, override)
+ *                      ADMIN/COORDINADOR → UmbralConfigDefault (scope global, sets default materia/cohorte)
+ *                      PROFESOR → UmbralConfigDocente (scope propio, override)
  *   3. Ranking       — approved activities ranking table (F2.3)
  *   4. Reporte       — quick metrics for materia×cohorte (F2.4)
  *   5. Notas finales — grouped final grades, exportable (F2.5)
@@ -42,8 +42,9 @@ export default function CalificacionesPage() {
   const hasContext = materiaId.trim() !== '' && cohorteId.trim() !== ''
   const hasMateriaOnly = materiaId.trim() !== ''
 
-  // ADMIN uses scope global → default component; others use override (docente) component
-  const isAdmin = roles.includes('ADMIN')
+  // ADMIN y COORDINADOR tienen scope global del umbral (grant calificaciones:configurar-umbral
+  // scope='global') → configuran el default materia/cohorte. PROFESOR usa override propio (docente).
+  const usaUmbralGlobal = roles.includes('ADMIN') || roles.includes('COORDINADOR')
 
   return (
     <div className="space-y-6">
@@ -97,7 +98,7 @@ export default function CalificacionesPage() {
                   Umbral de aprobación
                 </h2>
                 {hasMateriaOnly ? (
-                  isAdmin ? (
+                  usaUmbralGlobal ? (
                     <UmbralConfigDefault
                       materia_id={materiaId}
                       cohorte_id={cohorteId || undefined}
