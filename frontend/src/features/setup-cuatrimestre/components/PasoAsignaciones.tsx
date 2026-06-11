@@ -1,23 +1,24 @@
 /**
  * PasoAsignaciones — Step 3: Bulk assignment adjustments.
  * Task 7.6. Reuses equiposService.asignacionMasiva.
+ * usuario_ids → UsuarioMultiCombobox (Controller).
+ * materia_id / carrera_id / cohorte_id → <select> by nombre (useEstructuraOptions).
  * < 200 LOC.
  */
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { asignacionMasiva } from '@/features/equipos/services/equiposService'
 import { parseDomainError } from '@/shared/services/domainError'
 import type { RolAsignacion } from '@/features/equipos/types'
 import { Button } from '@/shared/components/ui'
+import UsuarioMultiCombobox from '@/features/asignaciones/components/UsuarioMultiCombobox'
+import { useEstructuraOptions } from '../hooks/useEstructuraOptions'
 
 const ROL_OPTIONS: RolAsignacion[] = ['PROFESOR', 'TUTOR', 'COORDINADOR', 'NEXO']
 
 const schema = z.object({
-  usuario_ids: z
-    .string()
-    .min(1, 'Al menos un usuario ID obligatorio')
-    .transform((v) => v.split(',').map((s) => s.trim()).filter(Boolean)),
+  usuario_ids: z.array(z.string().uuid()).min(1, 'Seleccioná al menos un usuario'),
   materia_id: z.string().min(1, 'Materia obligatoria'),
   carrera_id: z.string().min(1, 'Carrera obligatoria'),
   cohorte_id: z.string().min(1, 'Cohorte obligatoria'),
@@ -34,11 +35,17 @@ interface Props {
 }
 
 export default function PasoAsignaciones({ onSuccess, onError }: Props) {
+  const { materias, carreras, cohortes, isLoading } = useEstructuraOptions()
+
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { usuario_ids: [] },
+  })
 
   async function onSubmit(data: FormValues) {
     try {
@@ -71,29 +78,91 @@ export default function PasoAsignaciones({ onSuccess, onError }: Props) {
         Realizá asignaciones masivas de docentes al nuevo cuatrimestre.
       </p>
 
+      {/* Usuarios — multi-select combobox */}
       <div>
-        <label className="block text-sm font-medium text-gray-700">
-          IDs de usuarios (separados por coma)
-        </label>
-        <input {...register('usuario_ids')} className={inputClass} placeholder="uuid1, uuid2" />
-        {errors.usuario_ids && (
-          <p className="mt-1 text-xs text-red-600">{errors.usuario_ids.message}</p>
-        )}
+        <label className="block text-sm font-medium text-gray-700">Usuarios</label>
+        <Controller
+          name="usuario_ids"
+          control={control}
+          render={({ field }) => (
+            <UsuarioMultiCombobox
+              value={field.value}
+              onChange={field.onChange}
+              error={errors.usuario_ids?.message}
+            />
+          )}
+        />
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        {(['materia_id', 'carrera_id', 'cohorte_id'] as const).map((field) => (
-          <div key={field}>
-            <label className="block text-sm font-medium text-gray-700">
-              {field.replace('_id', '').charAt(0).toUpperCase() +
-                field.replace('_id', '').slice(1)}
-            </label>
-            <input {...register(field)} className={inputClass} />
-            {errors[field] && (
-              <p className="mt-1 text-xs text-red-600">{errors[field]?.message}</p>
-            )}
-          </div>
-        ))}
+        {/* Materia — select by nombre */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Materia</label>
+          <select
+            {...register('materia_id')}
+            className={inputClass}
+            data-testid="asignaciones-materia-id"
+            disabled={isLoading}
+          >
+            <option value="">
+              {isLoading ? 'Cargando…' : '-- Seleccioná --'}
+            </option>
+            {materias.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nombre}
+              </option>
+            ))}
+          </select>
+          {errors.materia_id && (
+            <p className="mt-1 text-xs text-red-600">{errors.materia_id.message}</p>
+          )}
+        </div>
+
+        {/* Carrera — select by nombre */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Carrera</label>
+          <select
+            {...register('carrera_id')}
+            className={inputClass}
+            data-testid="asignaciones-carrera-id"
+            disabled={isLoading}
+          >
+            <option value="">
+              {isLoading ? 'Cargando…' : '-- Seleccioná --'}
+            </option>
+            {carreras.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
+          {errors.carrera_id && (
+            <p className="mt-1 text-xs text-red-600">{errors.carrera_id.message}</p>
+          )}
+        </div>
+
+        {/* Cohorte — select by nombre */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Cohorte</label>
+          <select
+            {...register('cohorte_id')}
+            className={inputClass}
+            data-testid="asignaciones-cohorte-id"
+            disabled={isLoading}
+          >
+            <option value="">
+              {isLoading ? 'Cargando…' : '-- Seleccioná --'}
+            </option>
+            {cohortes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
+          {errors.cohorte_id && (
+            <p className="mt-1 text-xs text-red-600">{errors.cohorte_id.message}</p>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
