@@ -51,19 +51,23 @@ Lo que queda abierto es lo de abajo.
 
 ---
 
-## ✅ Cerrado 2026-06-11 — selectores buscables (follow-up UX, BAJA)
+## ✅ Cerrado 2026-06-11 — selectores buscables (follow-up UX) — COMPLETO
 
-> Reemplazo de inputs de UUID crudo por selectores. Implementado con Strict TDD (rama `feat/selectores-buscables-followup`). Lo hecho:
-> - **Backend**: nuevo `GET /api/v1/inbox/usuarios?q=` gateado `inbox:usar` (reusa `buscar_asignables`, no-PII). 6 tests pytest. Gotcha: la ruta literal `/usuarios` va declarada antes de `/{hilo_id}` o FastAPI la parsea como UUID.
-> - **Componentes**: `UsuarioCombobox` ahora acepta prop opcional `searchHook` (inyectable); nuevo `UsuarioMultiCombobox` (multi-select con chips).
-> - **`AsignacionMasivaForm`**: usuarios → multi-combobox; materia/cohorte → `<select>` por nombre.
-> - **`AsignacionForm`**: materia/cohorte → `<select>` por nombre.
-> - **`NuevoHiloForm`**: destinatario → `UsuarioCombobox` con `useBuscarUsuariosInbox` (pega al endpoint nuevo).
-> - **`TareasFilters`**: docente → `UsuarioCombobox` (default hook; la página está gateada a COORDINADOR/ADMIN, que tienen `equipos:asignar` → sin riesgo 403); materia → `<select>`.
-> - 145 tests frontend+backend verdes, tsc 0 errores.
+> Reemplazo total de inputs de UUID crudo por selectores en toda la app. Strict TDD. Ya **no se piden UUIDs a mano en ningún flujo** (única excepción: ninguna — PasoCohorte también pasó a selector). Lo hecho, por tanda:
+> - **Backend**: nuevo `GET /api/v1/inbox/usuarios?q=` gateado `inbox:usar` (reusa `buscar_asignables`, no-PII). Gotcha: la ruta literal `/usuarios` va antes de `/{hilo_id}` o FastAPI la parsea como UUID.
+> - **Componentes base**: `UsuarioCombobox` con prop opcional `searchHook` (inyectable); nuevo `UsuarioMultiCombobox` (multi-select con chips); `listarTodasCarreras` + tipo `CarreraItem` (el endpoint `GET /admin/carreras` YA existía).
+> - **Asignaciones**: `AsignacionForm` y `AsignacionMasivaForm` → usuario (multi)combobox + materia/**carrera**/cohorte `<select>` por nombre.
+> - **Mensajería**: `NuevoHiloForm` → destinatario `UsuarioCombobox` con `useBuscarUsuariosInbox`.
+> - **Tareas**: `TareasFilters` → docente `UsuarioCombobox` + materia `<select>`.
+> - **Setup cuatrimestre** (wizard): `PasoFechas`, `PasoAsignaciones`, `PasoClonarEquipo`, `PasoProgramas`, `PasoVigencias` → materia/carrera/cohorte `<select>` (+ usuarios multi-combobox en Asignaciones); hook compartido `useEstructuraOptions`. `PasoCohorte` → `<select>` de cohortes existentes (deriva el período; cohorte nueva la crea el ADMIN y luego aparece en la lista).
+> - **Equipos docentes**: `EquipoFilters` (consultar equipo) y `VigenciaGeneralForm` → materia/carrera/cohorte `<select>`; responsable en EquipoFilters → `UsuarioCombobox`.
+> - Todo con tests vitest/pytest verdes y tsc 0 errores. Merges en master: `feat/selectores-buscables-followup`, `fix/carrera-select`, `feat/setup-cuatrimestre-selectores`, `feat/equipos-selectores`, `fix/paso-cohorte-select`.
 
-### 🟡 Pendiente residual (BAJA) — select de carrera
-El campo **`carrera_id`** en `AsignacionForm` y `AsignacionMasivaForm` quedó como `<input>` UUID con `// TODO`, porque **no existe endpoint `/admin/carreras`** (ni servicio frontend de carreras). Para cerrarlo: exponer ese endpoint backend (listar carreras por tenant) y reemplazar los dos inputs por `<select>` por nombre.
+---
+
+## ✅ Cerrado 2026-06-11 — 500 del umbral en dev local (no era bug de código)
+
+> `GET /calificaciones/umbral` daba 500 en todos los roles porque la **DB del container docker** (la que usa la app) estaba en alembic **016**, sin la columna `cohorte_id` que el código del umbral (migración 019) referencia. Se aplicaron 017→019 a la DB del container. **Gotcha de entorno**: hay DOS postgres en la máquina — el **nativo** (`localhost:5432`, lo usan los tests vía `TEST_DATABASE_URL`) y el del **container docker** (lo usa la app vía red docker `postgres:5432`). Correr `alembic` desde el host migra el nativo, NO el de la app; para migrar la DB de la app hay que correr alembic **dentro del api container** (`docker cp alembic.ini+alembic/` → `docker exec ... sh -c 'cd /app && alembic upgrade head'`). Detalle en Engram `infra/dos-postgres-local`.
 
 ---
 
