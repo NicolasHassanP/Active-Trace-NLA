@@ -8,9 +8,12 @@
  * Clear button resets to unselected state.
  *
  * Props:
- *   value    — current usuario_id (string | null)
- *   onChange — called with selected usuario_id or null
- *   error    — optional Zod validation error message
+ *   value      — current usuario_id (string | null)
+ *   onChange   — called with selected usuario_id or null
+ *   error      — optional Zod validation error message
+ *   searchHook — optional hook override for search (defaults to useBuscarUsuariosAsignables).
+ *                Prop must be stable (set once at mount) — never toggle between hook
+ *                implementations on the same instance (Rules of Hooks).
  *
  * < 200 LOC. No `any`. PascalCase. Tailwind only.
  */
@@ -18,15 +21,21 @@ import { useState, useEffect, useRef } from 'react'
 import { useBuscarUsuariosAsignables } from '../hooks/asignacionHooks'
 import type { UsuarioAsignable } from '../types'
 
+export type SearchHook = (q: string) => { data?: UsuarioAsignable[]; isLoading?: boolean; isFetching?: boolean }
+
 interface Props {
   value: string | null
   onChange: (id: string | null) => void
   error?: string
+  /** Inject an alternative search hook (e.g. for a different endpoint).
+   *  Defaults to useBuscarUsuariosAsignables. Must be stable — never switch
+   *  hook implementations after mount (React Rules of Hooks). */
+  searchHook?: SearchHook
 }
 
 const DEBOUNCE_MS = 300
 
-export default function UsuarioCombobox({ value, onChange, error }: Props) {
+export default function UsuarioCombobox({ value, onChange, error, searchHook }: Props) {
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -50,7 +59,15 @@ export default function UsuarioCombobox({ value, onChange, error }: Props) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const { data: resultados = [], isFetching } = useBuscarUsuariosAsignables(debouncedQuery)
+  // When a custom searchHook is injected it is called with the live query and
+  // takes priority. The default hook is kept dormant (empty string — its
+  // `enabled` guard keeps it from firing) so Rules of Hooks are satisfied.
+  // IMPORTANT: searchHook must be stable at mount (never toggled per-instance).
+  const defaultResult = useBuscarUsuariosAsignables(searchHook ? '' : debouncedQuery)
+  const customResult = searchHook ? searchHook(debouncedQuery) : null
+  const result = customResult ?? defaultResult
+  const resultados: UsuarioAsignable[] = result.data ?? []
+  const isFetching = result.isFetching ?? result.isLoading ?? false
 
   function handleSelect(usuario: UsuarioAsignable) {
     setSelected(usuario)

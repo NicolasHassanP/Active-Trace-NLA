@@ -43,71 +43,27 @@ Lo que queda abierto es lo de abajo.
 
 ---
 
-## 🟠 PLANIFICADO (próxima sesión) — ADMIN scope global + umbral por-materia
+## ✅ Cerrado 2026-06-11 — ADMIN scope global + umbral por-materia (implementado)
 
-> Governance **CRÍTICO** (calificaciones + RBAC scope + migración de datos). Diseño aprobado por el usuario el 2026-06-10. NO empezar sin releer esta sección completa. Implementar con **Strict TDD** y **backend primero** (la migración + el contrato son la fuente de verdad), luego frontend.
-
-### Problema (diagnóstico verificado)
-El rol **ADMIN** tiene capacidades GLOBALES sobre cátedra (matriz KB §3.3 / PDF `activia-trace-documentacion.pdf`: importar calificaciones, ver atrasados, enviar comunicaciones, configurar umbral — todas **sin** la anotación "(propio)" = scope `global`). Pero las vistas docentes scopean a "la asignación del propio usuario" e ignoran el scope. Síntomas observados con ADMIN logueado:
-- **"Mis materias"** vacío ("No tenés asignaciones") — es `GET /equipos/mis-equipos`, vista docente de *mis* asignaciones; ADMIN no es docente → vacío correcto, pero **no debería ofrecerse** esa vista a ADMIN.
-- **Calificaciones → tab Umbral** tira error crudo `No active asignacion found for user in materia f2000002-...` (`backend/app/api/v1/routers/calificaciones.py:223-227`) porque exige una asignación del propio ADMIN.
-
-### Decisión tomada
-1. **NO sacarle capacidades a ADMIN.** Mantiene acceso a Calificaciones/Padrón/Atrasados (ejerce el scope global vía el selector de materia que esas páginas ya tienen).
-2. El **umbral** pasa de "solo por-asignación" a **default por-materia/cohorte (config de ADMIN, scope global) + override por-asignación del docente**.
-3. Solo se **oculta "Mis materias" para ADMIN** (es *mis-asignaciones*; no le quita ninguna capacidad).
-
-### Lo que YA está bien (no tocar, solo verificar)
-- El patrón de scope-honoring **ya existe**: `backend/app/services/analisis_service.py` (`_es_scope_global(grant)` → `grant.scope == PermisoScope.global_`). `PermissionGrant.scope` viene de `require_permission(...)`.
-- **Atrasados** (`analisis.py`) ya respeta el scope global → ADMIN funciona ahí.
-- **Importar calificaciones** (`calificacion_service.py:168-189`) ya maneja `asignacion_id = None` gracefully (verificar que con scope global no exija asignación).
-- → **El único endpoint realmente roto es el de umbral (GET + PUT).**
-
-### Backend — cambios
-1. **Modelo** `backend/app/models/calificacion.py` (`UmbralMateria`, ~líneas 133-183):
-   - `asignacion_id` → **nullable** (NULL = default de materia/cohorte; no-NULL = override del docente).
-   - Nueva FK `cohorte_id` → `cohorte(id)` `ON DELETE RESTRICT`, nullable.
-2. **Migración Alembic** (UNA sola, regla dura; numerar según la última en `backend/alembic/versions/`):
-   - `add_column` `cohorte_id` + FK + índice.
-   - `alter_column` `asignacion_id` → nullable.
-   - **drop** índice único viejo `uq_um_asignacion_materia`.
-   - **create** dos índices únicos **parciales**:
-     - `uq_um_default_materia_cohorte` ON `(tenant_id, materia_id, cohorte_id)` WHERE `asignacion_id IS NULL AND deleted_at IS NULL`.
-     - `uq_um_asignacion_override` ON `(tenant_id, asignacion_id, materia_id)` WHERE `asignacion_id IS NOT NULL AND deleted_at IS NULL`.
-   - Data migration: filas existentes mantienen su `asignacion_id` (se vuelven overrides). Downgrade idempotente (`DROP INDEX IF EXISTS`).
-3. **`UmbralService.get_efectivo`**: resolución por precedencia → **(1) override del docente** (`asignacion_id` + `materia_id`) → **(2) default de materia/cohorte** (`asignacion_id IS NULL` + `materia_id` + `cohorte_id`) → **(3) default sistema (60%)**. Devolver flag `is_default` para que el front sepa si está heredando.
-4. **`UmbralService.configurar`** + **repository** (`calificacion_repository.py`): nuevo `get_umbral_default(materia_id, cohorte_id)`; el setter resuelve si escribe default (asignacion_id NULL) u override según el scope.
-5. **Router `calificaciones.py` GET/PUT `/umbral`**: leer `grant.scope`. Si `global` → operar sobre la materia/cohorte seleccionada **sin exigir asignación** (default de materia). Si `propio` → resolver la asignación del docente (override), como hoy. Tenant SIEMPRE desde JWT. Sumar `cohorte_id` al query/body. Eliminar el `raise 404` con string crudo en inglés → estado manejado.
-
-### Frontend — cambios
-1. `frontend/src/features/shell/components/buildNav.ts` — sacar `ADMIN` del item **"Mis materias"** (dejar `['PROFESOR','COORDINADOR']`). NO tocar los demás items de MI CÁTEDRA (ADMIN los sigue usando con scope global).
-2. `frontend/src/features/calificaciones/` — tab **"Umbral" dual** según rol/scope (`useAuth().roles`):
-   - ADMIN → "Umbral por defecto de la materia/cohorte" (setea default; PUT con `asignacion_id: null`).
-   - Docente → "Mi umbral" (override de su asignación; muestra el default heredado cuando `is_default`).
-   - Refactor: `UmbralConfig.tsx` → `UmbralConfigDocente.tsx` + nuevo `UmbralConfigDefault.tsx`; hooks `useUmbralDocente` / `useUmbralDefault` / `useConfigurarUmbral*`.
-
-### Strict TDD
-- **Backend (pytest, DB real, `create_usuario_con_identidad`)**: precedencia de `get_efectivo` (override → default materia/cohorte → 60%); ADMIN (scope global) lee/escribe default SIN asignación; docente (scope propio) escribe override; 403 sin el permiso; aislamiento por tenant. Safety net: `pytest backend/tests/test_calificaciones*.py -q` antes de tocar.
-- **Frontend (vitest)**: tab dual renderiza el componente correcto por rol; ADMIN setea default, docente ve override + default heredado; ocultar "Mis materias" para ADMIN.
-- NO correr la suite completa (lento, deja shells en Windows). `tsc --noEmit` 0 errores.
-
-### Decisión abierta menor (resolver al implementar)
-Granularidad del default: se acordó **por (materia, cohorte)**. Confirmar si el `cohorte_id` siempre está disponible en el flujo (la página de Calificaciones ya selecciona materia + cohorte → sí).
+> Governance **CRÍTICO**. El diseño planificado el 2026-06-10 se implementó con Strict TDD (commit `409fadf`, integrado a master vía merge `a005478`). Detalle completo en git/Engram; resumen:
+> - **Backend**: `UmbralMateria.asignacion_id` nullable + nueva col `cohorte_id`; migración `019_umbral_materia_scope_global.py` con partial indexes `uq_um_default_materia_cohorte` + `uq_um_asignacion_override`; `UmbralService.get_efectivo` con precedencia 3 niveles (override docente → default materia/cohorte → 60%); router GET/PUT `/umbral` scope-aware (global → default sin asignación; propio → override). Migración de datos: filas previas se vuelven overrides. 14 tests nuevos + 7/7 router previos.
+> - **Frontend**: `buildNav.ts` saca ADMIN de "Mis materias"; tab Umbral dual → `UmbralConfigDefault` (ADMIN) + `UmbralConfigDocente` (docente, banner si hereda). 8 tests, tsc 0 errores.
 
 ---
 
-## Mejoras de UX — reemplazar IDs crudos por selectores (follow-up, BAJA)
+## ✅ Cerrado 2026-06-11 — selectores buscables (follow-up UX, BAJA)
 
-> Varias UIs todavía piden UUIDs a mano. Ya construimos la pieza base: el endpoint `GET /asignaciones/usuarios?q=` (gateado `equipos:asignar`, no-PII) + el componente `UsuarioCombobox` (frontend/src/features/asignaciones/components/). El alta de asignaciones (`AsignacionForm`) y su tabla ya usan nombre. Falta replicar el patrón en el resto:
+> Reemplazo de inputs de UUID crudo por selectores. Implementado con Strict TDD (rama `feat/selectores-buscables-followup`). Lo hecho:
+> - **Backend**: nuevo `GET /api/v1/inbox/usuarios?q=` gateado `inbox:usar` (reusa `buscar_asignables`, no-PII). 6 tests pytest. Gotcha: la ruta literal `/usuarios` va declarada antes de `/{hilo_id}` o FastAPI la parsea como UUID.
+> - **Componentes**: `UsuarioCombobox` ahora acepta prop opcional `searchHook` (inyectable); nuevo `UsuarioMultiCombobox` (multi-select con chips).
+> - **`AsignacionMasivaForm`**: usuarios → multi-combobox; materia/cohorte → `<select>` por nombre.
+> - **`AsignacionForm`**: materia/cohorte → `<select>` por nombre.
+> - **`NuevoHiloForm`**: destinatario → `UsuarioCombobox` con `useBuscarUsuariosInbox` (pega al endpoint nuevo).
+> - **`TareasFilters`**: docente → `UsuarioCombobox` (default hook; la página está gateada a COORDINADOR/ADMIN, que tienen `equipos:asignar` → sin riesgo 403); materia → `<select>`.
+> - 145 tests frontend+backend verdes, tsc 0 errores.
 
-**Campos de USUARIO** → reusar `UsuarioCombobox` (el componente se reusa; el endpoint de búsqueda se gatea según el permiso del contexto):
-- `frontend/src/features/equipos/components/AsignacionMasivaForm.tsx` — "Usuario IDs separados por coma" → combobox **multi-select** (chips). Mismo endpoint `equipos:asignar`.
-- `frontend/src/features/mensajeria/components/NuevoHiloForm.tsx` — "UUID del destinatario" → combobox. **Necesita un endpoint de búsqueda nuevo gateado a `inbox:usar`** (más roles que `equipos:asignar`), no se reusa el de asignaciones.
-- Filtros de Tareas — "ID Docente asignado" → combobox de usuario.
-
-**Campos de MATERIA / CARRERA / COHORTE** → `<select>` por nombre (lista acotada, no hace falta búsqueda). Endpoints ya existen: `admin_estructura` GET `/materias`·`/carreras`·`/cohortes` (listas), `perfil` GET `/mis-asignaciones` y `equipos` GET `/mis-equipos` (contexto del usuario). **Patrón de referencia ya implementado: `frontend/src/features/tareas/components/TareaForm.tsx`** (select de materia por nombre + docente del equipo).
-- `AsignacionForm` y `AsignacionMasivaForm` — campos Materia/Carrera/Cohorte ID a mano.
-- Filtros de Tareas — "ID materia".
+### 🟡 Pendiente residual (BAJA) — select de carrera
+El campo **`carrera_id`** en `AsignacionForm` y `AsignacionMasivaForm` quedó como `<input>` UUID con `// TODO`, porque **no existe endpoint `/admin/carreras`** (ni servicio frontend de carreras). Para cerrarlo: exponer ese endpoint backend (listar carreras por tenant) y reemplazar los dos inputs por `<select>` por nombre.
 
 ---
 
