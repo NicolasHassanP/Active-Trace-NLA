@@ -81,10 +81,11 @@ Este paso es **necesario** para que los módulos de Calificaciones, Atrasados y 
 
 | Rol | Email | Contraseña |
 |-----|-------|-----------|
+| Alumno | `alumno@demo.com` | `Demo1234!` |
+| Tutor | `tutor@demo.com` | `Demo1234!` |
 | Profesor | `profesor@demo.com` | `Demo1234!` |
 | Coordinador | `coordinador@demo.com` | `Demo1234!` |
-| Admin | `admin@demo.com` | `Demo1234!` |
-| Alumno | `alumno@demo.com` | `Demo1234!` |
+| Admin | `admin@demo.com` | `Admin1234!` |
 
 ---
 
@@ -127,3 +128,18 @@ docker compose up -d
 ```
 
 Y luego empezá desde el paso 2.
+
+---
+
+## Reset de datos para grabar la demo
+
+Para dejar el entorno "demo-ready" entre tomas (limpia el junk transaccional pero conserva los 5 usuarios, la estructura académica y el padrón + calificaciones demo):
+
+```bash
+docker exec -i active-trace-postgres-1 psql -U postgres -d activia_trace -v ON_ERROR_STOP=1 < backend/reset_demo_data.sql
+```
+
+**Conserva**: tenant, RBAC, los 5 usuarios demo, carrera/materia/cohorte, asignaciones, padrón y calificaciones.
+**Borra**: tareas, encuentros, coloquios/evaluaciones, mensajería, avisos, comunicaciones, audit log y sesiones de login.
+
+> Es idempotente. Tras correrlo, todos quedan deslogueados (se vacían las sesiones) — volvé a iniciar sesión. Si querés un estado 100% pristino desde cero (incluye re-importar padrón/calificaciones), usá `docker compose down -v` + migraciones + seeds (ver Troubleshooting + paso 2 y 4).
