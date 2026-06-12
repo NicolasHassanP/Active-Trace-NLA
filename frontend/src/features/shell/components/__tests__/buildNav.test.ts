@@ -227,9 +227,21 @@ describe('buildNav — C-29 admin-estructura and admin-auditoria items', () => {
     expect(paths).toContain('/admin/auditoria')
   })
 
-  it('ADMIN sees /admin/usuarios (in nav catalog, route deferred)', () => {
+  it('ADMIN sees /admin/usuarios (route now registered — C-29 complete)', () => {
     const paths = buildNav(['ADMIN']).map((i) => i.path)
     expect(paths).toContain('/admin/usuarios')
+  })
+
+  it('/admin/usuarios item is NOT disabled (route registered)', () => {
+    const items = buildNav(['ADMIN'])
+    const usuarios = items.find((i) => i.path === '/admin/usuarios')
+    expect(usuarios?.disabled).toBeFalsy()
+  })
+
+  it('/admin/usuarios item is in group ADMINISTRACIÓN', () => {
+    const items = buildNav(['ADMIN'])
+    const usuarios = items.find((i) => i.path === '/admin/usuarios')
+    expect(usuarios?.group).toBe('ADMINISTRACIÓN')
   })
 
   it('PROFESOR does NOT see admin items', () => {
