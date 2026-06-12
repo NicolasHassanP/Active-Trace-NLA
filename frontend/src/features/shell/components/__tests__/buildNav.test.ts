@@ -213,6 +213,56 @@ describe('buildNav — C-25 mi-cursada item', () => {
 })
 
 // ---------------------------------------------------------------------------
+// C-29 admin core nav items: estructura + auditoria (admin-usuarios deferred)
+// ---------------------------------------------------------------------------
+
+describe('buildNav — C-29 admin-estructura and admin-auditoria items', () => {
+  it('ADMIN sees /admin/estructura', () => {
+    const paths = buildNav(['ADMIN']).map((i) => i.path)
+    expect(paths).toContain('/admin/estructura')
+  })
+
+  it('ADMIN sees /admin/auditoria', () => {
+    const paths = buildNav(['ADMIN']).map((i) => i.path)
+    expect(paths).toContain('/admin/auditoria')
+  })
+
+  it('ADMIN sees /admin/usuarios (in nav catalog, route deferred)', () => {
+    const paths = buildNav(['ADMIN']).map((i) => i.path)
+    expect(paths).toContain('/admin/usuarios')
+  })
+
+  it('PROFESOR does NOT see admin items', () => {
+    const paths = buildNav(['PROFESOR']).map((i) => i.path)
+    expect(paths).not.toContain('/admin/estructura')
+    expect(paths).not.toContain('/admin/auditoria')
+    expect(paths).not.toContain('/admin/usuarios')
+  })
+
+  it('/admin/estructura and /admin/auditoria items are NOT disabled', () => {
+    const items = buildNav(['ADMIN'])
+    const estructura = items.find((i) => i.path === '/admin/estructura')
+    const auditoria = items.find((i) => i.path === '/admin/auditoria')
+    expect(estructura?.disabled).toBeFalsy()
+    expect(auditoria?.disabled).toBeFalsy()
+  })
+
+  it('/liquidaciones item remains disabled (C-18 deferred)', () => {
+    const items = buildNav(['ADMIN'])
+    const liquidaciones = items.find((i) => i.path === '/liquidaciones')
+    expect(liquidaciones?.disabled).toBe(true)
+  })
+
+  it('admin items are in group ADMINISTRACIÓN', () => {
+    const items = buildNav(['ADMIN'])
+    const estructura = items.find((i) => i.path === '/admin/estructura')
+    const auditoria = items.find((i) => i.path === '/admin/auditoria')
+    expect(estructura?.group).toBe('ADMINISTRACIÓN')
+    expect(auditoria?.group).toBe('ADMINISTRACIÓN')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Perfil propio nav item (M2 / F11.1) — visible to ALL authenticated users
 // ---------------------------------------------------------------------------
 
