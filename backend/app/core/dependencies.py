@@ -144,6 +144,29 @@ async def resolve_domain_user_id(
     return uid
 
 
+async def try_resolve_domain_user_id(
+    current_user: "CurrentUser",
+    db: AsyncSession,
+) -> "Optional[uuid.UUID]":
+    """
+    Como resolve_domain_user_id pero retorna None en vez de lanzar 500.
+
+    Usar en endpoints donde la notificación vía mensajería es opcional (no
+    crítica para la operación principal). Si el usuario de dominio no existe
+    la operación continúa sin notificación.
+    """
+    from sqlalchemy import select
+    from app.models.usuario import Usuario
+
+    stmt = select(Usuario.id).where(
+        Usuario.tenant_id == current_user.tenant_id,
+        Usuario.auth_identity_id == current_user.user_id,
+        Usuario.deleted_at.is_(None),
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
 # ---------------------------------------------------------------------------
 # C-04: require_permission — guard factory
 # ---------------------------------------------------------------------------

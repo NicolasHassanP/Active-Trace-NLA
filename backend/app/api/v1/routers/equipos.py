@@ -23,8 +23,10 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id, try_resolve_domain_user_id
 from app.repositories.audit_repository import AuditRepository
+from app.repositories.estructura_repository import CohorteRepository, MateriaRepository
+from app.repositories.mensajeria_repository import MensajeriaRepository
 from app.repositories.usuario_repository import AsignacionRepository, UsuarioRepository
 from app.schemas.equipo import (
     AsignacionMasivaRequest,
@@ -49,10 +51,16 @@ def _make_equipo_service(db: AsyncSession, tenant_id: uuid.UUID) -> EquipoServic
     asig_repo = AsignacionRepository(session=db, tenant_id=tenant_id)
     usr_repo = UsuarioRepository(session=db, tenant_id=tenant_id)
     audit_repo = AuditRepository(session=db, tenant_id=tenant_id)
+    mensajeria_repo = MensajeriaRepository(session=db, tenant_id=tenant_id)
+    materia_repo = MateriaRepository(session=db, tenant_id=tenant_id)
+    cohorte_repo = CohorteRepository(session=db, tenant_id=tenant_id)
     return EquipoService(
         asignacion_repo=asig_repo,
         usuario_repo=usr_repo,
         audit_repo=audit_repo,
+        mensajeria_repo=mensajeria_repo,
+        materia_repo=materia_repo,
+        cohorte_repo=cohorte_repo,
     )
 
 
@@ -142,9 +150,10 @@ async def asignacion_masiva(
     Emite auditoría EQUIPOS_ASIGNACION_MASIVA.
     Requiere permiso equipos:asignar.
     """
+    domain_user_id = await try_resolve_domain_user_id(current_user, db)
     svc = _make_equipo_service(db, current_user.tenant_id)
     try:
-        return await svc.asignacion_masiva(current_user, body)
+        return await svc.asignacion_masiva(current_user, body, domain_user_id=domain_user_id)
     except (UsuarioNoEncontrado, ReferenciaInvalida) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -173,8 +182,9 @@ async def clonar_equipo(
     Emite auditoría EQUIPOS_CLONAR.
     Requiere permiso equipos:asignar.
     """
+    domain_user_id = await try_resolve_domain_user_id(current_user, db)
     svc = _make_equipo_service(db, current_user.tenant_id)
-    return await svc.clonar_equipo(current_user, body)
+    return await svc.clonar_equipo(current_user, body, domain_user_id=domain_user_id)
 
 
 # ---------------------------------------------------------------------------

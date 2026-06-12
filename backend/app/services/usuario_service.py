@@ -1,29 +1,13 @@
 """
 UsuarioService y AsignacionService para C-07 usuarios y asignaciones.
 
-D10: Validaciones de negocio, unicidad, tenant-scope, PII.
+UsuarioService: ABM de usuarios (email_hash, PII, unicidad).
+AsignacionService: ABM de asignaciones docentes (tenant-scope, RN-11, vigencia,
+    notificación vía mensajería al crear asignación).
 
-UsuarioService:
-    - alta/edición/baja lógica de Usuario.
-    - Deriva email_hash del email (el cliente no lo envía) — D3.
-    - Valida unicidad por email_hash (→ 409 ConflictoEmail).
-    - PII en texto plano NUNCA aparece en logs ni excepciones.
-
-AsignacionService:
-    - alta/edición/baja lógica de Asignacion.
-    - Valida que usuario_id y responsable_id pertenezcan al mismo tenant.
-    - Valida contexto (materia/carrera/cohorte) si se provee.
-    - expone estado_vigencia derivado (helper de vigencia.py).
-    - Multi-rol: un usuario puede tener múltiples asignaciones con roles distintos.
-
-Excepciones mapeadas a HTTP en los routers:
-    ConflictoEmail         → 409
-    UsuarioNoEncontrado    → 404
-    AsignacionNoEncontrada → 404
-    ReferenciaInvalida     → 422
-
-Regla dura #11: lógica de negocio SOLO aquí. Queries SOLO en repositories.
-snake_case; ≤500 LOC.
+Excepciones → HTTP: ConflictoEmail→409, UsuarioNoEncontrado→404,
+    AsignacionNoEncontrada→404, ReferenciaInvalida→422.
+Regla dura #11: lógica SOLO aquí, queries SOLO en repositories. snake_case; ≤500 LOC.
 """
 import uuid
 from datetime import date
@@ -37,10 +21,13 @@ from app.models.usuario import (
     UsuarioEstado,
 )
 from app.models.vigencia import EstadoVigencia, estado_vigencia
+from app.repositories.estructura_repository import CohorteRepository, MateriaRepository
+from app.repositories.mensajeria_repository import MensajeriaRepository
 from app.repositories.usuario_repository import (
     AsignacionRepository,
     UsuarioRepository,
 )
+from app.services.asignacion_notif import notificar_asignacion
 
 
 # ---------------------------------------------------------------------------
@@ -256,15 +243,7 @@ class AsignacionService:
     """
     Service para el CRUD de asignaciones (eje de autorización contextual).
 
-    Validaciones:
-        - usuario_id debe existir en el mismo tenant.
-        - responsable_id, si se provee, debe existir en el mismo tenant.
-        - responsable_id no puede crear un ciclo en la jerarquía (RN-11).
-        - materia_id/carrera_id/cohorte_id, si se proveen, deben ser del tenant.
-        - Multi-rol: un usuario puede tener múltiples asignaciones con roles distintos.
-        - Asignación vencida se conserva (soft delete explícito requerido).
-
-    estado_vigencia: calculado con el helper puro de vigencia.py (D4).
+    Valida tenant-scope, RN-11 (jerarquía acíclica), multi-rol y vigencia.
     Identidad/tenant SIEMPRE desde CurrentUser (regla dura #8).
     """
 
@@ -272,9 +251,15 @@ class AsignacionService:
         self,
         asignacion_repo: AsignacionRepository,
         usuario_repo: UsuarioRepository,
+        mensajeria_repo: Optional[MensajeriaRepository] = None,
+        materia_repo: Optional[MateriaRepository] = None,
+        cohorte_repo: Optional[CohorteRepository] = None,
     ) -> None:
         self._asignaciones = asignacion_repo
         self._usuarios = usuario_repo
+        self._mensajeria_repo = mensajeria_repo
+        self._materia_repo = materia_repo
+        self._cohorte_repo = cohorte_repo
 
     # -----------------------------------------------------------------------
     # RN-11 — Validación de jerarquía acíclica de responsables
@@ -335,15 +320,13 @@ class AsignacionService:
         cohorte_id: Optional[uuid.UUID] = None,
         comisiones: Optional[List[str]] = None,
         responsable_id: Optional[uuid.UUID] = None,
+        domain_user_id: Optional[uuid.UUID] = None,
     ) -> Asignacion:
         """
         Crea una nueva asignación para un usuario del tenant.
 
-        Valida que:
-            - usuario_id existe en el tenant.
-            - responsable_id, si se provee, existe en el tenant.
-            - materia_id/carrera_id/cohorte_id, si se proveen, se validan (básico).
-
+        Valida usuario_id, responsable_id (RN-11) y refs opcionales.
+        domain_user_id: usuario.id del actor — activa notificación mensajería si ≠ None.
         Raises UsuarioNoEncontrado, ReferenciaInvalida.
         """
         # Validar usuario
@@ -373,7 +356,34 @@ class AsignacionService:
             comisiones=comisiones or [],
             responsable_id=responsable_id,
         )
-        return await self._asignaciones.add(asignacion)
+        saved = await self._asignaciones.add(asignacion)
+
+        # Notify the assigned docente (skip self-assignment)
+        if domain_user_id is not None and self._mensajeria_repo is not None:
+            # Resolver nombres vía repositories (queries solo en repos — regla #11)
+            materia_nombre: Optional[str] = None
+            cohorte_nombre: Optional[str] = None
+            if materia_id is not None and self._materia_repo is not None:
+                mat = await self._materia_repo.get_by_id(materia_id)
+                if mat is not None:
+                    materia_nombre = mat.nombre
+            if cohorte_id is not None and self._cohorte_repo is not None:
+                coh = await self._cohorte_repo.get_by_id(cohorte_id)
+                if coh is not None:
+                    cohorte_nombre = coh.nombre
+            await notificar_asignacion(
+                self._mensajeria_repo,
+                remitente_id=domain_user_id,
+                destinatario_id=usuario_id,
+                materia_id=materia_id,
+                cohorte_id=cohorte_id,
+                rol=rol,
+                desde=desde,
+                materia_nombre=materia_nombre,
+                cohorte_nombre=cohorte_nombre,
+            )
+
+        return saved
 
     # -----------------------------------------------------------------------
     # Lectura
