@@ -4,9 +4,10 @@ Crea en el tenant Demo:
   - 1 Carrera:  Tecnicatura en Desarrollo de Software (TDS)
   - 2 Materias: Análisis Matemático I (MAT01) · Programación I (PRG01)
   - 1 Cohorte:  2026-1C  (vigente desde 2026-03-01, sin fecha de cierre)
-  - 2 Asignaciones:
+  - 3 Asignaciones:
       · Sofía Ledesma (profesor@demo.com) → PROFESOR · MAT01 · TDS · 2026-1C · comisión 1A
       · Mariana Suárez (coordinador@demo.com) → COORDINADOR · MAT01 · TDS · 2026-1C
+      · Carlos Méndez (tutor@demo.com) → TUTOR · MAT01 · TDS · 2026-1C
 
 IDs fijos (para poder referenciarlos en la UI sin buscarlos):
   CARRERA_ID  = f1000001-f100-f100-f100-f10000000001
@@ -110,6 +111,15 @@ async def seed() -> None:
                 'carrera_id': CARRERA_ID,
                 'cohorte_id': COHORTE_ID,
                 'comisiones': '[]',
+                'desde':      date(2026, 3, 1),
+            },
+            {
+                'email':      'tutor@demo.com',
+                'rol':        'TUTOR',
+                'materia_id': MATERIA_ID,
+                'carrera_id': CARRERA_ID,
+                'cohorte_id': COHORTE_ID,
+                'comisiones': '["1A"]',
                 'desde':      date(2026, 3, 1),
             },
         ]
