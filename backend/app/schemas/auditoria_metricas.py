@@ -38,6 +38,7 @@ class InteraccionesDocenteItem(BaseModel):
     actor_user_id: uuid.UUID
     accion: AuditAction
     total: int
+    actor_nombre: Optional[str] = None
 
 
 class InteraccionesDocenteMateriaItem(BaseModel):
@@ -46,12 +47,16 @@ class InteraccionesDocenteMateriaItem(BaseModel):
 
     materia_id is derived from entidad_id WHERE entidad_tipo='Materia' (D1).
     None means the actor performed actions not linked to any materia.
+    actor_nombre: resolved display name for actor_user_id (auth_identity_id join).
+    materia_nombre: resolved display name for materia_id.
     """
     model_config = ConfigDict(extra="forbid", from_attributes=True)
 
     actor_user_id: uuid.UUID
     materia_id: Optional[str]   # None = "sin materia" bucket (D1)
     total: int
+    actor_nombre: Optional[str] = None
+    materia_nombre: Optional[str] = None
 
 
 class ComunicacionesPorDocenteItem(BaseModel):
@@ -106,6 +111,9 @@ class UltimaAccionItem(BaseModel):
     Mirrors AuditEventRead (C-05) field-for-field. before/after are already
     redacted of PII upstream (at record time). Reusing this shape means the
     frontend can handle both the paginated list and the panel log uniformly.
+
+    actor_nombre: resolved display name for actor_user_id (auth_identity_id join).
+    entidad_nombre: resolved human-readable name for entidad_id (Materia/Carrera/Cohorte).
     """
     model_config = ConfigDict(extra="forbid", from_attributes=True)
 
@@ -124,3 +132,5 @@ class UltimaAccionItem(BaseModel):
     before: Optional[Dict[str, Any]]
     after: Optional[Dict[str, Any]]
     created_at: datetime
+    actor_nombre: Optional[str] = None
+    entidad_nombre: Optional[str] = None

@@ -21,11 +21,19 @@ C-19: panel metrics endpoints.
         - scope=propio / global applied to ALL views (D3).
         - NO AUDITORIA_CONSULTA registered (D6).
 
+Enrichment (display names):
+    actor_nombre: resolved via UsuarioRepository.get_nombres_por_auth_identity_ids.
+        actor_user_id IS the auth_identity.id (JWT sub), NOT usuario.id.
+        One SELECT IN per endpoint batch, never per-row.
+    entidad_nombre: resolved via MateriaRepository / CarreraRepository /
+        CohorteRepository.get_nombres_por_ids for the supported entity types.
+        One SELECT IN per entity type per batch.
+
 Identity comes EXCLUSIVELY from the verified JWT (rule #8).
 Never reads identity from URL params, body, or headers.
 """
 import uuid
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,6 +46,12 @@ from app.models.comunicacion import ComunicacionEstado
 from app.models.rbac import PermisoScope
 from app.repositories.audit_metrics_repository import AuditMetricsRepository
 from app.repositories.audit_repository import AuditRepository
+from app.repositories.estructura_repository import (
+    CarreraRepository,
+    CohorteRepository,
+    MateriaRepository,
+)
+from app.repositories.usuario_repository import UsuarioRepository
 from app.schemas.audit import AuditEventRead
 from app.schemas.auditoria_metricas import (
     AccionesPorDiaItem,
@@ -55,6 +69,99 @@ from app.services.auditoria_panel_service import AuditoriaPanelService
 from app.services.authorization_service import PermissionGrant
 
 router = APIRouter(prefix="/auditoria", tags=["auditoria"])
+
+
+# ---------------------------------------------------------------------------
+# Enrichment helpers — pure functions, one SELECT IN per call.
+# All queries go through repositories (rule #11).
+# ---------------------------------------------------------------------------
+
+async def _resolve_actor_nombres(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    actor_ids: List[uuid.UUID],
+) -> Dict[uuid.UUID, str]:
+    """
+    Batch-resolve actor display names by auth_identity_id.
+
+    actor_user_id in AuditEvent = JWT sub = auth_identity.id, NOT usuario.id.
+    One SELECT IN, scoped to tenant. Returns {auth_identity_id: "Nombre Apellidos"}.
+    Missing actors (orphan identities) are absent from the dict.
+    """
+    if not actor_ids:
+        return {}
+    repo = UsuarioRepository(session=db, tenant_id=tenant_id)
+    return await repo.get_nombres_por_auth_identity_ids(list(set(actor_ids)))
+
+
+async def _resolve_entidad_nombres(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    entidad_tipo: str,
+    entidad_ids: List[str],
+) -> Dict[str, str]:
+    """
+    Batch-resolve entity display names for supported entity types.
+
+    Supported: Materia, Carrera, Cohorte.
+    Returns {entidad_id_str: nombre}. Empty dict for unsupported types.
+    One SELECT IN per call, scoped to tenant.
+    """
+    if not entidad_ids:
+        return {}
+
+    # Parse UUIDs — skip malformed ones
+    valid_ids: List[uuid.UUID] = []
+    for eid in entidad_ids:
+        try:
+            valid_ids.append(uuid.UUID(eid))
+        except (ValueError, AttributeError):
+            pass
+
+    if not valid_ids:
+        return {}
+
+    if entidad_tipo == "Materia":
+        repo = MateriaRepository(session=db, tenant_id=tenant_id)
+        result = await repo.get_nombres_por_ids(valid_ids)
+    elif entidad_tipo == "Carrera":
+        repo = CarreraRepository(session=db, tenant_id=tenant_id)
+        result = await repo.get_nombres_por_ids(valid_ids)
+    elif entidad_tipo == "Cohorte":
+        repo = CohorteRepository(session=db, tenant_id=tenant_id)
+        result = await repo.get_nombres_por_ids(valid_ids)
+    else:
+        return {}
+
+    # Convert UUID keys back to str for uniform lookup by callers
+    return {str(k): v for k, v in result.items()}
+
+
+async def _resolve_mixed_entidad_nombres(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    tipo_id_pairs: List[tuple[str, Optional[str]]],
+) -> Dict[tuple[str, str], str]:
+    """
+    Batch-resolve entity names for a mixed list of (entidad_tipo, entidad_id) pairs.
+
+    Groups by tipo and emits one SELECT IN per supported type.
+    Returns {(entidad_tipo, entidad_id_str): nombre}.
+    """
+    from collections import defaultdict
+
+    by_tipo: dict[str, list[str]] = defaultdict(list)
+    for tipo, eid in tipo_id_pairs:
+        if eid and tipo in ("Materia", "Carrera", "Cohorte"):
+            by_tipo[tipo].append(eid)
+
+    result: Dict[tuple[str, str], str] = {}
+    for tipo, ids in by_tipo.items():
+        nombres = await _resolve_entidad_nombres(db, tenant_id, tipo, ids)
+        for eid, nombre in nombres.items():
+            result[(tipo, eid)] = nombre
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -108,7 +215,24 @@ async def list_audit_events(
         user_agent=ctx.user_agent,
     )
 
-    return [AuditEventRead.model_validate(e) for e in events]
+    # Batch-resolve display names (one SELECT IN per dimension)
+    actor_nombres = await _resolve_actor_nombres(
+        db, current_user.tenant_id,
+        [e.actor_user_id for e in events],
+    )
+    entidad_nombres = await _resolve_mixed_entidad_nombres(
+        db, current_user.tenant_id,
+        [(e.entidad_tipo, e.entidad_id) for e in events],
+    )
+
+    enriched = []
+    for e in events:
+        item = AuditEventRead.model_validate(e)
+        item.actor_nombre = actor_nombres.get(e.actor_user_id)
+        item.entidad_nombre = entidad_nombres.get((e.entidad_tipo, e.entidad_id))
+        enriched.append(item)
+
+    return enriched
 
 
 # ---------------------------------------------------------------------------
@@ -187,8 +311,18 @@ async def get_interacciones_docente(
         desde=desde_dt,
         hasta=hasta_dt,
     )
+
+    actor_nombres = await _resolve_actor_nombres(
+        db, current_user.tenant_id,
+        [r.actor_user_id for r in rows],
+    )
     items = [
-        InteraccionesDocenteItem(actor_user_id=r.actor_user_id, accion=r.accion, total=r.total)
+        InteraccionesDocenteItem(
+            actor_user_id=r.actor_user_id,
+            accion=r.accion,
+            total=r.total,
+            actor_nombre=actor_nombres.get(r.actor_user_id),
+        )
         for r in rows
     ]
     return InteraccionesDocenteResponse(items=items)
@@ -221,9 +355,23 @@ async def get_interacciones_docente_materia(
         desde=desde_dt,
         hasta=hasta_dt,
     )
+
+    actor_nombres = await _resolve_actor_nombres(
+        db, current_user.tenant_id,
+        [r.actor_user_id for r in rows],
+    )
+    # Resolve materia names: filter rows where materia_id is set
+    materia_ids_str = [r.materia_id for r in rows if r.materia_id]
+    materia_nombres_map = await _resolve_entidad_nombres(
+        db, current_user.tenant_id, "Materia", materia_ids_str,
+    )
     items = [
         InteraccionesDocenteMateriaItem(
-            actor_user_id=r.actor_user_id, materia_id=r.materia_id, total=r.total
+            actor_user_id=r.actor_user_id,
+            materia_id=r.materia_id,
+            total=r.total,
+            actor_nombre=actor_nombres.get(r.actor_user_id),
+            materia_nombre=materia_nombres_map.get(r.materia_id) if r.materia_id else None,
         )
         for r in rows
     ]
@@ -296,4 +444,21 @@ async def get_ultimas_acciones(
             detail=str(exc),
         ) from exc
 
-    return [UltimaAccionItem.model_validate(e) for e in events]
+    # Batch-resolve display names
+    actor_nombres = await _resolve_actor_nombres(
+        db, current_user.tenant_id,
+        [e.actor_user_id for e in events],
+    )
+    entidad_nombres = await _resolve_mixed_entidad_nombres(
+        db, current_user.tenant_id,
+        [(e.entidad_tipo, e.entidad_id) for e in events],
+    )
+
+    enriched = []
+    for e in events:
+        item = UltimaAccionItem.model_validate(e)
+        item.actor_nombre = actor_nombres.get(e.actor_user_id)
+        item.entidad_nombre = entidad_nombres.get((e.entidad_tipo, e.entidad_id))
+        enriched.append(item)
+
+    return enriched

@@ -47,12 +47,12 @@ function toParams(obj: Record<string, unknown>): Record<string, unknown> {
  */
 export async function listarEventos(filtros: AuditoriaFiltros): Promise<AuditEventRead[]> {
   try {
+    // actor_nombre_q is a client-side filter — never sent to the API
     const params = toParams({
       limit: filtros.limit,
       offset: filtros.offset,
       desde: filtros.desde,
       hasta: filtros.hasta,
-      actor_user_id: filtros.actor_user_id,
     })
     const response = await apiClient.get<AuditEventRead[]>('/auditoria', { params })
     return response.data

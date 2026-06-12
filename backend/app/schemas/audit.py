@@ -21,6 +21,13 @@ class AuditEventRead(BaseModel):
 
     extra='forbid' ensures no undeclared fields leak through (D9, Pydantic v2).
     before/after are nullable JSONB payloads (PII already redacted upstream).
+
+    actor_nombre: resolved display name ("Nombre Apellidos") for actor_user_id.
+        actor_user_id is the JWT sub = auth_identity.id, resolved via
+        UsuarioRepository.get_nombres_por_auth_identity_ids. None when no
+        matching domain user exists (orphan auth identity).
+    entidad_nombre: resolved human-readable name for entidad_id, when
+        entidad_tipo is Materia, Carrera, or Cohorte. None for other types.
     """
     model_config = ConfigDict(extra="forbid", from_attributes=True)
 
@@ -39,3 +46,5 @@ class AuditEventRead(BaseModel):
     before: Optional[Dict[str, Any]]
     after: Optional[Dict[str, Any]]
     created_at: datetime
+    actor_nombre: Optional[str] = None
+    entidad_nombre: Optional[str] = None
