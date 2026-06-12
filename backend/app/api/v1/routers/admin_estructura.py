@@ -27,6 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.repositories.audit_repository import AuditRepository
 from app.repositories.estructura_repository import (
     CarreraRepository,
     CohorteRepository,
@@ -63,6 +64,7 @@ def _make_service(db: AsyncSession, tenant_id: uuid.UUID) -> EstructuraService:
         carrera_repo=CarreraRepository(session=db, tenant_id=tenant_id),
         cohorte_repo=CohorteRepository(session=db, tenant_id=tenant_id),
         materia_repo=MateriaRepository(session=db, tenant_id=tenant_id),
+        audit_repo=AuditRepository(session=db, tenant_id=tenant_id),
     )
 
 
@@ -111,6 +113,7 @@ async def editar_carrera(
     try:
         carrera = await svc.editar_carrera(
             carrera_id,
+            actor=current_user,
             codigo=body.codigo,
             nombre=body.nombre,
             estado=body.estado,
@@ -134,7 +137,7 @@ async def dar_baja_carrera(
     """Baja lógica de carrera (soft delete)."""
     svc = _make_service(db, current_user.tenant_id)
     try:
-        await svc.dar_baja_carrera(carrera_id)
+        await svc.dar_baja_carrera(carrera_id, actor=current_user)
     except CarreraNoEncontrada as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
@@ -184,6 +187,7 @@ async def editar_materia(
     try:
         materia = await svc.editar_materia(
             materia_id,
+            actor=current_user,
             codigo=body.codigo,
             nombre=body.nombre,
             estado=body.estado,
@@ -205,7 +209,7 @@ async def dar_baja_materia(
     """Baja lógica de materia (soft delete)."""
     svc = _make_service(db, current_user.tenant_id)
     try:
-        await svc.dar_baja_materia(materia_id)
+        await svc.dar_baja_materia(materia_id, actor=current_user)
     except CarreraNoEncontrada as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
@@ -269,6 +273,7 @@ async def editar_cohorte(
     try:
         cohorte = await svc.editar_cohorte(
             cohorte_id,
+            actor=current_user,
             nombre=body.nombre,
             anio=body.anio,
             vig_desde=body.vig_desde,
@@ -295,6 +300,6 @@ async def dar_baja_cohorte(
     """Baja lógica de cohorte (soft delete)."""
     svc = _make_service(db, current_user.tenant_id)
     try:
-        await svc.dar_baja_cohorte(cohorte_id)
+        await svc.dar_baja_cohorte(cohorte_id, actor=current_user)
     except CarreraNoEncontrada as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))

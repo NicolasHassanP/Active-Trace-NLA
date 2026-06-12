@@ -19,7 +19,9 @@ import uuid
 from typing import List, Optional
 
 from app.core.dependencies import CurrentUser
+from app.models.audit import AuditAction, AuditResultado
 from app.models.estructura import Carrera, Cohorte, EstadoEstructura, Materia
+from app.repositories.audit_repository import AuditRepository
 from app.repositories.estructura_repository import (
     CarreraRepository,
     CohorteRepository,
@@ -78,10 +80,12 @@ class EstructuraService:
         carrera_repo: CarreraRepository,
         cohorte_repo: CohorteRepository,
         materia_repo: MateriaRepository,
+        audit_repo: Optional[AuditRepository] = None,
     ) -> None:
         self._carreras = carrera_repo
         self._cohortes = cohorte_repo
         self._materias = materia_repo
+        self._audit_repo = audit_repo
 
     # -----------------------------------------------------------------------
     # Carrera — ABM
@@ -106,7 +110,14 @@ class EstructuraService:
             nombre=nombre,
             estado=EstadoEstructura.activa,
         )
-        return await self._carreras.add(carrera)
+        carrera = await self._carreras.add(carrera)
+        await self._emit_audit(
+            actor=actor,
+            entidad_tipo="Carrera",
+            entidad_id=str(carrera.id),
+            after={"carrera_id": str(carrera.id), "codigo": carrera.codigo, "nombre": carrera.nombre, "accion": "alta"},
+        )
+        return carrera
 
     async def listar_carreras(self) -> List[Carrera]:
         """Lista carreras activas del tenant (deleted_at IS NULL)."""
@@ -120,6 +131,7 @@ class EstructuraService:
         self,
         carrera_id: uuid.UUID,
         *,
+        actor: Optional[CurrentUser] = None,
         codigo: Optional[str] = None,
         nombre: Optional[str] = None,
         estado: Optional[EstadoEstructura] = None,
@@ -161,9 +173,17 @@ class EstructuraService:
         if estado is not None:
             updates["estado"] = estado
 
-        return await self._carreras.update(carrera, **updates)
+        carrera = await self._carreras.update(carrera, **updates)
+        if actor is not None:
+            await self._emit_audit(
+                actor=actor,
+                entidad_tipo="Carrera",
+                entidad_id=str(carrera.id),
+                after={"carrera_id": str(carrera.id), "codigo": carrera.codigo, "nombre": carrera.nombre, "estado": str(carrera.estado), "accion": "editar"},
+            )
+        return carrera
 
-    async def dar_baja_carrera(self, carrera_id: uuid.UUID) -> Carrera:
+    async def dar_baja_carrera(self, carrera_id: uuid.UUID, *, actor: Optional[CurrentUser] = None) -> Carrera:
         """
         Baja lógica de carrera (soft delete).
         Raises CarreraNoEncontrada si no existe.
@@ -172,6 +192,13 @@ class EstructuraService:
         if carrera is None:
             raise CarreraNoEncontrada(f"Carrera {carrera_id} no encontrada.")
         await self._carreras.delete(carrera)
+        if actor is not None:
+            await self._emit_audit(
+                actor=actor,
+                entidad_tipo="Carrera",
+                entidad_id=str(carrera_id),
+                after={"carrera_id": str(carrera_id), "accion": "baja"},
+            )
         return carrera
 
     # -----------------------------------------------------------------------
@@ -197,7 +224,14 @@ class EstructuraService:
             nombre=nombre,
             estado=EstadoEstructura.activa,
         )
-        return await self._materias.add(materia)
+        materia = await self._materias.add(materia)
+        await self._emit_audit(
+            actor=actor,
+            entidad_tipo="Materia",
+            entidad_id=str(materia.id),
+            after={"materia_id": str(materia.id), "codigo": materia.codigo, "nombre": materia.nombre, "accion": "alta"},
+        )
+        return materia
 
     async def listar_materias(self) -> List[Materia]:
         """Lista materias activas del tenant (deleted_at IS NULL)."""
@@ -211,6 +245,7 @@ class EstructuraService:
         self,
         materia_id: uuid.UUID,
         *,
+        actor: Optional[CurrentUser] = None,
         codigo: Optional[str] = None,
         nombre: Optional[str] = None,
         estado: Optional[EstadoEstructura] = None,
@@ -240,9 +275,17 @@ class EstructuraService:
         if estado is not None:
             updates["estado"] = estado
 
-        return await self._materias.update(materia, **updates)
+        materia = await self._materias.update(materia, **updates)
+        if actor is not None:
+            await self._emit_audit(
+                actor=actor,
+                entidad_tipo="Materia",
+                entidad_id=str(materia.id),
+                after={"materia_id": str(materia.id), "codigo": materia.codigo, "nombre": materia.nombre, "estado": str(materia.estado), "accion": "editar"},
+            )
+        return materia
 
-    async def dar_baja_materia(self, materia_id: uuid.UUID) -> Materia:
+    async def dar_baja_materia(self, materia_id: uuid.UUID, *, actor: Optional[CurrentUser] = None) -> Materia:
         """
         Baja lógica de materia (soft delete).
         Raises CarreraNoEncontrada si no existe.
@@ -251,6 +294,13 @@ class EstructuraService:
         if materia is None:
             raise CarreraNoEncontrada(f"Materia {materia_id} no encontrada.")
         await self._materias.delete(materia)
+        if actor is not None:
+            await self._emit_audit(
+                actor=actor,
+                entidad_tipo="Materia",
+                entidad_id=str(materia_id),
+                after={"materia_id": str(materia_id), "accion": "baja"},
+            )
         return materia
 
     # -----------------------------------------------------------------------
@@ -306,7 +356,14 @@ class EstructuraService:
             vig_hasta=vig_hasta,
             estado=EstadoEstructura.activa,
         )
-        return await self._cohortes.add(cohorte)
+        cohorte = await self._cohortes.add(cohorte)
+        await self._emit_audit(
+            actor=actor,
+            entidad_tipo="Cohorte",
+            entidad_id=str(cohorte.id),
+            after={"cohorte_id": str(cohorte.id), "carrera_id": str(cohorte.carrera_id), "nombre": cohorte.nombre, "anio": cohorte.anio, "accion": "alta"},
+        )
+        return cohorte
 
     async def listar_cohortes(
         self, *, carrera_id: Optional[uuid.UUID] = None
@@ -322,6 +379,7 @@ class EstructuraService:
         self,
         cohorte_id: uuid.UUID,
         *,
+        actor: Optional[CurrentUser] = None,
         nombre: Optional[str] = None,
         anio: Optional[int] = None,
         vig_desde=None,
@@ -378,9 +436,17 @@ class EstructuraService:
         if estado is not None:
             updates["estado"] = estado
 
-        return await self._cohortes.update(cohorte, **updates)
+        cohorte = await self._cohortes.update(cohorte, **updates)
+        if actor is not None:
+            await self._emit_audit(
+                actor=actor,
+                entidad_tipo="Cohorte",
+                entidad_id=str(cohorte.id),
+                after={"cohorte_id": str(cohorte.id), "nombre": cohorte.nombre, "estado": str(cohorte.estado), "accion": "editar"},
+            )
+        return cohorte
 
-    async def dar_baja_cohorte(self, cohorte_id: uuid.UUID) -> Cohorte:
+    async def dar_baja_cohorte(self, cohorte_id: uuid.UUID, *, actor: Optional[CurrentUser] = None) -> Cohorte:
         """
         Baja lógica de cohorte (soft delete).
         Raises CarreraNoEncontrada si no existe.
@@ -389,4 +455,44 @@ class EstructuraService:
         if cohorte is None:
             raise CarreraNoEncontrada(f"Cohorte {cohorte_id} no encontrada.")
         await self._cohortes.delete(cohorte)
+        if actor is not None:
+            await self._emit_audit(
+                actor=actor,
+                entidad_tipo="Cohorte",
+                entidad_id=str(cohorte_id),
+                after={"cohorte_id": str(cohorte_id), "accion": "baja"},
+            )
         return cohorte
+
+    # -----------------------------------------------------------------------
+    # Private helpers
+    # -----------------------------------------------------------------------
+
+    async def _emit_audit(
+        self,
+        actor: CurrentUser,
+        entidad_tipo: str,
+        entidad_id: str,
+        after: dict,
+    ) -> None:
+        """
+        Emit a ESTRUCTURA_GESTIONAR audit event.
+
+        No-op if audit_repo was not injected (preserves backwards compat with
+        tests that construct EstructuraService without an audit_repo).
+        Identidad siempre de actor (CurrentUser desde JWT — regla dura #8).
+        """
+        if self._audit_repo is None:
+            return
+        from app.services.audit_service import AuditService
+        audit_svc = AuditService(repository=self._audit_repo)
+        await audit_svc.record(
+            actor=actor,
+            action=AuditAction.ESTRUCTURA_GESTIONAR,
+            modulo="estructura",
+            entidad_tipo=entidad_tipo,
+            entidad_id=entidad_id,
+            resultado=AuditResultado.ok,
+            registros_afectados=1,
+            after=after,
+        )

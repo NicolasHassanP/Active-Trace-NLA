@@ -65,6 +65,7 @@ class AuditAction(str, enum.Enum):
     PROGRAMA_GESTIONAR = "PROGRAMA_GESTIONAR"
     FECHA_ACADEMICA_GESTIONAR = "FECHA_ACADEMICA_GESTIONAR"
     PERFIL_EDITAR = "PERFIL_EDITAR"
+    ESTRUCTURA_GESTIONAR = "ESTRUCTURA_GESTIONAR"
 
 
 # ---------------------------------------------------------------------------
