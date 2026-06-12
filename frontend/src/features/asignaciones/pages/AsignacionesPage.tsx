@@ -21,13 +21,10 @@ import AsignacionForm from '../components/AsignacionForm'
 import AsignacionesTable from '../components/AsignacionesTable'
 import type {
   AsignacionCreate,
-  AsignacionFiltros,
   AsignacionRead,
   AsignacionUpdate,
 } from '../types'
 import type { AsignacionFormValues } from '../components/AsignacionForm'
-
-const EMPTY_FILTROS: AsignacionFiltros = {}
 
 function errorMessage(err: unknown): string {
   const e = err as Partial<DomainError>
@@ -48,10 +45,10 @@ function asignacionToFormValues(a: AsignacionRead): AsignacionFormValues {
 }
 
 export default function AsignacionesPage() {
-  const [filtros, setFiltros] = useState<AsignacionFiltros>(EMPTY_FILTROS)
   const [editingRow, setEditingRow] = useState<AsignacionRead | null>(null)
 
-  const asignacionesQuery = useAsignaciones(filtros)
+  // Always fetch the full list — filtering is done client-side in AsignacionesTable.
+  const asignacionesQuery = useAsignaciones({})
   const crearMutation = useCrearAsignacion()
   const editarMutation = useEditarAsignacion()
   const bajaMutation = useDarBajaAsignacion()
@@ -128,8 +125,6 @@ export default function AsignacionesPage() {
         {!asignacionesQuery.isLoading && !asignacionesQuery.isError && (
           <AsignacionesTable
             asignaciones={asignacionesQuery.data ?? []}
-            onFilter={(f) => setFiltros(f)}
-            onClear={() => setFiltros(EMPTY_FILTROS)}
             onEdit={handleEdit}
             onDelete={handleDelete}
             isDeleting={bajaMutation.isPending}

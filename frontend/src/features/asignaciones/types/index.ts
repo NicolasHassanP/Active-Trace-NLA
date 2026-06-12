@@ -32,8 +32,10 @@ export interface AsignacionRead {
   desde: string             // ISO date string
   hasta: string | null      // ISO date string or null (open-ended)
   materia_id: string | null
+  materia_nombre?: string | null
   carrera_id: string | null
   cohorte_id: string | null
+  cohorte_nombre?: string | null
   comisiones: string[]
   responsable_id: string | null
   estado_vigencia: EstadoVigencia
@@ -73,11 +75,26 @@ export interface AsignacionUpdate {
 
 /**
  * Query params for GET /api/v1/asignaciones — all optional.
+ * These are the server-side params sent to the API.
  */
 export interface AsignacionFiltros {
   usuario_id?: string | null
   rol?: RolAsignacion | null
   responsable_id?: string | null
+}
+
+/**
+ * Client-side filter state for the Asignaciones table.
+ * All filtering is done in-memory over the full list from the API.
+ */
+export interface AsignacionClientFiltros {
+  usuario?: string        // substring match on "{nombre} {apellidos}"
+  rol?: RolAsignacion | '' // exact match; '' means no filter
+  materia?: string        // exact match on materia_nombre; '' means no filter
+  cohorte?: string        // exact match on cohorte_nombre; '' means no filter
+  vigencia?: EstadoVigencia | '' // exact match; '' means no filter
+  desde?: string          // ISO date — keep rows with desde >= value
+  hasta?: string          // ISO date — keep rows with desde <= value
 }
 
 /**

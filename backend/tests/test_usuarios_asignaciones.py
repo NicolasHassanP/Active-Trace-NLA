@@ -1647,3 +1647,199 @@ async def test_endpoint_buscar_usuarios_no_expone_pii(
         assert "tenant_id" not in item
         assert "email_hash" not in item
         assert "email_encrypted" not in item
+
+
+# ---------------------------------------------------------------------------
+# TASK 15 — AsignacionRead incluye materia_nombre / cohorte_nombre (UX fix)
+# ---------------------------------------------------------------------------
+
+
+def test_asignacion_read_tiene_campos_materia_cohorte_nombre():
+    """RED: AsignacionRead incluye materia_nombre y cohorte_nombre con default None."""
+    fields = set(AsignacionRead.model_fields.keys())
+    assert "materia_nombre" in fields, "Falta materia_nombre en AsignacionRead"
+    assert "cohorte_nombre" in fields, "Falta cohorte_nombre en AsignacionRead"
+
+
+def test_asignacion_read_materia_cohorte_nombre_default_none():
+    """RED: materia_nombre y cohorte_nombre son Optional con default None."""
+    a = AsignacionRead(
+        id=uuid.uuid4(),
+        usuario_id=uuid.uuid4(),
+        rol=RolAsignacion.PROFESOR,
+        desde=date.today(),
+        estado_vigencia=EstadoVigencia.vigente,
+        created_at=datetime.datetime.now(),
+        updated_at=datetime.datetime.now(),
+    )
+    assert a.materia_nombre is None
+    assert a.cohorte_nombre is None
+
+
+def test_asignacion_read_acepta_materia_cohorte_nombre_poblados():
+    """Triangulación: AsignacionRead acepta nombres cuando se proveen."""
+    a = AsignacionRead(
+        id=uuid.uuid4(),
+        usuario_id=uuid.uuid4(),
+        rol=RolAsignacion.TUTOR,
+        desde=date.today(),
+        estado_vigencia=EstadoVigencia.vigente,
+        created_at=datetime.datetime.now(),
+        updated_at=datetime.datetime.now(),
+        materia_nombre="Matemáticas",
+        cohorte_nombre="2024-A",
+    )
+    assert a.materia_nombre == "Matemáticas"
+    assert a.cohorte_nombre == "2024-A"
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_listar_asignaciones_devuelve_materia_y_cohorte_nombre(
+    usuario_client, usuario_setup, monkeypatch, db_session, create_tables
+):
+    """RED→GREEN: GET /api/v1/asignaciones devuelve materia_nombre/cohorte_nombre cuando existen."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    from app.models.estructura import Carrera, Cohorte, EstadoEstructura, Materia
+    from app.models.usuario import Asignacion
+
+    tid = usuario_setup["tid_a"]
+    user_id = usuario_setup["user_admin_a"]
+    rol = usuario_setup["rol_admin_a"]
+    token = _make_jwt(tid, user_id, roles=[rol])
+
+    # Crear materia y cohorte con nombres conocidos en el tenant
+    slug = uuid.uuid4().hex[:6]
+    carrera = Carrera(
+        tenant_id=tid,
+        codigo=f"CAR-{slug}",
+        nombre=f"Carrera {slug}",
+        estado=EstadoEstructura.activa,
+    )
+    db_session.add(carrera)
+    await db_session.flush()
+
+    materia = Materia(
+        tenant_id=tid,
+        codigo=f"MAT-{slug}",
+        nombre=f"Álgebra {slug}",
+        estado=EstadoEstructura.activa,
+    )
+    cohorte = Cohorte(
+        tenant_id=tid,
+        carrera_id=carrera.id,
+        nombre=f"Cohorte {slug}",
+        anio=2024,
+        vig_desde=date.today(),
+        estado=EstadoEstructura.activa,
+    )
+    db_session.add_all([materia, cohorte])
+    # Commit so the HTTP client (separate connection) can see these rows via FK
+    await db_session.commit()
+
+    # Crear un usuario real en el tenant
+    email = f"mat_coh_test_{uuid.uuid4().hex[:8]}@test.com"
+    resp_usr = await usuario_client.post(
+        "/api/v1/admin/usuarios",
+        json={"email": email, "nombre": "Docente", "apellidos": "Test"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_usr.status_code == 201
+    nuevo_usuario_id = resp_usr.json()["id"]
+
+    # Crear asignación con materia_id y cohorte_id
+    resp_asgn = await usuario_client.post(
+        "/api/v1/asignaciones",
+        json={
+            "usuario_id": nuevo_usuario_id,
+            "rol": "PROFESOR",
+            "desde": str(date.today()),
+            "materia_id": str(materia.id),
+            "cohorte_id": str(cohorte.id),
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_asgn.status_code == 201
+
+    # GET lista debe devolver materia_nombre y cohorte_nombre
+    resp_lista = await usuario_client.get(
+        "/api/v1/asignaciones",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_lista.status_code == 200
+    items = resp_lista.json()
+    match = [a for a in items if a["usuario_id"] == nuevo_usuario_id]
+    assert match, "La asignación creada no aparece en el listado"
+    item = match[0]
+    assert item["materia_nombre"] == f"Álgebra {slug}", (
+        f"Esperado 'Álgebra {slug}', obtenido {item.get('materia_nombre')!r}"
+    )
+    assert item["cohorte_nombre"] == f"Cohorte {slug}", (
+        f"Esperado 'Cohorte {slug}', obtenido {item.get('cohorte_nombre')!r}"
+    )
+
+    # Cleanup: null out FK references in the asignacion before deleting the referenced rows.
+    # The asignacion was created via the HTTP client in its own session; we load it here by id.
+    from sqlalchemy import update as sa_update
+    from app.models.usuario import Asignacion as AsignacionModel
+    asgn_id = uuid.UUID(match[0]["id"])
+    await db_session.execute(
+        sa_update(AsignacionModel)
+        .where(AsignacionModel.id == asgn_id)
+        .values(materia_id=None, cohorte_id=None)
+    )
+    await db_session.commit()
+    await db_session.delete(materia)
+    await db_session.delete(cohorte)
+    await db_session.delete(carrera)
+    await db_session.commit()
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_listar_asignaciones_sin_materia_cohorte_no_crashea(
+    usuario_client, usuario_setup, monkeypatch
+):
+    """Triangulación: asignación sin materia_id/cohorte_id → nombres None sin crashear."""
+    monkeypatch.setattr("app.core.config.Settings", _fake_settings)
+
+    tid = usuario_setup["tid_a"]
+    user_id = usuario_setup["user_admin_a"]
+    rol = usuario_setup["rol_admin_a"]
+    token = _make_jwt(tid, user_id, roles=[rol])
+
+    # Crear usuario
+    email = f"no_mat_coh_{uuid.uuid4().hex[:8]}@test.com"
+    resp_usr = await usuario_client.post(
+        "/api/v1/admin/usuarios",
+        json={"email": email, "nombre": "SinMateria", "apellidos": "SinCohorte"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_usr.status_code == 201
+    nuevo_usuario_id = resp_usr.json()["id"]
+
+    # Crear asignación SIN materia ni cohorte
+    resp_asgn = await usuario_client.post(
+        "/api/v1/asignaciones",
+        json={
+            "usuario_id": nuevo_usuario_id,
+            "rol": "NEXO",
+            "desde": str(date.today()),
+            # materia_id y cohorte_id omitidos intencionalmente
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_asgn.status_code == 201
+
+    # GET lista no debe crashear; nombres deben ser None/ausentes
+    resp_lista = await usuario_client.get(
+        "/api/v1/asignaciones",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_lista.status_code == 200
+    items = resp_lista.json()
+    match = [a for a in items if a["usuario_id"] == nuevo_usuario_id]
+    assert match, "La asignación creada no aparece en el listado"
+    item = match[0]
+    # materia_nombre y cohorte_nombre deben ser null (None serializado como null)
+    assert item.get("materia_nombre") is None
+    assert item.get("cohorte_nombre") is None

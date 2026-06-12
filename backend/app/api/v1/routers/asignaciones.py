@@ -67,11 +67,13 @@ def _build_asignacion_read(
     hoy: Optional[date] = None,
     usuario_nombre: Optional[str] = None,
     usuario_apellidos: Optional[str] = None,
+    materia_nombre: Optional[str] = None,
+    cohorte_nombre: Optional[str] = None,
 ) -> AsignacionRead:
     """
     Construye AsignacionRead desde el ORM model.
     Computa estado_vigencia con el helper puro (D4).
-    Acepta nombre/apellidos resueltos externamente (batch o single fetch).
+    Acepta nombre/apellidos/materia_nombre/cohorte_nombre resueltos externamente (batch).
     """
     return AsignacionRead(
         id=asignacion.id,
@@ -82,8 +84,10 @@ def _build_asignacion_read(
         desde=asignacion.desde,
         hasta=asignacion.hasta,
         materia_id=asignacion.materia_id,
+        materia_nombre=materia_nombre,
         carrera_id=asignacion.carrera_id,
         cohorte_id=asignacion.cohorte_id,
+        cohorte_nombre=cohorte_nombre,
         comisiones=asignacion.comisiones or [],
         responsable_id=asignacion.responsable_id,
         estado_vigencia=estado_vigencia(asignacion.desde, asignacion.hasta, hoy),
@@ -146,10 +150,19 @@ async def listar_asignaciones(
         rol=rol,
         responsable_id=responsable_id,
     )
-    # Batch-fetch nombres: un único query IN para todos los usuario_id del listado.
+    # Batch-fetch nombres: un único query IN por tipo de entidad.
     usuario_repo = UsuarioRepository(session=db, tenant_id=current_user.tenant_id)
-    ids = list({a.usuario_id for a in asignaciones})
-    nombres_map = await usuario_repo.get_nombres_por_ids(ids)
+    materia_repo = MateriaRepository(session=db, tenant_id=current_user.tenant_id)
+    cohorte_repo = CohorteRepository(session=db, tenant_id=current_user.tenant_id)
+
+    usuario_ids = list({a.usuario_id for a in asignaciones})
+    materia_ids = list({a.materia_id for a in asignaciones if a.materia_id is not None})
+    cohorte_ids = list({a.cohorte_id for a in asignaciones if a.cohorte_id is not None})
+
+    nombres_map = await usuario_repo.get_nombres_por_ids(usuario_ids)
+    materias_map = await materia_repo.get_nombres_por_ids(materia_ids)
+    cohortes_map = await cohorte_repo.get_nombres_por_ids(cohorte_ids)
+
     hoy = date.today()
     return [
         _build_asignacion_read(
@@ -157,6 +170,8 @@ async def listar_asignaciones(
             hoy,
             usuario_nombre=nombres_map.get(a.usuario_id, (None, None))[0],
             usuario_apellidos=nombres_map.get(a.usuario_id, (None, None))[1],
+            materia_nombre=materias_map.get(a.materia_id) if a.materia_id else None,
+            cohorte_nombre=cohortes_map.get(a.cohorte_id) if a.cohorte_id else None,
         )
         for a in asignaciones
     ]
