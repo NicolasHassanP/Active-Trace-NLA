@@ -560,16 +560,36 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
 - **Spec**: `openspec/specs/alumno-portal/spec.md`
 
 ### [C-24] `frontend-finanzas-y-admin`
-- **Estado**: `[ ]` pendiente — **DIFERIDO a fin de proyecto** (depende de C-18, diferido). Los ítems de nav Usuarios/Estructura/Auditoría/Liquidaciones quedan visibles para ADMIN y caen en 404 **adrede** hasta construir este change. No existe usuario demo de FINANZAS, también adrede.
-- **Scope**:
+- **Estado**: `[ ]` pendiente — **DIFERIDO a fin de proyecto** (depende de C-18, diferido). Solo el ítem de nav Liquidaciones queda visible para ADMIN/FINANZAS y deshabilitado (`disabled`) **adrede** hasta construir este change. No existe usuario demo de FINANZAS, también adrede.
+- **NOTA (carve-out)**: la parte **admin-core** (estructura académica, usuarios del tenant, panel de auditoría) se movió a **C-29 `frontend-admin-core`**, que NO depende de C-18 y ya puede construirse. C-24 queda reducido **solo a la parte FINANZAS** (liquidaciones / facturas / grilla salarial), que sigue diferida por C-18.
+- **Scope** (solo FINANZAS):
   - Feature FINANZAS: vista de liquidaciones del período con segmentación (general / NEXO / factura) + KPIs, cerrar liquidación, historial, grilla salarial, gestión de facturas.
-  - Feature ADMIN: estructura académica (carreras, cohortes, materias), usuarios del tenant, panel de auditoría y métricas, log completo. Consume `C-06`, `C-07`, `C-18`, `C-19`.
-  - Tests: vista de liquidación segmentada, cierre, ABM grilla salarial, panel de auditoría con filtros.
-- **Dependencias**: `C-21`, `C-18`, `C-19`
+  - Tests: vista de liquidación segmentada, cierre, ABM grilla salarial.
+- **Dependencias**: `C-21`, `C-18`
 - **Governance**: BAJO
 - **Leer antes**:
-  - `knowledge-base/06_funcionalidades.md` Épicas 9, 10, 5
+  - `knowledge-base/06_funcionalidades.md` Épicas 9, 10
   - `knowledge-base/07_flujos_principales.md` FL-08, FL-11, FL-12
+
+### [C-29] `frontend-admin-core`
+- **Estado**: `[ ]` pendiente — propuesto (2026-06-11). Carve-out de la parte NO-finanzas de C-24. **Cero dependencia y cero referencia a C-18.**
+- **Scope** (solo ADMIN, consume backends ya hechos):
+  - Página `/admin/estructura`: ABM de carreras, materias y cohortes sobre `/api/v1/admin/{carreras,materias,cohortes}` (C-06). Lectura `estructura:ver`, escritura `estructura:gestionar`. Desbloquea crear materias/carreras desde la UI.
+  - Página `/admin/usuarios`: alta/edición/baja lógica de usuarios del tenant sobre `/api/v1/admin/usuarios` (C-07), permiso `usuarios:gestionar`. Solo campos no-PII de `UsuarioRead` (nunca dni/cuil/cbu/alias_cbu).
+  - Página `/admin/auditoria`: panel read-only — listado con filtros + paginación, métricas (acciones-por-día, interacciones-docente, interacciones-docente-materia, comunicaciones-por-docente) y últimas-acciones sobre `/api/v1/auditoria` (C-05/C-19), permiso `auditoria:ver`.
+  - Routing: 3 rutas reales en `frontend/src/App.tsx` (hoy caen en `NotFound404`); desmarcar los 3 ítems placeholder en `buildNav.ts`. NO tocar Liquidaciones (sigue de C-24).
+  - 3 features frontend nuevas (`admin-estructura`, `admin-usuarios`, `admin-auditoria`), reutilizando patrones de `features/asignaciones`, `PasoCohorte`, componentes `ui`, `Forbidden403`, `parseDomainError`. Sin backend nuevo.
+- **Dependencias**: `C-21` (shell+auth), `C-06`, `C-07`, `C-05`/`C-19` (backends hechos). **NO depende de C-18 ni C-24.**
+- **Governance**: usuarios (alta/baja) + RBAC = **CRÍTICO** (checkpoint humano en apply); estructura = MEDIO; auditoría = BAJO (read-only).
+- **Artefactos**: `openspec/changes/c-29-frontend-admin-core/`
+- **Specs**: `estructura-frontend`, `usuarios-frontend`, `auditoria-frontend`
+- **Leer antes**:
+  - `backend/app/api/v1/routers/admin_estructura.py` + `backend/app/schemas/estructura.py`
+  - `backend/app/api/v1/routers/admin_usuarios.py` + `backend/app/schemas/usuario.py`
+  - `backend/app/api/v1/routers/auditoria.py` + `backend/app/schemas/audit.py` + `auditoria_metricas.py`
+  - `frontend/src/features/asignaciones/` (patrón ABM + filtros + RHF) y `frontend/src/features/setup-cuatrimestre/components/PasoCohorte.tsx`
+  - `frontend/src/App.tsx` y `frontend/src/features/shell/components/buildNav.ts`
+  - `knowledge-base/03_actores_y_roles.md` (RBAC ADMIN), `knowledge-base/06_funcionalidades.md` (Épica 5)
 
 ### [C-27] `historial-comunicaciones`
 - **Estado**: `[x]` archivado (2026-06-07)
