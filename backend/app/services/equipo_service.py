@@ -9,6 +9,11 @@ C-08 Design Decisions:
     D9    — Acciones: EQUIPOS_ASIGNACION_MASIVA, EQUIPOS_CLONAR, EQUIPOS_VIGENCIA_GENERAL.
     D10   — Schemas Pydantic v2 para request/response.
 
+Notificación al asignar (D-notif):
+    Al crear una asignación (masiva o clonar), se notifica a cada docente vía
+    mensajería interna. remitente = actor (domain_user_id resuelto en el router).
+    No se notifica si el actor se asigna a sí mismo.
+
 Identity ALWAYS from current_user (JWT session) — never from request body.
 Queries ONLY via repositories.
 snake_case; ≤500 LOC.
@@ -24,6 +29,8 @@ from app.models.audit import AuditAction, AuditResultado
 from app.models.usuario import Asignacion, RolAsignacion
 from app.models.vigencia import estado_vigencia
 from app.repositories.audit_repository import AuditRepository
+from app.repositories.estructura_repository import CohorteRepository, MateriaRepository
+from app.repositories.mensajeria_repository import MensajeriaRepository
 from app.repositories.usuario_repository import AsignacionRepository, UsuarioRepository
 from app.schemas.equipo import (
     AsignacionMasivaRequest,
@@ -34,6 +41,7 @@ from app.schemas.equipo import (
     ResumenLote,
     VigenciaGeneralRequest,
 )
+from app.services.asignacion_notif import notificar_asignacion
 from app.services.usuario_service import ReferenciaInvalida, UsuarioNoEncontrado
 
 
@@ -55,10 +63,46 @@ class EquipoService:
         asignacion_repo: AsignacionRepository,
         usuario_repo: UsuarioRepository,
         audit_repo: AuditRepository,
+        mensajeria_repo: Optional[MensajeriaRepository] = None,
+        materia_repo: Optional[MateriaRepository] = None,
+        cohorte_repo: Optional[CohorteRepository] = None,
     ) -> None:
         self._asig_repo = asignacion_repo
         self._usr_repo = usuario_repo
         self._audit_repo = audit_repo
+        self._mensajeria_repo = mensajeria_repo
+        self._materia_repo = materia_repo
+        self._cohorte_repo = cohorte_repo
+
+    # -----------------------------------------------------------------------
+    # _resolver_nombres_estructura — helper interno
+    # -----------------------------------------------------------------------
+
+    async def _resolver_nombres_estructura(
+        self,
+        materia_id: Optional[uuid.UUID],
+        cohorte_id: Optional[uuid.UUID],
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Devuelve (materia_nombre, cohorte_nombre) consultando los repos de estructura.
+        Si algún repo no está inyectado o la entidad no existe, retorna None para ese campo
+        (fallback defensivo: el helper de notificación usa el UUID en ese caso).
+        Queries solo en repositories — regla dura #11.
+        """
+        materia_nombre: Optional[str] = None
+        cohorte_nombre: Optional[str] = None
+
+        if materia_id is not None and self._materia_repo is not None:
+            materia = await self._materia_repo.get_by_id(materia_id)
+            if materia is not None:
+                materia_nombre = materia.nombre
+
+        if cohorte_id is not None and self._cohorte_repo is not None:
+            cohorte = await self._cohorte_repo.get_by_id(cohorte_id)
+            if cohorte is not None:
+                cohorte_nombre = cohorte.nombre
+
+        return materia_nombre, cohorte_nombre
 
     # -----------------------------------------------------------------------
     # listar_mis_equipos — GET /mis-equipos
@@ -197,12 +241,18 @@ class EquipoService:
         self,
         current_user: CurrentUser,
         req: AsignacionMasivaRequest,
+        *,
+        domain_user_id: Optional[uuid.UUID] = None,
     ) -> ResumenLote:
         """
         Crea N asignaciones atómicamente y emite auditoría EQUIPOS_ASIGNACION_MASIVA.
 
         Valida TODOS los usuario_ids y el responsable_id contra el tenant ANTES de persistir.
         Si cualquier validación falla, hace rollback completo (0 filas).
+
+        domain_user_id: usuario.id de dominio del actor (resuelto en el router vía
+            resolve_domain_user_id). Necesario para la notificación vía mensajería.
+            Si es None, no se envía notificación.
         """
         # Validate all usuario_ids belong to this tenant
         for uid in req.usuario_ids:
@@ -239,6 +289,25 @@ class EquipoService:
         # Persist atomically (bulk_add forces tenant_id from repo scope)
         await self._asig_repo.bulk_add(asignaciones)
 
+        # Notify each assigned docente (skip self-assignment)
+        if domain_user_id is not None and self._mensajeria_repo is not None:
+            # Resolver nombres UNA sola vez — todos comparten la misma materia/cohorte
+            mat_nombre, coh_nombre = await self._resolver_nombres_estructura(
+                req.materia_id, req.cohorte_id
+            )
+            for uid in req.usuario_ids:
+                await notificar_asignacion(
+                    self._mensajeria_repo,
+                    remitente_id=domain_user_id,
+                    destinatario_id=uid,
+                    materia_id=req.materia_id,
+                    cohorte_id=req.cohorte_id,
+                    rol=req.rol,
+                    desde=req.desde,
+                    materia_nombre=mat_nombre,
+                    cohorte_nombre=coh_nombre,
+                )
+
         # Audit event
         await self._emit_audit(
             actor=current_user,
@@ -263,11 +332,17 @@ class EquipoService:
         self,
         current_user: CurrentUser,
         req: ClonarEquipoRequest,
+        *,
+        domain_user_id: Optional[uuid.UUID] = None,
     ) -> ResumenClonacion:
         """
         Clona las asignaciones vigentes del equipo origen al destino.
         No-destructivo: skip de duplicados (mismo usuario_id + rol + tripleta destino).
         Emite auditoría EQUIPOS_CLONAR.
+
+        domain_user_id: usuario.id de dominio del actor (resuelto en el router vía
+            resolve_domain_user_id). Necesario para la notificación vía mensajería.
+            Solo se notifican los registros efectivamente clonados (no los omitidos).
         """
         # Get source team asignaciones (active, not soft-deleted)
         origen = await self._asig_repo.list_by_equipo(
@@ -307,6 +382,25 @@ class EquipoService:
 
         if to_clone:
             await self._asig_repo.bulk_add(to_clone)
+
+        # Notify only the effectively cloned docentes (skip omitidas / duplicates)
+        if domain_user_id is not None and self._mensajeria_repo is not None:
+            # Resolver nombres UNA sola vez — todos comparten el mismo destino
+            mat_nombre, coh_nombre = await self._resolver_nombres_estructura(
+                req.destino_materia_id, req.destino_cohorte_id
+            )
+            for nueva_asig in to_clone:
+                await notificar_asignacion(
+                    self._mensajeria_repo,
+                    remitente_id=domain_user_id,
+                    destinatario_id=nueva_asig.usuario_id,
+                    materia_id=req.destino_materia_id,
+                    cohorte_id=req.destino_cohorte_id,
+                    rol=nueva_asig.rol,
+                    desde=req.desde,
+                    materia_nombre=mat_nombre,
+                    cohorte_nombre=coh_nombre,
+                )
 
         await self._emit_audit(
             actor=current_user,

@@ -26,9 +26,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission
+from app.core.dependencies import CurrentUser, get_current_user, get_db, require_permission, resolve_domain_user_id, try_resolve_domain_user_id
 from app.models.usuario import RolAsignacion
 from app.models.vigencia import estado_vigencia
+from app.repositories.estructura_repository import CohorteRepository, MateriaRepository
+from app.repositories.mensajeria_repository import MensajeriaRepository
 from app.repositories.usuario_repository import AsignacionRepository, UsuarioRepository
 from app.schemas.usuario import (
     AsignacionCreate,
@@ -54,6 +56,9 @@ def _make_service(db: AsyncSession, tenant_id: uuid.UUID) -> AsignacionService:
     return AsignacionService(
         asignacion_repo=AsignacionRepository(session=db, tenant_id=tenant_id),
         usuario_repo=UsuarioRepository(session=db, tenant_id=tenant_id),
+        mensajeria_repo=MensajeriaRepository(session=db, tenant_id=tenant_id),
+        materia_repo=MateriaRepository(session=db, tenant_id=tenant_id),
+        cohorte_repo=CohorteRepository(session=db, tenant_id=tenant_id),
     )
 
 
@@ -165,6 +170,7 @@ async def crear_asignacion(
     db: AsyncSession = Depends(get_db),
 ) -> AsignacionRead:
     """Crea una nueva asignación para un usuario del tenant."""
+    domain_user_id = await try_resolve_domain_user_id(current_user, db)
     svc = _make_service(db, current_user.tenant_id)
     try:
         asignacion = await svc.crear_asignacion(
@@ -178,6 +184,7 @@ async def crear_asignacion(
             cohorte_id=body.cohorte_id,
             comisiones=body.comisiones,
             responsable_id=body.responsable_id,
+            domain_user_id=domain_user_id,
         )
     except UsuarioNoEncontrado as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
