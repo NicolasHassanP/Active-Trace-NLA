@@ -133,13 +133,28 @@ Y luego empezá desde el paso 2.
 
 ## Reset de datos para grabar la demo
 
-Para dejar el entorno "demo-ready" entre tomas (limpia el junk transaccional pero conserva los 5 usuarios, la estructura académica y el padrón + calificaciones demo):
+Hay dos scripts de reset según cómo quieras arrancar el video. Ambos son idempotentes y, tras correrlos, todos quedan deslogueados (se vacían las sesiones) — volvé a iniciar sesión.
+
+### Opción A — "default/en blanco" (construir todo en vivo)
+
+Deja SOLO los 5 usuarios + RBAC; estructura, asignaciones, padrón, calificaciones y todo lo transaccional quedan vacíos. Pensado para mostrar el flujo completo desde cero (crear carrera/materia/cohorte vía `/admin/estructura`, asignar docentes, importar padrón/calificaciones, etc.).
+
+```bash
+docker exec -i active-trace-postgres-1 psql -U postgres -d activia_trace -v ON_ERROR_STOP=1 < backend/reset_demo_blank.sql
+```
+
+**Conserva**: tenant, RBAC, los 5 usuarios demo. **Borra**: TODO lo demás (estructura, asignaciones, padrón, calificaciones, umbral, tareas, encuentros, coloquios, mensajería, avisos, comunicaciones, audit log, sesiones).
+
+> Requiere `/admin/estructura` (C-29) para recrear materias/carreras desde la UI. Para repoblar la estructura base sin UI: `python seed_demo_estructura.py` (carrera TDS + 2 materias + cohorte 2026-1C + asignaciones demo).
+
+### Opción B — "demo-ready" (con datos pre-cargados)
+
+Conserva estructura + asignaciones + padrón + calificaciones; solo limpia el junk transaccional. Para arrancar el video con datos ya cargados (Calificaciones/Atrasados muestran info).
 
 ```bash
 docker exec -i active-trace-postgres-1 psql -U postgres -d activia_trace -v ON_ERROR_STOP=1 < backend/reset_demo_data.sql
 ```
 
-**Conserva**: tenant, RBAC, los 5 usuarios demo, carrera/materia/cohorte, asignaciones, padrón y calificaciones.
-**Borra**: tareas, encuentros, coloquios/evaluaciones, mensajería, avisos, comunicaciones, audit log y sesiones de login.
+**Conserva**: tenant, RBAC, 5 usuarios, carrera/materia/cohorte, asignaciones, padrón y calificaciones. **Borra**: tareas, encuentros, coloquios/evaluaciones, mensajería, avisos, comunicaciones, audit log y sesiones.
 
-> Es idempotente. Tras correrlo, todos quedan deslogueados (se vacían las sesiones) — volvé a iniciar sesión. Si querés un estado 100% pristino desde cero (incluye re-importar padrón/calificaciones), usá `docker compose down -v` + migraciones + seeds (ver Troubleshooting + paso 2 y 4).
+> Estado 100% pristino desde cero (recrear schema incluido): `docker compose down -v` + migraciones + seeds (ver Troubleshooting + pasos 2 y 4).
