@@ -377,6 +377,18 @@ async def _ensure_schema(engine) -> None:
             await conn.execute(
                 text("ALTER TYPE audit_action ADD VALUE 'PERFIL_EDITAR'")
             )
+        # C-06 audit gap fix: ESTRUCTURA_GESTIONAR added to audit_action enum in migration 021.
+        result_estr_action = await conn.execute(
+            text(
+                "SELECT 1 FROM pg_enum e "
+                "JOIN pg_type t ON e.enumtypid = t.oid "
+                "WHERE t.typname = 'audit_action' AND e.enumlabel = 'ESTRUCTURA_GESTIONAR'"
+            )
+        )
+        if result_estr_action.scalar() is None:
+            await conn.execute(
+                text("ALTER TYPE audit_action ADD VALUE 'ESTRUCTURA_GESTIONAR'")
+            )
         # C-17: programa/fecha_academica audit actions
         for acad_action in ("PROGRAMA_GESTIONAR", "FECHA_ACADEMICA_GESTIONAR"):
             result_acad = await conn.execute(
