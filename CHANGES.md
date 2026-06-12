@@ -572,7 +572,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/07_flujos_principales.md` FL-08, FL-11, FL-12
 
 ### [C-29] `frontend-admin-core`
-- **Estado**: `[ ]` pendiente — propuesto (2026-06-11). Carve-out de la parte NO-finanzas de C-24. **Cero dependencia y cero referencia a C-18.**
+- **Estado**: `[x]` archivado (2026-06-12). Carve-out de la parte NO-finanzas de C-24. **Cero dependencia y cero referencia a C-18.**
 - **Scope** (solo ADMIN, consume backends ya hechos):
   - Página `/admin/estructura`: ABM de carreras, materias y cohortes sobre `/api/v1/admin/{carreras,materias,cohortes}` (C-06). Lectura `estructura:ver`, escritura `estructura:gestionar`. Desbloquea crear materias/carreras desde la UI.
   - Página `/admin/usuarios`: alta/edición/baja lógica de usuarios del tenant sobre `/api/v1/admin/usuarios` (C-07), permiso `usuarios:gestionar`. Solo campos no-PII de `UsuarioRead` (nunca dni/cuil/cbu/alias_cbu).
