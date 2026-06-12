@@ -4,8 +4,7 @@
  * The catalog is a declarative NavItem[] — each item lists which roles can see it.
  * Empty roles array on item means "visible to all authenticated users".
  *
- * C-29: /admin/estructura and /admin/auditoria routes are now registered.
- * /admin/usuarios is deferred (governance CRÍTICO — pending human checkpoint).
+ * C-29: /admin/estructura, /admin/auditoria, and /admin/usuarios are all registered.
  * Liquidaciones stays disabled until C-18 ships.
  */
 import type { Role } from '@/features/auth/types'
