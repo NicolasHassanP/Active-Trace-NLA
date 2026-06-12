@@ -14,13 +14,16 @@ snake_case; ≤500 LOC.
 """
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.estructura import Carrera, Cohorte, EstadoEstructura, Materia
 from app.repositories.base import TenantScopedRepository
+
+# Type alias: {entity_id: nombre}
+NombreMap = Dict[uuid.UUID, str]
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +119,27 @@ class MateriaRepository(TenantScopedRepository[Materia]):
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_nombres_por_ids(self, ids: List[uuid.UUID]) -> NombreMap:
+        """
+        Batch-fetch de nombre para un conjunto de materia_ids.
+
+        Emite un único SELECT con IN, scoped a tenant + soft-delete.
+        Retorna un dict {materia_id: nombre}.
+        Los ids no encontrados quedan ausentes del dict.
+        """
+        if not ids:
+            return {}
+        stmt = (
+            select(Materia.id, Materia.nombre)
+            .where(
+                Materia.tenant_id == self._tenant_id,
+                Materia.id.in_(ids),
+                Materia.deleted_at.is_(None),
+            )
+        )
+        result = await self._session.execute(stmt)
+        return {row.id: row.nombre for row in result.fetchall()}
+
     async def update(self, obj: Materia, **kwargs) -> Materia:
         """
         Actualiza campos de la materia y persiste.
@@ -177,6 +201,27 @@ class CohorteRepository(TenantScopedRepository[Cohorte]):
             stmt = stmt.where(Cohorte.carrera_id == carrera_id)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_nombres_por_ids(self, ids: List[uuid.UUID]) -> NombreMap:
+        """
+        Batch-fetch de nombre para un conjunto de cohorte_ids.
+
+        Emite un único SELECT con IN, scoped a tenant + soft-delete.
+        Retorna un dict {cohorte_id: nombre}.
+        Los ids no encontrados quedan ausentes del dict.
+        """
+        if not ids:
+            return {}
+        stmt = (
+            select(Cohorte.id, Cohorte.nombre)
+            .where(
+                Cohorte.tenant_id == self._tenant_id,
+                Cohorte.id.in_(ids),
+                Cohorte.deleted_at.is_(None),
+            )
+        )
+        result = await self._session.execute(stmt)
+        return {row.id: row.nombre for row in result.fetchall()}
 
     async def update(self, obj: Cohorte, **kwargs) -> Cohorte:
         """

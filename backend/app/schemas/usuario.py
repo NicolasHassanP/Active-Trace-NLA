@@ -200,6 +200,7 @@ class AsignacionRead(BaseModel):
     Output schema de una asignación.
     Incluye estado_vigencia computado (D4).
     Incluye usuario_nombre / usuario_apellidos para visualización UX (no-PII).
+    Incluye materia_nombre / cohorte_nombre para evitar filas "duplicadas" en UI.
     """
     model_config = ConfigDict(extra="forbid", from_attributes=False)
 
@@ -211,8 +212,10 @@ class AsignacionRead(BaseModel):
     desde: date
     hasta: Optional[date] = None
     materia_id: Optional[uuid.UUID] = None
+    materia_nombre: Optional[str] = None
     carrera_id: Optional[uuid.UUID] = None
     cohorte_id: Optional[uuid.UUID] = None
+    cohorte_nombre: Optional[str] = None
     comisiones: List[str] = []
     responsable_id: Optional[uuid.UUID] = None
     estado_vigencia: EstadoVigencia
