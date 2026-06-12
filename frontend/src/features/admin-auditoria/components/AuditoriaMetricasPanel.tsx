@@ -1,7 +1,8 @@
 /**
  * AuditoriaMetricasPanel — read-only metrics panel for admin-auditoria.
  * Renders 4 metric tables/KPIs + ultimas-acciones table.
- * No mutations. < 200 LOC.
+ * Actor and materia columns show resolved names (actor_nombre, materia_nombre)
+ * with "(desconocido)" / "—" fallbacks. No mutations. < 200 LOC.
  */
 import {
   useAccionesPorDia,
@@ -66,7 +67,7 @@ export default function AuditoriaMetricasPanel() {
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Actor ID</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Actor</th>
                 <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Acción</th>
                 <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Total</th>
               </tr>
@@ -74,7 +75,7 @@ export default function AuditoriaMetricasPanel() {
             <tbody className="divide-y divide-gray-100 bg-white">
               {(interacciones.data?.items ?? []).map((item, i) => (
                 <tr key={i}>
-                  <td className="px-3 py-2 font-mono text-xs text-gray-500">{item.actor_user_id.slice(0, 8)}…</td>
+                  <td className="px-3 py-2 text-xs text-gray-700">{item.actor_nombre ?? '(desconocido)'}</td>
                   <td className="px-3 py-2 text-gray-900">{item.accion}</td>
                   <td className="px-3 py-2 text-gray-900">{item.total}</td>
                 </tr>
@@ -93,16 +94,16 @@ export default function AuditoriaMetricasPanel() {
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Actor ID</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Materia ID</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Actor</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Materia</th>
                 <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
               {(interaccionesMat.data?.items ?? []).map((item, i) => (
                 <tr key={i}>
-                  <td className="px-3 py-2 font-mono text-xs text-gray-500">{item.actor_user_id.slice(0, 8)}…</td>
-                  <td className="px-3 py-2 font-mono text-xs text-gray-500">{item.materia_id ?? '—'}</td>
+                  <td className="px-3 py-2 text-xs text-gray-700">{item.actor_nombre ?? '(desconocido)'}</td>
+                  <td className="px-3 py-2 text-xs text-gray-700">{item.materia_nombre ?? '—'}</td>
                   <td className="px-3 py-2 text-gray-900">{item.total}</td>
                 </tr>
               ))}
@@ -159,7 +160,7 @@ export default function AuditoriaMetricasPanel() {
               {(ultimas.data ?? []).map((e) => (
                 <tr key={e.id}>
                   <td className="px-3 py-2 font-mono text-gray-600">{e.created_at.slice(0, 19).replace('T', ' ')}</td>
-                  <td className="px-3 py-2 font-mono text-gray-500">{e.actor_user_id.slice(0, 8)}…</td>
+                  <td className="px-3 py-2 text-gray-700">{e.actor_nombre ?? '(desconocido)'}</td>
                   <td className="px-3 py-2 font-medium text-gray-900">{e.accion}</td>
                   <td className="px-3 py-2 text-gray-700">{e.modulo}</td>
                 </tr>

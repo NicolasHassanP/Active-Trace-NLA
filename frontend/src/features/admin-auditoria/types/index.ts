@@ -35,7 +35,7 @@ export type ComunicacionEstado = string  // Kept flexible
 export interface AuditEventRead {
   id: string                         // UUID
   tenant_id: string                  // UUID
-  actor_user_id: string              // UUID
+  actor_user_id: string              // UUID (= auth_identity.id, JWT sub)
   impersonated_user_id: string | null  // UUID or null
   accion: AuditAction
   modulo: string
@@ -48,6 +48,10 @@ export interface AuditEventRead {
   before: Record<string, unknown> | null
   after: Record<string, unknown> | null
   created_at: string                 // ISO datetime
+  /** Resolved display name for actor_user_id. Null for orphan auth identities. */
+  actor_nombre?: string | null
+  /** Resolved entity name for Materia/Carrera/Cohorte. Null for other types. */
+  entidad_nombre?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -70,6 +74,8 @@ export interface InteraccionesDocenteItem {
   actor_user_id: string   // UUID
   accion: AuditAction
   total: number
+  /** Resolved display name for actor_user_id. */
+  actor_nombre?: string | null
 }
 
 /** Mirrors InteraccionesDocenteResponse. */
@@ -82,6 +88,10 @@ export interface InteraccionesDocenteMateriaItem {
   actor_user_id: string   // UUID
   materia_id: string | null
   total: number
+  /** Resolved display name for actor_user_id. */
+  actor_nombre?: string | null
+  /** Resolved display name for materia_id. */
+  materia_nombre?: string | null
 }
 
 /** Mirrors InteraccionesDocenteMateriaResponse. */
@@ -116,7 +126,8 @@ export interface AuditoriaFiltros {
   offset?: number
   desde?: string   // ISO date string
   hasta?: string   // ISO date string
-  actor_user_id?: string
+  /** Client-side text filter on actor_nombre (not sent to API). */
+  actor_nombre_q?: string
 }
 
 /** Query params for the metrics that accept date range + actor filters. */

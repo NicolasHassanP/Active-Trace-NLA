@@ -76,6 +76,27 @@ class CarreraRepository(TenantScopedRepository[Carrera]):
         result = await self._session.execute(stmt)
         return len(result.scalars().all())
 
+    async def get_nombres_por_ids(self, ids: List[uuid.UUID]) -> NombreMap:
+        """
+        Batch-fetch de nombre para un conjunto de carrera_ids.
+
+        Emite un único SELECT con IN, scoped a tenant + soft-delete.
+        Retorna un dict {carrera_id: nombre}.
+        Los ids no encontrados quedan ausentes del dict.
+        """
+        if not ids:
+            return {}
+        stmt = (
+            select(Carrera.id, Carrera.nombre)
+            .where(
+                Carrera.tenant_id == self._tenant_id,
+                Carrera.id.in_(ids),
+                Carrera.deleted_at.is_(None),
+            )
+        )
+        result = await self._session.execute(stmt)
+        return {row.id: row.nombre for row in result.fetchall()}
+
     async def update(self, obj: Carrera, **kwargs) -> Carrera:
         """
         Actualiza campos de la carrera y persiste.

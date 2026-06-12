@@ -1,7 +1,10 @@
 /**
  * AuditoriaEventosTable — paginated read-only table for audit events.
  * Pagination: offset-based. Siguiente disabled when events.length < limit.
- * Filters: desde/hasta/actor_user_id passed as query params.
+ * Filters: desde/hasta (sent to API) + actor name search (client-side substring).
+ * Actor column: shows actor_nombre if available, falls back to "(desconocido)".
+ * Entidad column: shows entidad_nombre for Materia/Carrera/Cohorte, otherwise
+ *   a human-readable label for the entidad_tipo without the raw UUID.
  * < 200 LOC. Tailwind only. No mutations.
  */
 import type { AuditEventRead, AuditoriaFiltros } from '../types'
@@ -21,10 +24,45 @@ function formatDate(iso: string): string {
   return iso.slice(0, 19).replace('T', ' ')
 }
 
+/**
+ * Human-readable label for entidad_tipo values that are not resolvable by name.
+ * Materia/Carrera/Cohorte are resolved server-side and returned as entidad_nombre.
+ */
+const ENTIDAD_TIPO_LABEL: Record<string, string> = {
+  FechaAcademica: 'Fecha académica',
+  ProgramaMateria: 'Programa',
+  Aviso: 'Aviso',
+  Asignacion: 'Asignación',
+  AuditEvent: 'Consulta de auditoría',
+  Usuario: 'Usuario',
+  Carrera: 'Carrera',
+  Materia: 'Materia',
+  Cohorte: 'Cohorte',
+}
+
+function entidadDisplay(event: AuditEventRead): string {
+  // If the server resolved a name, use it.
+  if (event.entidad_nombre) {
+    const label = ENTIDAD_TIPO_LABEL[event.entidad_tipo] ?? event.entidad_tipo
+    return `${label}: ${event.entidad_nombre}`
+  }
+  // Otherwise show a readable label for the type (no raw UUID).
+  return ENTIDAD_TIPO_LABEL[event.entidad_tipo] ?? event.entidad_tipo
+}
+
 export default function AuditoriaEventosTable({ events, filtros, onFiltrosChange, isLoading }: Props) {
   const limit = filtros.limit ?? DEFAULT_LIMIT
   const offset = filtros.offset ?? 0
-  const hasMore = events.length >= limit
+  const actorQ = (filtros.actor_nombre_q ?? '').toLowerCase()
+
+  // Client-side filter on actor_nombre (substring, case-insensitive)
+  const filteredEvents = actorQ
+    ? events.filter((e) =>
+        (e.actor_nombre ?? '').toLowerCase().includes(actorQ)
+      )
+    : events
+
+  const hasMore = events.length >= limit  // based on raw page, not filtered
   const isFirstPage = offset === 0
 
   function handleAnterior() {
@@ -57,11 +95,13 @@ export default function AuditoriaEventosTable({ events, filtros, onFiltrosChange
         />
         <input
           type="text"
-          placeholder="Actor user ID"
-          value={filtros.actor_user_id ?? ''}
-          onChange={(e) => onFiltrosChange({ ...filtros, actor_user_id: e.target.value || undefined, offset: 0 })}
+          placeholder="Buscar actor…"
+          value={filtros.actor_nombre_q ?? ''}
+          onChange={(e) =>
+            onFiltrosChange({ ...filtros, actor_nombre_q: e.target.value || undefined })
+          }
           className={inputClass}
-          aria-label="Actor user ID"
+          aria-label="Actor"
         />
         <button
           type="button"
@@ -76,14 +116,14 @@ export default function AuditoriaEventosTable({ events, filtros, onFiltrosChange
       {isLoading && <p className="text-sm text-gray-500">Cargando eventos…</p>}
 
       {/* Empty state */}
-      {!isLoading && events.length === 0 && (
+      {!isLoading && filteredEvents.length === 0 && (
         <div data-testid="auditoria-eventos-empty">
           <EmptyState title="No hay eventos de auditoría para los filtros aplicados." />
         </div>
       )}
 
       {/* Table */}
-      {!isLoading && events.length > 0 && (
+      {!isLoading && filteredEvents.length > 0 && (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 text-xs">
             <thead className="bg-gray-50">
@@ -97,13 +137,13 @@ export default function AuditoriaEventosTable({ events, filtros, onFiltrosChange
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
-              {events.map((e) => (
+              {filteredEvents.map((e) => (
                 <tr key={e.id}>
                   <td className="px-3 py-2 font-mono text-gray-600">{formatDate(e.created_at)}</td>
-                  <td className="px-3 py-2 font-mono text-gray-500">{e.actor_user_id.slice(0, 8)}…</td>
+                  <td className="px-3 py-2 text-gray-700">{e.actor_nombre ?? '(desconocido)'}</td>
                   <td className="px-3 py-2 text-gray-900 font-medium">{e.accion}</td>
                   <td className="px-3 py-2 text-gray-700">{e.modulo}</td>
-                  <td className="px-3 py-2 text-gray-700">{e.entidad_tipo}{e.entidad_id ? `:${e.entidad_id.slice(0, 6)}` : ''}</td>
+                  <td className="px-3 py-2 text-gray-700">{entidadDisplay(e)}</td>
                   <td className="px-3 py-2">
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                       e.resultado === 'ok' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'

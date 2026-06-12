@@ -134,6 +134,36 @@ class UsuarioRepository(TenantScopedRepository[Usuario]):
         result = await self._session.execute(stmt)
         return {row.id: (row.nombre, row.apellidos) for row in result.fetchall()}
 
+    async def get_nombres_por_auth_identity_ids(
+        self, auth_identity_ids: List[uuid.UUID]
+    ) -> dict[uuid.UUID, str]:
+        """
+        Batch-fetch de nombre completo para un conjunto de auth_identity_ids.
+
+        actor_user_id en AuditEvent es el JWT sub = auth_identity.id, NO usuario.id.
+        El join correcto es: usuario.auth_identity_id = actor_user_id.
+
+        Emite un único SELECT con IN sobre auth_identity_id, scoped a tenant +
+        soft-delete. Retorna un dict {auth_identity_id: "Nombre Apellidos"}.
+        Los ids sin usuario asociado (auth_identity huérfana) quedan ausentes.
+        """
+        if not auth_identity_ids:
+            return {}
+        stmt = (
+            select(Usuario.auth_identity_id, Usuario.nombre, Usuario.apellidos)
+            .where(
+                Usuario.tenant_id == self._tenant_id,
+                Usuario.auth_identity_id.in_(auth_identity_ids),
+                Usuario.deleted_at.is_(None),
+            )
+        )
+        result = await self._session.execute(stmt)
+        return {
+            row.auth_identity_id: f"{row.nombre} {row.apellidos}".strip()
+            for row in result.fetchall()
+            if row.auth_identity_id is not None
+        }
+
 
 # ---------------------------------------------------------------------------
 # AsignacionRepository
