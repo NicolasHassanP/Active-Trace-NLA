@@ -27,6 +27,14 @@ const LoginPage = lazy(() => import('@/features/auth/components/LoginPage'))
 const DashboardPlaceholder = lazy(() => import('@/shared/components/DashboardPlaceholder'))
 const NotFound404 = lazy(() => import('@/shared/components/NotFound404'))
 
+// C-29 admin core lazy pages (estructura + auditoria; admin-usuarios deferred)
+const AdminEstructuraPage = lazy(
+  () => import('@/features/admin-estructura/pages/AdminEstructuraPage'),
+)
+const AdminAuditoriaPage = lazy(
+  () => import('@/features/admin-auditoria/pages/AdminAuditoriaPage'),
+)
+
 // C-22 lazy pages
 const PadronPage = lazy(() => import('@/features/padron/pages/PadronPage'))
 const AtrasadosPage = lazy(() => import('@/features/atrasados/pages/AtrasadosPage'))
@@ -267,6 +275,23 @@ export default function App() {
                     element={
                       <ProtectedRoute requiredRoles={['COORDINADOR', 'ADMIN']}>
                         <AsignacionesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* === C-29 admin core routes: estructura + auditoria (admin-usuarios deferred) === */}
+                  <Route
+                    path="/admin/estructura"
+                    element={
+                      <ProtectedRoute requiredRoles={['ADMIN']}>
+                        <AdminEstructuraPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/auditoria"
+                    element={
+                      <ProtectedRoute requiredRoles={['ADMIN']}>
+                        <AdminAuditoriaPage />
                       </ProtectedRoute>
                     }
                   />
