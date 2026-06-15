@@ -59,6 +59,8 @@ class RankingFila(BaseModel):
 
     entrada_padron_id: uuid.UUID
     cantidad_aprobadas: int
+    nombre: Optional[str] = None
+    apellidos: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +101,8 @@ class NotaFinalAlumno(BaseModel):
     entrada_padron_id: uuid.UUID
     nota_final: Optional[Decimal]
     actividades_consideradas: int
+    nombre: Optional[str] = None
+    apellidos: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

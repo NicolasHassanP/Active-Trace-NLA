@@ -41,7 +41,7 @@ export default function RankingTable({ materia_id, actividades = [] }: Props) {
         <thead className="bg-gray-50">
           <tr>
             <th className="px-4 py-2 text-left font-medium text-gray-600">#</th>
-            <th className="px-4 py-2 text-left font-medium text-gray-600">ID Alumno (padrón)</th>
+            <th className="px-4 py-2 text-left font-medium text-gray-600">Alumno</th>
             <th className="px-4 py-2 text-right font-medium text-gray-600">Actividades aprobadas</th>
           </tr>
         </thead>
@@ -49,7 +49,9 @@ export default function RankingTable({ materia_id, actividades = [] }: Props) {
           {data.map((fila, idx) => (
             <tr key={fila.entrada_padron_id} className="border-t hover:bg-gray-50">
               <td className="px-4 py-2 text-gray-500">{idx + 1}</td>
-              <td className="px-4 py-2 font-mono text-xs text-gray-700">{fila.entrada_padron_id}</td>
+              <td className="px-4 py-2 text-gray-700">
+                {fila.nombre && fila.apellidos ? `${fila.apellidos}, ${fila.nombre}` : fila.entrada_padron_id}
+              </td>
               <td className="px-4 py-2 text-right font-semibold text-indigo-700">
                 {fila.cantidad_aprobadas}
               </td>

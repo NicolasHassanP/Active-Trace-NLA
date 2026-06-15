@@ -69,6 +69,22 @@ class AnalisisService:
         """
         return grant.scope == PermisoScope.global_
 
+    async def _actividades_de_materia(self, materia_id: uuid.UUID, importado_por) -> List[str]:
+        """Devuelve todas las actividades distintas importadas para la materia."""
+        from sqlalchemy import select
+        from app.models.calificacion import Calificacion
+        db = self._repo._session
+        stmt = (
+            select(Calificacion.actividad)
+            .where(Calificacion.materia_id == materia_id)
+            .where(Calificacion.deleted_at.is_(None))
+            .distinct()
+        )
+        if importado_por is not None:
+            stmt = stmt.where(Calificacion.importado_por == importado_por)
+        rows = (await db.execute(stmt)).scalars().all()
+        return list(rows)
+
     # -----------------------------------------------------------------------
     # atrasados — RN-06 (5.1, 5.2, 5.3)
     # -----------------------------------------------------------------------
@@ -170,14 +186,16 @@ class AnalisisService:
         Ordenado descendente.
         domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
-        if not actividades:
-            return []
-
         importado_por = (
             None
             if self._es_scope_global(grant)
             else domain_user_id
         )
+
+        if not actividades:
+            actividades = await self._actividades_de_materia(materia_id, importado_por)
+        if not actividades:
+            return []
 
         calificaciones = await self._repo.calificaciones_por_materia(
             materia_id,
@@ -195,7 +213,24 @@ class AnalisisService:
                 "nota_textual": cal.nota_textual,
             })
 
-        return calcular_ranking(actividades, cals_map)
+        filas = calcular_ranking(actividades, cals_map)
+
+        # Resolver nombres desde EntradaPadron
+        from sqlalchemy import select
+        from app.models.padron import EntradaPadron
+        padron_ids = {f.entrada_padron_id for f in filas}
+        db = self._repo._session
+        nombres_map: dict = {}
+        if padron_ids:
+            rows = (await db.execute(
+                select(EntradaPadron.id, EntradaPadron.nombre, EntradaPadron.apellidos)
+                .where(EntradaPadron.id.in_(padron_ids))
+            )).all()
+            nombres_map = {r.id: (r.nombre, r.apellidos) for r in rows}
+        for f in filas:
+            if f.entrada_padron_id in nombres_map:
+                f.nombre, f.apellidos = nombres_map[f.entrada_padron_id]
+        return filas
 
     # -----------------------------------------------------------------------
     # reporte_materia — F2.4 (5.5)
@@ -287,14 +322,16 @@ class AnalisisService:
         Incluye alumnos sin calificaciones (nota_final=None).
         domain_user_id: usuario.id resuelto en el router (auth_identity_id != usuario.id).
         """
-        if not actividades:
-            return []
-
         importado_por = (
             None
             if self._es_scope_global(grant)
             else domain_user_id
         )
+
+        if not actividades:
+            actividades = await self._actividades_de_materia(materia_id, importado_por)
+        if not actividades:
+            return []
 
         calificaciones = await self._repo.calificaciones_por_materia(
             materia_id,
@@ -312,7 +349,24 @@ class AnalisisService:
                 "nota_textual": cal.nota_textual,
             })
 
-        return calcular_nota_final(actividades, cals_map)
+        filas = calcular_nota_final(actividades, cals_map)
+
+        # Resolver nombres desde EntradaPadron
+        from sqlalchemy import select
+        from app.models.padron import EntradaPadron
+        padron_ids = {f.entrada_padron_id for f in filas}
+        db = self._repo._session
+        nombres_map: dict = {}
+        if padron_ids:
+            rows = (await db.execute(
+                select(EntradaPadron.id, EntradaPadron.nombre, EntradaPadron.apellidos)
+                .where(EntradaPadron.id.in_(padron_ids))
+            )).all()
+            nombres_map = {r.id: (r.nombre, r.apellidos) for r in rows}
+        for f in filas:
+            if f.entrada_padron_id in nombres_map:
+                f.nombre, f.apellidos = nombres_map[f.entrada_padron_id]
+        return filas
 
     # -----------------------------------------------------------------------
     # monitor — F2.7/F2.8/F2.9 (5.7)

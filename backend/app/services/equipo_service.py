@@ -219,10 +219,36 @@ class EquipoService:
             return []
 
         from sqlalchemy import select
+        from app.models.estructura import Materia, Carrera, Cohorte
         from app.models.usuario import Usuario
 
+        materia_ids = {a.materia_id for a in asignaciones if a.materia_id}
+        carrera_ids = {a.carrera_id for a in asignaciones if a.carrera_id}
+        cohorte_ids = {a.cohorte_id for a in asignaciones if a.cohorte_id}
         usuario_ids = {a.usuario_id for a in asignaciones if a.usuario_id}
         db = self._asig_repo._session
+
+        materias_map: dict = {}
+        if materia_ids:
+            rows = (await db.execute(
+                select(Materia.id, Materia.nombre).where(Materia.id.in_(materia_ids))
+            )).all()
+            materias_map = {r.id: r.nombre for r in rows}
+
+        carreras_map: dict = {}
+        if carrera_ids:
+            rows = (await db.execute(
+                select(Carrera.id, Carrera.nombre).where(Carrera.id.in_(carrera_ids))
+            )).all()
+            carreras_map = {r.id: r.nombre for r in rows}
+
+        cohortes_map: dict = {}
+        if cohorte_ids:
+            rows = (await db.execute(
+                select(Cohorte.id, Cohorte.nombre).where(Cohorte.id.in_(cohorte_ids))
+            )).all()
+            cohortes_map = {r.id: r.nombre for r in rows}
+
         usuarios_map: dict = {}
         if usuario_ids:
             rows = (await db.execute(
@@ -231,7 +257,7 @@ class EquipoService:
             )).all()
             usuarios_map = {r.id: (r.nombre, r.apellidos) for r in rows}
 
-        return [self._to_mis_equipos_item(a, usuarios_map=usuarios_map) for a in asignaciones]
+        return [self._to_mis_equipos_item(a, materias_map, carreras_map, cohortes_map, usuarios_map) for a in asignaciones]
 
     # -----------------------------------------------------------------------
     # asignacion_masiva — POST /asignacion-masiva

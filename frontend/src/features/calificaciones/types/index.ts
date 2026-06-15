@@ -86,6 +86,8 @@ export interface ConfigurarUmbralDefaultRequest {
 export interface RankingFila {
   entrada_padron_id: string
   cantidad_aprobadas: number
+  nombre?: string | null
+  apellidos?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -111,4 +113,6 @@ export interface NotaFinalAlumno {
   entrada_padron_id: string
   nota_final: number | null
   actividades_consideradas: number
+  nombre?: string | null
+  apellidos?: string | null
 }
